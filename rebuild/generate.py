@@ -334,6 +334,31 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
         f"Stand: {build_time} — automatisch erstellt am {date_label}",
     )
 
+    # ── SEO: Title, Description, Open Graph, Twitter Card ─────────────────
+    # Täglich mit Spotlight-Inhalt befüllt, damit jede Ausgabe eine
+    # eigene Link-Vorschau beim Teilen bekommt.
+    if items and items.get("spotlight"):
+        sp = items["spotlight"]
+        hl = (sp.get("hl") or "").strip()
+        txt = (sp.get("text") or "").strip()
+        og_title = f"SCHLUSSLICHT — {hl}" if hl else "SCHLUSSLICHT — Das Magazin der Letzten"
+        og_desc = txt[:155] if txt else "Das Magazin der Letzten. 24 Rubriken täglich aktuell."
+
+        title_tag = soup.find("title")
+        if title_tag:
+            title_tag.string = og_title
+
+        for sel, attr, val in [
+            ("#meta-description",  "content", og_desc),
+            ("#og-title",          "content", og_title),
+            ("#og-description",    "content", og_desc),
+            ("#twitter-title",     "content", og_title),
+            ("#twitter-description", "content", og_desc),
+        ]:
+            el = soup.select_one(sel)
+            if el:
+                el["content"] = val
+
     return str(soup)
 
 
