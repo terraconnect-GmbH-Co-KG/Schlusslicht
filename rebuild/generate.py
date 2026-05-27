@@ -7,7 +7,7 @@ Wird vom GitHub-Actions-Workflow .github/workflows/daily-update.yml gestartet.
 
 Ablauf:
   1. Liest die Vorlage  index.template.html  (Fallback: index.html).
-  2. Recherchiert per Anthropic-API mit aktivierter Websuche
+  2. Recherchiert per OpenRouter-API mit Web-Search-Server-Tool
        a) tagesaktuelle Meldungen für alle 24 Rubriken,
        b) 3 frische Hintergrundstorys.
   3. Baut die Inhalte fest in das HTML ein und schreibt  index.html.
@@ -16,21 +16,20 @@ Die fertige index.html ist damit eine vollständig statische Seite —
 ohne API-Schlüssel im Browser, lauffähig auf jedem Hoster bzw. GitHub Pages.
 """
 
+import datetime
+import json
 import os
 import re
 import sys
-import json
 import time
-import datetime
 
 import requests
 from bs4 import BeautifulSoup
 
-# ── Konfiguration ───────────────────────────────────────────────────────────
-API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-API_URL = "https://api.anthropic.com/v1/messages"
-API_VER = "2023-06-01"
-MODEL = "claude-haiku-4-5"  # bei Bedarf hier Modellversion anpassen
+# ── Konfiguration ────────────────────────────────────────────────────────────
+API_KEY = os.environ.get("OPENROUTER_API_KEY", "").strip()
+API_URL = "https://openrouter.ai/api/v1/chat/completions"
+MODEL = "google/gemini-2.5-flash"  # beliebiges OpenRouter-Modell hier eintragen
 TEMPLATE = "index.template.html"
 OUTPUT = "index.html"
 TIMEOUT = 240
@@ -88,37 +87,31 @@ RUBRIKEN = {
 }
 
 
-# ── Hilfsfunktionen ─────────────────────────────────────────────────────────
+# ── Hilfsfunktionen ──────────────────────────────────────────────────────────
 def log(msg: str) -> None:
     print(f"[{datetime.datetime.now():%H:%M:%S}] {msg}", flush=True)
 
 
-def call_api(
-    system: str, prompt: str, max_tokens: int, max_uses: int, retries: int = 3
-):
-    """Ruft die Anthropic-API mit aktivierter Websuche auf und liefert den Text."""
+def call_api(system: str, prompt: str, max_tokens: int, retries: int = 3):
+    """Ruft die OpenRouter-API mit Web-Search-Server-Tool auf und liefert den Text."""
     headers = {
-        "x-api-key": API_KEY,
-        "anthropic-version": API_VER,
-        "content-type": "application/json",
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json",
     }
     body = {
         "model": MODEL,
         "max_tokens": max_tokens,
-        "system": system,
-        "tools": [
-            {"type": "web_search_20250305", "name": "web_search", "max_uses": max_uses}
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": prompt},
         ],
-        "messages": [{"role": "user", "content": prompt}],
+        "tools": [{"type": "openrouter:web_search"}],
     }
     for attempt in range(1, retries + 1):
         try:
             r = requests.post(API_URL, headers=headers, json=body, timeout=TIMEOUT)
             if r.status_code == 200:
-                blocks = r.json().get("content", [])
-                return "".join(
-                    b.get("text", "") for b in blocks if b.get("type") == "text"
-                )
+                return r.json()["choices"][0]["message"]["content"]
             log(f"  API-Status {r.status_code}: {r.text[:300]}")
         except Exception as exc:  # noqa: BLE001
             log(f"  API-Fehler (Versuch {attempt}/{retries}): {exc}")
@@ -141,7 +134,7 @@ def extract_json(text):
         return None
 
 
-# ── Recherche: 24 Rubriken ──────────────────────────────────────────────────
+# ── Recherche: 24 Rubriken ───────────────────────────────────────────────────
 def get_daily_items(date_label: str):
     log("Recherchiere Tagesmeldungen für 24 Rubriken …")
 
@@ -149,7 +142,7 @@ def get_daily_items(date_label: str):
         f"Du bist Chefredakteur von schlusslicht.de, einem deutschen "
         f"linkssatirischen Magazin. Heute ist {date_label}.\n\n"
         "Finde zu jeder der 24 Rubriken eine ECHTE, tagesaktuelle oder "
-        "höchstens 14 Tage alte Meldung via web_search. Hat eine Rubrik heute "
+        "höchstens 14 Tage alte Meldung via Websuche. Hat eine Rubrik heute "
         "keine eigene Meldung, wähle die überraschendste Schlusslicht-Meldung "
         "aus einem ANDEREN passenden Bereich — Aktualität geht vor Rubriktreue.\n\n"
         "Stil: nüchterne schwarze Satire, Fakten plus ein trockener Satz, "
@@ -159,7 +152,7 @@ def get_daily_items(date_label: str):
     zeilen = "\n".join(f"{num} {beschr}" for num, beschr in RUBRIKEN.items())
     prompt = (
         "Suche für JEDE der 24 Rubriken eine aktuelle echte Meldung. "
-        "Nutze web_search mehrfach, auf Deutsch und Englisch.\n\n"
+        "Nutze die Websuche mehrfach, auf Deutsch und Englisch.\n\n"
         f"Rubriken:\n{zeilen}\n\n"
         "Antworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown:\n"
         "{\n"
@@ -175,7 +168,7 @@ def get_daily_items(date_label: str):
         "}"
     )
 
-    data = extract_json(call_api(system, prompt, max_tokens=5000, max_uses=30))
+    data = extract_json(call_api(system, prompt, max_tokens=5000))
     if data and "items" in data:
         log(f"  {len(data['items'])} Rubrik-Meldungen erhalten.")
     else:
@@ -190,7 +183,7 @@ def get_daily_stories(date_label: str):
     system = (
         f"Du bist Hintergrundredakteur von schlusslicht.de. Heute ist {date_label}.\n\n"
         "Schreibe 3 tiefe Hintergrundstorys über aktuelle (max. 30 Tage alte) "
-        "Schlusslichter aus verschiedenen Bereichen. Nutze web_search für echte "
+        "Schlusslichter aus verschiedenen Bereichen. Nutze die Websuche für echte "
         "Fälle. Stil: investigativ, nüchtern, ohne Sentimentalität — zeige das "
         "Systemversagen hinter dem Einzelfall. 400-700 Wörter je Story."
     )
@@ -215,7 +208,7 @@ def get_daily_stories(date_label: str):
         "}"
     )
 
-    data = extract_json(call_api(system, prompt, max_tokens=6000, max_uses=15))
+    data = extract_json(call_api(system, prompt, max_tokens=6000))
     if data and data.get("stories"):
         log(f"  {len(data['stories'])} Hintergrundstorys erhalten.")
     else:
@@ -223,7 +216,7 @@ def get_daily_stories(date_label: str):
     return data
 
 
-# ── Einbau ins HTML ─────────────────────────────────────────────────────────
+# ── Einbau ins HTML ──────────────────────────────────────────────────────────
 def set_text(node, value):
     """Setzt reinen Text in ein BeautifulSoup-Element."""
     if node is not None and value:
@@ -234,7 +227,7 @@ def set_text(node, value):
 def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
 
-    # ── 24 Rubrik-Meldungen ────────────────────────────────────────────────
+    # ── 24 Rubrik-Meldungen ───────────────────────────────────────────────
     if items and items.get("items"):
         for num, it in items["items"].items():
             card = soup.select_one(f'[data-rubrik="{num}"]')
@@ -242,16 +235,16 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
                 continue
             kommentar = (it.get("kommentar") or "").strip()
             if kommentar:
-                set_text(card.select_one(".realsatire"), f"\u201e{kommentar}\u201c")
+                set_text(card.select_one(".realsatire"), f"„{kommentar}“")
             tag = card.select_one(".ai-tag")
             if tag is not None:
                 quelle = (it.get("quelle") or "").strip()
                 set_text(
                     tag,
                     (
-                        f"\u2726 Tagesaktuell · {quelle}"
+                        f"✦ Tagesaktuell · {quelle}"
                         if quelle
-                        else "\u2726 Tagesaktuell"
+                        else "✦ Tagesaktuell"
                     ),
                 )
             # Schlagzeile (Text nach „ — ")
@@ -259,26 +252,26 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
             rtit = card.select_one(".rtit")
             if rtit and headline and len(headline) > 4:
                 cur = rtit.get_text()
-                dash = cur.find(" \u2014 ")
+                dash = cur.find(" — ")
                 set_text(rtit, (cur[: dash + 3] + headline) if dash > 0 else headline)
-            # Rubrikname (Text nach „ ⸺ ") nur wenn Rubrik gewechselt wurde
+            # Rubrikname nur wenn Rubrik gewechselt wurde
             rname = (it.get("rubrik_name") or "").strip()
             rnum = card.select_one(".rnum")
             if rnum and rname:
                 cur = rnum.get_text()
-                sep = cur.find(" \u2e3a ")
+                sep = cur.find(" ⸺ ")
                 set_text(rnum, (cur[: sep + 3] + rname) if sep > 0 else cur)
 
-    # ── Spotlight (Tagesausgabe) ───────────────────────────────────────────
+    # ── Spotlight (Tagesausgabe) ──────────────────────────────────────────
     if items and items.get("spotlight"):
         sp = items["spotlight"]
         set_text(soup.select_one("#ta-cat"), sp.get("cat"))
         set_text(soup.select_one("#ta-hl"), sp.get("hl"))
         set_text(soup.select_one("#ta-text"), sp.get("text"))
         quelle = (sp.get("quelle") or "KI-recherchiert").strip()
-        set_text(soup.select_one("#ta-source"), f"\u2014 {quelle} · {date_label}")
+        set_text(soup.select_one("#ta-source"), f"— {quelle} · {date_label}")
 
-    # ── Ticker ─────────────────────────────────────────────────────────────
+    # ── Ticker ────────────────────────────────────────────────────────────
     if items and items.get("ticker"):
         inner = soup.select_one(".ticker-inner")
         if inner is not None:
@@ -288,11 +281,11 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
                 item = soup.new_tag("span", attrs={"class": "tk-item"})
                 item.append(f"{txt} ")
                 sep = soup.new_tag("span", attrs={"class": "tk-sep"})
-                sep.string = "\u2726"
+                sep.string = "✦"
                 item.append(sep)
                 inner.append(item)
 
-    # ── Hintergrundstorys ──────────────────────────────────────────────────
+    # ── Hintergrundstorys ─────────────────────────────────────────────────
     if stories and stories.get("stories"):
         liste = stories["stories"][:3]
 
@@ -335,7 +328,7 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
                     p.append(strong)
                     body.append(p)
 
-    # ── Datum & Zeitstempel ────────────────────────────────────────────────
+    # ── Datum & Zeitstempel ───────────────────────────────────────────────
     set_text(soup.select_one("#nav-issue-label"), date_label)
     set_text(
         soup.select_one("#update-time"),
@@ -344,7 +337,7 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
 
     out = str(soup)
 
-    # ── Clientseitige API-Aufrufe deaktivieren ─────────────────────────────
+    # ── Clientseitige API-Aufrufe deaktivieren ────────────────────────────
     # Inhalte sind jetzt fest eingebaut; loadDailyContent/Stories würden sonst
     # im Browser (ohne Schlüssel) scheitern und die Tags überschreiben.
     out = re.sub(r"loadDailyContent\(\)\s*,", "Promise.resolve(),", out)
@@ -353,10 +346,10 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
     return out
 
 
-# ── Hauptprogramm ───────────────────────────────────────────────────────────
+# ── Hauptprogramm ────────────────────────────────────────────────────────────
 def main() -> int:
     if not API_KEY:
-        log("FEHLER: Umgebungsvariable ANTHROPIC_API_KEY fehlt.")
+        log("FEHLER: Umgebungsvariable OPENROUTER_API_KEY fehlt.")
         return 1
 
     today = datetime.date.today()

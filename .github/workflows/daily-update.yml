@@ -41,7 +41,7 @@ jobs:
       - name: Tagesinhalte recherchieren und einbauen
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        run: python generate.py
+        run: python rebuild/generate.py
 
       - name: Neue Ausgabe committen
         run: |
