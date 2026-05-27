@@ -19,7 +19,6 @@ ohne API-Schlüssel im Browser, lauffähig auf jedem Hoster bzw. GitHub Pages.
 import datetime
 import json
 import os
-import re
 import sys
 import time
 
@@ -335,15 +334,7 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
         f"Stand: {build_time} — automatisch erstellt am {date_label}",
     )
 
-    out = str(soup)
-
-    # ── Clientseitige API-Aufrufe deaktivieren ────────────────────────────
-    # Inhalte sind jetzt fest eingebaut; loadDailyContent/Stories würden sonst
-    # im Browser (ohne Schlüssel) scheitern und die Tags überschreiben.
-    out = re.sub(r"loadDailyContent\(\)\s*,", "Promise.resolve(),", out)
-    out = re.sub(r"loadDailyStories\(\)\s*,", "Promise.resolve(),", out)
-
-    return out
+    return str(soup)
 
 
 # ── Hauptprogramm ────────────────────────────────────────────────────────────
