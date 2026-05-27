@@ -27,18 +27,37 @@ import requests
 from bs4 import BeautifulSoup
 
 # ── Konfiguration ───────────────────────────────────────────────────────────
-API_KEY  = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-API_URL  = "https://api.anthropic.com/v1/messages"
-API_VER  = "2023-06-01"
-MODEL    = "claude-sonnet-4-20250514"      # bei Bedarf hier Modellversion anpassen
+API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+API_URL = "https://api.anthropic.com/v1/messages"
+API_VER = "2023-06-01"
+MODEL = "claude-sonnet-4-20250514"  # bei Bedarf hier Modellversion anpassen
 TEMPLATE = "index.template.html"
-OUTPUT   = "index.html"
-TIMEOUT  = 240
+OUTPUT = "index.html"
+TIMEOUT = 240
 
-WOCHENTAGE = ["Montag", "Dienstag", "Mittwoch", "Donnerstag",
-              "Freitag", "Samstag", "Sonntag"]
-MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
-          "August", "September", "Oktober", "November", "Dezember"]
+WOCHENTAGE = [
+    "Montag",
+    "Dienstag",
+    "Mittwoch",
+    "Donnerstag",
+    "Freitag",
+    "Samstag",
+    "Sonntag",
+]
+MONATE = [
+    "Januar",
+    "Februar",
+    "März",
+    "April",
+    "Mai",
+    "Juni",
+    "Juli",
+    "August",
+    "September",
+    "Oktober",
+    "November",
+    "Dezember",
+]
 
 # Die 24 Rubriken der Seite
 RUBRIKEN = {
@@ -74,32 +93,34 @@ def log(msg: str) -> None:
     print(f"[{datetime.datetime.now():%H:%M:%S}] {msg}", flush=True)
 
 
-def call_api(system: str, prompt: str, max_tokens: int,
-             max_uses: int, retries: int = 3):
+def call_api(
+    system: str, prompt: str, max_tokens: int, max_uses: int, retries: int = 3
+):
     """Ruft die Anthropic-API mit aktivierter Websuche auf und liefert den Text."""
     headers = {
-        "x-api-key":         API_KEY,
+        "x-api-key": API_KEY,
         "anthropic-version": API_VER,
-        "content-type":      "application/json",
+        "content-type": "application/json",
     }
     body = {
-        "model":      MODEL,
+        "model": MODEL,
         "max_tokens": max_tokens,
-        "system":     system,
-        "tools":      [{"type": "web_search_20250305",
-                        "name": "web_search",
-                        "max_uses": max_uses}],
-        "messages":   [{"role": "user", "content": prompt}],
+        "system": system,
+        "tools": [
+            {"type": "web_search_20250305", "name": "web_search", "max_uses": max_uses}
+        ],
+        "messages": [{"role": "user", "content": prompt}],
     }
     for attempt in range(1, retries + 1):
         try:
             r = requests.post(API_URL, headers=headers, json=body, timeout=TIMEOUT)
             if r.status_code == 200:
                 blocks = r.json().get("content", [])
-                return "".join(b.get("text", "")
-                               for b in blocks if b.get("type") == "text")
+                return "".join(
+                    b.get("text", "") for b in blocks if b.get("type") == "text"
+                )
             log(f"  API-Status {r.status_code}: {r.text[:300]}")
-        except Exception as exc:                       # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
             log(f"  API-Fehler (Versuch {attempt}/{retries}): {exc}")
         time.sleep(6 * attempt)
     return None
@@ -141,17 +162,17 @@ def get_daily_items(date_label: str):
         "Nutze web_search mehrfach, auf Deutsch und Englisch.\n\n"
         f"Rubriken:\n{zeilen}\n\n"
         "Antworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown:\n"
-        '{\n'
+        "{\n"
         '  "items": {\n'
         '    "01": {"rubrik_name": "Name falls Rubrik gewechselt wurde, sonst leer", '
         '"headline": "kurze Schlagzeile", "kommentar": "Kommentar, max 130 Zeichen", '
         '"quelle": "Quelle u. Datum"},\n'
         '    ... bis "24" ...\n'
-        '  },\n'
+        "  },\n"
         '  "spotlight": {"cat": "Kategorie des Tages", "hl": "Schlagzeile", '
         '"text": "2-3 Sätze Einordnung", "quelle": "Quelle"},\n'
         '  "ticker": ["8 kurze Ticker-Meldungen, je max 95 Zeichen"]\n'
-        '}'
+        "}"
     )
 
     data = extract_json(call_api(system, prompt, max_tokens=5000, max_uses=30))
@@ -178,9 +199,9 @@ def get_daily_stories(date_label: str):
         "Bereichen (Sport, Wirtschaft, Politik, Kultur, Wissenschaft, Umwelt, "
         "Medien, Technik). Wähle die 3 stärksten aus.\n\n"
         "Antworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown:\n"
-        '{\n'
+        "{\n"
         '  "stories": [\n'
-        '    {\n'
+        "    {\n"
         '      "cat": "// Kategorie · Zeitraum",\n'
         '      "title": "packender Titel, max 80 Zeichen",\n'
         '      "teaser": "Einleitung, 2-3 Sätze",\n'
@@ -188,10 +209,10 @@ def get_daily_stories(date_label: str):
         '      "factbox": ["Fakt 1", "Fakt 2", "Fakt 3"],\n'
         '      "conclusion": "Schlusssatz zum Systemversagen",\n'
         '      "source": "Quellen u. Datum"\n'
-        '    }\n'
-        '    ... 3 Storys ...\n'
-        '  ]\n'
-        '}'
+        "    }\n"
+        "    ... 3 Storys ...\n"
+        "  ]\n"
+        "}"
     )
 
     data = extract_json(call_api(system, prompt, max_tokens=6000, max_uses=15))
@@ -225,28 +246,34 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
             tag = card.select_one(".ai-tag")
             if tag is not None:
                 quelle = (it.get("quelle") or "").strip()
-                set_text(tag, f"\u2726 Tagesaktuell · {quelle}" if quelle
-                              else "\u2726 Tagesaktuell")
+                set_text(
+                    tag,
+                    (
+                        f"\u2726 Tagesaktuell · {quelle}"
+                        if quelle
+                        else "\u2726 Tagesaktuell"
+                    ),
+                )
             # Schlagzeile (Text nach „ — ")
             headline = (it.get("headline") or "").strip()
             rtit = card.select_one(".rtit")
             if rtit and headline and len(headline) > 4:
                 cur = rtit.get_text()
                 dash = cur.find(" \u2014 ")
-                set_text(rtit, (cur[:dash + 3] + headline) if dash > 0 else headline)
+                set_text(rtit, (cur[: dash + 3] + headline) if dash > 0 else headline)
             # Rubrikname (Text nach „ ⸺ ") nur wenn Rubrik gewechselt wurde
             rname = (it.get("rubrik_name") or "").strip()
             rnum = card.select_one(".rnum")
             if rnum and rname:
                 cur = rnum.get_text()
                 sep = cur.find(" \u2e3a ")
-                set_text(rnum, (cur[:sep + 3] + rname) if sep > 0 else cur)
+                set_text(rnum, (cur[: sep + 3] + rname) if sep > 0 else cur)
 
     # ── Spotlight (Tagesausgabe) ───────────────────────────────────────────
     if items and items.get("spotlight"):
         sp = items["spotlight"]
-        set_text(soup.select_one("#ta-cat"),  sp.get("cat"))
-        set_text(soup.select_one("#ta-hl"),   sp.get("hl"))
+        set_text(soup.select_one("#ta-cat"), sp.get("cat"))
+        set_text(soup.select_one("#ta-hl"), sp.get("hl"))
         set_text(soup.select_one("#ta-text"), sp.get("text"))
         quelle = (sp.get("quelle") or "KI-recherchiert").strip()
         set_text(soup.select_one("#ta-source"), f"\u2014 {quelle} · {date_label}")
@@ -274,8 +301,8 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
         for i, st in enumerate(liste):
             if i >= len(cards):
                 break
-            set_text(cards[i].select_one(".story-cat"),    st.get("cat"))
-            set_text(cards[i].select_one(".story-title"),  st.get("title"))
+            set_text(cards[i].select_one(".story-cat"), st.get("cat"))
+            set_text(cards[i].select_one(".story-title"), st.get("title"))
             set_text(cards[i].select_one(".story-teaser"), st.get("teaser"))
 
         # Modal-Inhalte
@@ -283,8 +310,8 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
             modal = soup.select_one(f"#story{i + 1}")
             if not modal:
                 continue
-            set_text(modal.select_one(".story-modal-cat"),  st.get("cat"))
-            set_text(modal.select_one(".story-modal-hl"),   st.get("title"))
+            set_text(modal.select_one(".story-modal-cat"), st.get("cat"))
+            set_text(modal.select_one(".story-modal-hl"), st.get("title"))
             set_text(modal.select_one(".story-modal-lead"), st.get("teaser"))
             quelle = (st.get("source") or "KI-recherchiert").strip()
             set_text(modal.select_one(".story-source"), f"Quellen: {quelle}")
@@ -310,8 +337,10 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
 
     # ── Datum & Zeitstempel ────────────────────────────────────────────────
     set_text(soup.select_one("#nav-issue-label"), date_label)
-    set_text(soup.select_one("#update-time"),
-             f"Stand: {build_time} — automatisch erstellt am {date_label}")
+    set_text(
+        soup.select_one("#update-time"),
+        f"Stand: {build_time} — automatisch erstellt am {date_label}",
+    )
 
     out = str(soup)
 
@@ -331,8 +360,10 @@ def main() -> int:
         return 1
 
     today = datetime.date.today()
-    date_label = (f"{WOCHENTAGE[today.weekday()]}, {today.day}. "
-                  f"{MONATE[today.month - 1]} {today.year}")
+    date_label = (
+        f"{WOCHENTAGE[today.weekday()]}, {today.day}. "
+        f"{MONATE[today.month - 1]} {today.year}"
+    )
     build_time = datetime.datetime.utcnow().strftime("%d.%m.%Y %H:%M UTC")
     log(f"Tagesausgabe: {date_label}")
 
@@ -344,7 +375,7 @@ def main() -> int:
     with open(template_path, encoding="utf-8") as fh:
         html = fh.read()
 
-    items   = get_daily_items(date_label)
+    items = get_daily_items(date_label)
     stories = get_daily_stories(date_label)
 
     if not items and not stories:
