@@ -3,7 +3,8 @@ name: Tägliche Aktualisierung – schlusslicht.de
 # ─────────────────────────────────────────────────────────────────────────
 #  Baut die Seite jeden Morgen neu: recherchiert per OpenRouter-API + Websuche
 #  tagesaktuelle Meldungen für alle 24 Rubriken sowie 3 Hintergrundstorys,
-#  schreibt sie fest in index.html und committet das Ergebnis.
+#  schreibt sie fest in index.html, committet das Ergebnis und legt ein
+#  GitHub Release mit der fertigen index.html als Artifact an.
 # ─────────────────────────────────────────────────────────────────────────
 
 on:
@@ -11,9 +12,9 @@ on:
     # 04:10 UTC  ≈  05:10 (Winter) / 06:10 (Sommer) deutscher Zeit.
     # Hinweis: GitHub kann geplante Läufe um einige Minuten verzögern.
     - cron: '10 4 * * *'
-  workflow_dispatch:        # erlaubt zusätzlich den manuellen Start per Knopf
+  workflow_dispatch: # erlaubt zusätzlich den manuellen Start per Knopf
 
-# Schreibrecht, damit der Workflow das neue index.html committen darf
+# Schreibrecht, damit der Workflow committen und Releases anlegen darf
 permissions:
   contents: write
 
@@ -30,6 +31,13 @@ jobs:
       - name: Repository auschecken
         uses: actions/checkout@v4
 
+      # Datum einmal berechnen – alle nachfolgenden Steps nutzen diese Outputs
+      - name: Metadaten festlegen
+        id: meta
+        run: |
+          echo "release_name=Tagesausgabe $(date -u +'%d.%m.%Y')" >> $GITHUB_OUTPUT
+          echo "tag=tagesausgabe-$(date -u +'%Y-%m-%d')"           >> $GITHUB_OUTPUT
+
       - name: Python einrichten
         uses: actions/setup-python@v5
         with:
@@ -43,6 +51,13 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: python rebuild/generate.py
 
+      # Workflow-Artifact (bleibt 90 Tage im Actions-Tab erhalten)
+      - name: index.html als Workflow-Artifact hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.release_name }}
+          path: index.html
+
       - name: Neue Ausgabe committen
         run: |
           git config user.name  "schlusslicht-bot"
@@ -51,7 +66,18 @@ jobs:
           if git diff --staged --quiet; then
             echo "Keine Änderungen – heute nichts zu committen."
           else
-            git commit -m "Tagesausgabe $(date -u +'%d.%m.%Y')"
+            git commit -m "${{ steps.meta.outputs.release_name }}"
             git push
             echo "Neue Tagesausgabe veröffentlicht."
           fi
+
+      # GitHub Release anlegen (oder bei Mehrfach-Run des Tages aktualisieren)
+      # und index.html als Release-Asset anhängen
+      - name: GitHub Release erstellen und index.html anhängen
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.release_name }}
+          files: index.html
+          make_latest: true
+          overwrite_files: true
