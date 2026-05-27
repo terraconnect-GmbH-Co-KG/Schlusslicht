@@ -70,10 +70,8 @@ Kein Node.js. Kein Build-System. Kein Framework. Nur Python, `requests` und `bea
 | Hosting | Statisches HTML (GitHub Pages / beliebiger Hoster) |
 | Build-Trigger | GitHub Actions (Cron + `workflow_dispatch`) |
 | Build-Script | Python 3.12 · `requests` · `beautifulsoup4` |
-| LLM-Gateway | [OpenRouter](https://openrouter.ai) |
+| LLM-Gateway | [OpenRouter](https://openrouter.ai) ([AnthropicAPi](https://platform.claude.com/)) |
 | Web Search | `openrouter:web_search` (Server-seitiger Tool Call) |
-| Live-Daten im Browser | ESPN API (Sport) · Frankfurter.app (Forex) · CoinGecko (BTC) |
-
 ---
 
 ## Setup
@@ -85,8 +83,6 @@ OPENROUTER_API_KEY="sk-or-..." python rebuild/generate.py
 ```
 
 Für den automatischen GitHub-Actions-Build: Repository forken, unter **Settings → Secrets → Actions** den Secret `OPENROUTER_API_KEY` anlegen, fertig.
-
-Detaillierte Anleitung: [`SETUP-github-actions.md`](SETUP-github-actions.md)
 
 ---
 
