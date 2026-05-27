@@ -30,7 +30,7 @@ from bs4 import BeautifulSoup
 API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
 API_URL = "https://api.anthropic.com/v1/messages"
 API_VER = "2023-06-01"
-MODEL = "claude-sonnet-4-20250514"  # bei Bedarf hier Modellversion anpassen
+MODEL = "claude-haiku-4-5"  # bei Bedarf hier Modellversion anpassen
 TEMPLATE = "index.template.html"
 OUTPUT = "index.html"
 TIMEOUT = 240
