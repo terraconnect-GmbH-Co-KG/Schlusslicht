@@ -1,0 +1,21 @@
+{
+  "name": "SCHLUSSLICHT — Das Magazin der Letzten",
+  "short_name": "Schlusslicht",
+  "description": "24 Rubriken. Täglich aktuelle Schlusslichter. Echte Daten, trockener Kommentar.",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#09080a",
+  "background_color": "#09080a",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
