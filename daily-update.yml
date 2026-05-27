@@ -1,0 +1,57 @@
+name: Tägliche Aktualisierung – schlusslicht.de
+
+# ─────────────────────────────────────────────────────────────────────────
+#  Baut die Seite jeden Morgen neu: recherchiert per Anthropic-API + Websuche
+#  tagesaktuelle Meldungen für alle 24 Rubriken sowie 3 Hintergrundstorys,
+#  schreibt sie fest in index.html und committet das Ergebnis.
+# ─────────────────────────────────────────────────────────────────────────
+
+on:
+  schedule:
+    # 04:10 UTC  ≈  05:10 (Winter) / 06:10 (Sommer) deutscher Zeit.
+    # Hinweis: GitHub kann geplante Läufe um einige Minuten verzögern.
+    - cron: '10 4 * * *'
+  workflow_dispatch:        # erlaubt zusätzlich den manuellen Start per Knopf
+
+# Schreibrecht, damit der Workflow das neue index.html committen darf
+permissions:
+  contents: write
+
+# Verhindert, dass sich zwei Läufe überschneiden
+concurrency:
+  group: daily-update
+  cancel-in-progress: false
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Abhängigkeiten installieren
+        run: pip install --quiet requests beautifulsoup4
+
+      - name: Tagesinhalte recherchieren und einbauen
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python build/generate.py
+
+      - name: Neue Ausgabe committen
+        run: |
+          git config user.name  "schlusslicht-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add index.html
+          if git diff --staged --quiet; then
+            echo "Keine Änderungen – heute nichts zu committen."
+          else
+            git commit -m "Tagesausgabe $(date -u +'%d.%m.%Y')"
+            git push
+            echo "Neue Tagesausgabe veröffentlicht."
+          fi
