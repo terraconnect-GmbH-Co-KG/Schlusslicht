@@ -1,0 +1,27 @@
+# EditorConfig — https://editorconfig.org
+# Wird von VS Code, JetBrains, Vim u.a. nativ gelesen.
+# Prettier und Biome respektieren indent_style/indent_size/end_of_line ebenfalls.
+root = true
+
+# ── Globale Defaults ──────────────────────────────────────────────────────────
+[*]
+charset                  = utf-8
+end_of_line              = lf
+insert_final_newline     = true
+trim_trailing_whitespace = true
+
+# ── Web (HTML / CSS / JS / JSON / YAML) ──────────────────────────────────────
+[*.{html,css,js,ts,json,yml,yaml}]
+indent_style = space
+indent_size  = 2
+
+# ── Python ────────────────────────────────────────────────────────────────────
+[*.py]
+indent_style   = space
+indent_size    = 4
+max_line_length = 100
+
+# ── Markdown ──────────────────────────────────────────────────────────────────
+# Trailing spaces sind in Markdown bewusst (Line-Break), also nicht anfassen.
+[*.md]
+trim_trailing_whitespace = false
