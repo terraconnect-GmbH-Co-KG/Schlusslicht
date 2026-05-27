@@ -29,7 +29,7 @@ from bs4 import BeautifulSoup
 # ── Konfiguration ────────────────────────────────────────────────────────────
 API_KEY = os.environ.get("OPENROUTER_API_KEY", "").strip()
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL = "google/gemini-2.5-flash"  # beliebiges OpenRouter-Modell hier eintragen
+MODEL = "deepseek/deepseek-v4-flash"  # beliebiges OpenRouter-Modell hier eintragen
 TEMPLATE = "index.template.html"
 OUTPUT = "index.html"
 TIMEOUT = 240
