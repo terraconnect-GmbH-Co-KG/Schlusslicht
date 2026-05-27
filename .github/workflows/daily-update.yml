@@ -1,7 +1,7 @@
 name: Tägliche Aktualisierung – schlusslicht.de
 
 # ─────────────────────────────────────────────────────────────────────────
-#  Baut die Seite jeden Morgen neu: recherchiert per Anthropic-API + Websuche
+#  Baut die Seite jeden Morgen neu: recherchiert per OpenRouter-API + Websuche
 #  tagesaktuelle Meldungen für alle 24 Rubriken sowie 3 Hintergrundstorys,
 #  schreibt sie fest in index.html und committet das Ergebnis.
 # ─────────────────────────────────────────────────────────────────────────
@@ -40,8 +40,8 @@ jobs:
 
       - name: Tagesinhalte recherchieren und einbauen
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python rebuild/generate.py
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: python generate.py
 
       - name: Neue Ausgabe committen
         run: |
