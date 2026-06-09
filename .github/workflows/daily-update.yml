@@ -61,7 +61,7 @@ jobs:
       - name: Neue Ausgabe committen
         run: |
           git config user.name  "schlusslicht-bot"
-          git config user.email "bot@users.noreply.github.com"
+          git config user.email "burkhard.frie@terraconnect.de"
           git add index.html
           if git diff --staged --quiet; then
             echo "Keine Änderungen – heute nichts zu committen."
