@@ -28,7 +28,7 @@ from bs4 import BeautifulSoup
 # ── Konfiguration ────────────────────────────────────────────────────────────
 API_KEY = os.environ.get("OPENROUTER_API_KEY", "").strip()
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL = "deepseek/deepseek-v4-flash"  # beliebiges OpenRouter-Modell hier eintragen
+MODEL = "perplexity/sonar"  # beliebiges OpenRouter-Modell hier eintragen
 TEMPLATE = "index.template.html"
 OUTPUT = "index.html"
 TIMEOUT = 240
@@ -104,7 +104,6 @@ def call_api(system: str, prompt: str, max_tokens: int, retries: int = 3):
             {"role": "system", "content": system},
             {"role": "user", "content": prompt},
         ],
-        "tools": [{"type": "openrouter:web_search"}],
     }
     for attempt in range(1, retries + 1):
         try:
@@ -158,7 +157,7 @@ def get_daily_items(date_label: str):
         '  "items": {\n'
         '    "01": {"rubrik_name": "Name falls Rubrik gewechselt wurde, sonst leer", '
         '"headline": "kurze Schlagzeile", "kommentar": "Kommentar, max 130 Zeichen", '
-        '"quelle": "Quelle u. Datum"},\n'
+        '"quelle": "Quellenname und Datum, z.B. Reuters 22.06.2026 — KEINE Zitationsnummern wie [1]"},\n'
         '    ... bis "24" ...\n'
         "  },\n"
         '  "spotlight": {"cat": "Kategorie des Tages", "hl": "Schlagzeile", '
@@ -200,7 +199,7 @@ def get_daily_stories(date_label: str):
         '      "body": ["<p>Absatz 1</p>", "<p>Absatz 2</p>", "<p>Absatz 3</p>", "<p>Absatz 4</p>"],\n'
         '      "factbox": ["Fakt 1", "Fakt 2", "Fakt 3"],\n'
         '      "conclusion": "Schlusssatz zum Systemversagen",\n'
-        '      "source": "Quellen u. Datum"\n'
+        '      "source": "Quellenname und Datum, z.B. Spiegel 22.06.2026 — KEINE Zitationsnummern wie [1]"\n'
         "    }\n"
         "    ... 3 Storys ...\n"
         "  ]\n"
