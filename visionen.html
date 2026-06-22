@@ -105,6 +105,7 @@
   .nav-links a.mfb:hover { background:var(--red-deep); }
   .nav-links a.vis { color:#fff; background:var(--green); border:1px solid var(--green); }
   .nav-links a.vis:hover { background:var(--green-deep); }
+  .nav-links a[aria-current="page"] { opacity:.6; pointer-events:none; cursor:default; }
   .menu-btn { display:none; margin-left:auto; background:var(--card); border:1px solid var(--line); border-radius:10px; width:42px; height:38px; cursor:pointer; font-size:1.1rem; }
 
   /* MASTHEAD — bright, hopeful */
@@ -242,11 +243,12 @@
     <a class="brand" href="index.html"><span class="lamp" aria-hidden="true"></span>SCHLUSS<b>LICHT</b></a>
     <button class="menu-btn" id="menuBtn" aria-label="Menü" aria-expanded="false">☰</button>
     <ul class="nav-links" id="navLinks">
-      <li><a href="index.html#rubriken">24 Rubriken</a></li>
       <li><a href="index.html#stories">Hintergrund</a></li>
+      <li><a href="index.html#rubriken">24 Rubriken</a></li>
+      <li><a href="index.html#manifest">Manifest</a></li>
       <li><a href="index.html#impressum">Impressum</a></li>
       <li><a class="mfb" href="more_from_behind.html">more from behind →</a></li>
-      <li><a class="vis" href="visionen.html">Visionen ☀</a></li>
+      <li><a class="vis" href="visionen.html" aria-current="page">Visionen ☀</a></li>
     </ul>
   </div>
 </header>
