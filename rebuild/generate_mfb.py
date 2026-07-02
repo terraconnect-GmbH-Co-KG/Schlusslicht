@@ -133,16 +133,56 @@ def _is_duplicate_sentence(s_norm: str, seen_norm: list, threshold: float) -> bo
     return False
 
 
+_STOPWORTE = {
+    "und", "oder", "der", "die", "das", "des", "dem", "den", "ein", "eine",
+    "einer", "eines", "einem", "einen", "ist", "sind", "war", "waren",
+    "wird", "werden", "wurde", "wurden", "hat", "haben", "hatte", "hatten",
+    "nicht", "auch", "aber", "doch", "noch", "nur", "schon", "sehr", "mehr",
+    "kein", "keine", "keinen", "keiner", "für", "von", "mit", "bei", "nach",
+    "vor", "über", "unter", "zwischen", "durch", "ohne", "um", "an", "auf",
+    "aus", "in", "im", "zu", "zum", "zur", "dass", "wenn", "weil", "als",
+    "wie", "was", "wer", "wo", "dieser", "diese", "dieses", "diesem",
+    "diesen", "sich", "sein", "seine", "seiner", "seinem", "seinen", "ihre",
+    "ihrer", "ihrem", "ihren", "ihr", "ihm", "ihn", "man", "es", "er", "sie",
+    "wir", "du", "ich", "damit", "dabei", "dadurch", "wurde",
+}
+
+
+def _significant_words(text: str) -> set:
+    words = re.findall(r"[a-zäöüß]{4,}", text.lower())
+    return {w for w in words if w not in _STOPWORTE}
+
+
+def _paragraphs_content_overlap(a: str, b: str, threshold: float = 0.45) -> bool:
+    """Erkennt inhaltliche Wiederholung anhand gemeinsamer inhaltstragender
+    Wörter — erwischt auch umformulierte Wiederholungen."""
+    wa, wb = _significant_words(a), _significant_words(b)
+    smaller = min(len(wa), len(wb))
+    if smaller < 4:
+        return False
+    return len(wa & wb) / smaller > threshold
+
+
 def dedupe_column_paragraphs(paragraphs, threshold=0.75):
-    """Entfernt Sätze innerhalb einer Kolumne, die einem bereits
-    vorgekommenen Satz zu ähnlich sind (gleiches Prinzip wie bei den
-    Hintergrundstorys: Modelle wiederholen gern denselben Fazit-Satz)."""
-    seen_norm = []
-    result = []
+    """Zweistufiger Filter: 1) ganze Absätze mit hoher inhaltlicher
+    Wortüberlappung verwerfen (auch umformulierte Wiederholungen), 2)
+    innerhalb der verbleibenden Absätze zusätzlich doppelte Sätze entfernen."""
+    # Stufe 1: inhaltlich wiederholte ganze Absätze verwerfen
+    stage1 = []
     for para in paragraphs or []:
         text = str(para.get("text", "")).strip()
         if not text:
             continue
+        if any(_paragraphs_content_overlap(text, str(k.get("text", ""))) for k in stage1):
+            log(f"  Inhaltlich wiederholter Absatz entfernt: {text[:90]!r}")
+            continue
+        stage1.append(para)
+
+    # Stufe 2: doppelte Sätze innerhalb der verbliebenen Absätze entfernen
+    seen_norm = []
+    result = []
+    for para in stage1:
+        text = str(para.get("text", "")).strip()
         sentences = re.split(r"(?<=[.!?])\s+", text)
         kept = []
         for s in sentences:
@@ -278,10 +318,11 @@ def get_commentary(facts_package: list, date_label: str):
         "AUSSCHLIESSLICH auf Deutsch — keine chinesischen, kyrillischen, "
         "arabischen oder anderen nicht-lateinischen Schriftzeichen, auch "
         "nicht einzelne Wörter oder Zeichen davon.\n\n"
-        "SPRACHLICHE KLARHEIT: Jeder der 4 Absätze muss einen NEUEN Gedanken "
-        "liefern. Wiederhole niemals denselben Fazit-Satz oder dieselbe "
-        "Kernaussage in einem späteren Absatz nur umformuliert — das wirkt "
-        "wie Textstreckung. Antworte NUR mit einem "
+        "SPRACHLICHE KLARHEIT: Jeder der 4 Absätze hat eine feste, eigene "
+        "Aufgabe (siehe Schema unten) und darf NICHTS aus einem anderen "
+        "Absatz wiederholen — auch nicht sinngemäß oder mit anderen Worten. "
+        "Prüfe vor der Ausgabe jeden Absatz gegen die vorherigen: Steht der "
+        "Gedanke schon da? Falls ja, streiche ihn. Antworte NUR mit einem "
         "validen JSON-Objekt, keine Erklärung davor oder danach."
     )
 
@@ -298,10 +339,10 @@ Liefere GENAU dieses JSON-Schema:
       "tag": "Standpunkt · Kurzthema",
       "title": "kreativer, prägnanter Titel (wie eine Schlagzeile, max 40 Zeichen)",
       "paragraphs": [
-        {{"text": "Absatz 1: steigt mit einer der vorgegebenen Zahlen ein", "punch": false}},
-        {{"text": "Absatz 2: zugespitzter Kernsatz", "punch": true}},
-        {{"text": "Absatz 3: Einordnung/Kontext", "punch": false}},
-        {{"text": "Absatz 4: Schlussfolgerung/Forderung", "punch": false}}
+        {{"text": "Absatz 1 — NUR: Einstieg mit einer der vorgegebenen Zahlen, nüchtern dargestellt. Keine Bewertung.", "punch": false}},
+        {{"text": "Absatz 2 — NUR: der zugespitzte Kernsatz/die Wertung dazu. Die Zahl aus Absatz 1 nicht wiederholen.", "punch": true}},
+        {{"text": "Absatz 3 — NUR: zusätzlicher Kontext oder Gegenargument, das in Absatz 1+2 noch nicht vorkam.", "punch": false}},
+        {{"text": "Absatz 4 — NUR: eine konkrete Schlussfolgerung/Forderung, die nirgends vorher stand.", "punch": false}}
       ],
       "bignum_text": "eine der vorgegebenen Zahlen, wortwörtlich, z.B. '204×' oder '~7 %'",
       "bignum_caption": "1 kurzer Satz, was die Zahl bedeutet",
