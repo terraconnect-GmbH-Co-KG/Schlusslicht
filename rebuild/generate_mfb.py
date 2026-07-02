@@ -29,6 +29,7 @@ Ablauf:
 """
 
 import datetime
+import difflib
 import json
 import os
 import re
@@ -87,10 +88,78 @@ def extract_json(text):
     if start < 0 or end <= start:
         return None
     try:
-        return json.loads(text[start:end])
+        data = json.loads(text[start:end])
     except json.JSONDecodeError as exc:
         log(f"  JSON-Parsefehler: {exc}")
         return None
+    return sanitize(data)
+
+
+_FREMDSCHRIFT_PATTERN = re.compile(
+    "["
+    "\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7a3"  # CJK, Hiragana/Katakana, Hangul
+    "\u0400-\u04ff\u0600-\u06ff\u0900-\u097f"  # Kyrillisch, Arabisch, Devanagari
+    "]+"
+)
+
+
+def sanitize(obj):
+    """Entfernt rekursiv fremdschriftliche Zeichen (Sprach-Leck des Modells)."""
+    if isinstance(obj, str):
+        cleaned = _FREMDSCHRIFT_PATTERN.sub("", obj)
+        cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+        if cleaned != obj.strip():
+            log(f"  Fremdschrift entfernt: {obj!r} -> {cleaned!r}")
+        return cleaned
+    if isinstance(obj, list):
+        return [sanitize(v) for v in obj]
+    if isinstance(obj, dict):
+        return {k: sanitize(v) for k, v in obj.items()}
+    return obj
+
+
+def _is_duplicate_sentence(s_norm: str, seen_norm: list, threshold: float) -> bool:
+    """Siehe generate.py: Duplikat bei hoher Ähnlichkeit ODER wenn der
+    kürzere Satzkern komplett im längeren enthalten ist."""
+    s_core = s_norm.rstrip(".!? ")
+    for seen in seen_norm:
+        seen_core = seen.rstrip(".!? ")
+        if len(s_core) > 15 and len(seen_core) > 15:
+            shorter, longer = sorted([s_core, seen_core], key=len)
+            if shorter in longer:
+                return True
+        if difflib.SequenceMatcher(None, s_norm, seen).ratio() > threshold:
+            return True
+    return False
+
+
+def dedupe_column_paragraphs(paragraphs, threshold=0.75):
+    """Entfernt Sätze innerhalb einer Kolumne, die einem bereits
+    vorgekommenen Satz zu ähnlich sind (gleiches Prinzip wie bei den
+    Hintergrundstorys: Modelle wiederholen gern denselben Fazit-Satz)."""
+    seen_norm = []
+    result = []
+    for para in paragraphs or []:
+        text = str(para.get("text", "")).strip()
+        if not text:
+            continue
+        sentences = re.split(r"(?<=[.!?])\s+", text)
+        kept = []
+        for s in sentences:
+            s = s.strip()
+            if not s:
+                continue
+            s_norm = re.sub(r"\s+", " ", s).lower()
+            if _is_duplicate_sentence(s_norm, seen_norm, threshold):
+                log(f"  Doppelter Satz entfernt: {s[:90]!r}")
+                continue
+            kept.append(s)
+            seen_norm.append(s_norm)
+        if kept:
+            new_para = dict(para)
+            new_para["text"] = " ".join(kept)
+            result.append(new_para)
+    return result
 
 
 # ── Deterministische Fakten-Extraktion aus den Rubrik-Tabellen ───────────────
@@ -205,7 +274,14 @@ def get_commentary(facts_package: list, date_label: str):
         "längeren, kunstvoll gebauten Satz. Der 'punch'-Absatz soll die "
         "pointierteste, bissigste Formulierung der Kolumne enthalten. Der "
         "Titel darf originell und wortspielerisch sein, aber nicht "
-        "reißerisch wie eine Boulevardzeile klingen. Antworte NUR mit einem "
+        "reißerisch wie eine Boulevardzeile klingen. Antworte "
+        "AUSSCHLIESSLICH auf Deutsch — keine chinesischen, kyrillischen, "
+        "arabischen oder anderen nicht-lateinischen Schriftzeichen, auch "
+        "nicht einzelne Wörter oder Zeichen davon.\n\n"
+        "SPRACHLICHE KLARHEIT: Jeder der 4 Absätze muss einen NEUEN Gedanken "
+        "liefern. Wiederhole niemals denselben Fazit-Satz oder dieselbe "
+        "Kernaussage in einem späteren Absatz nur umformuliert — das wirkt "
+        "wie Textstreckung. Antworte NUR mit einem "
         "validen JSON-Objekt, keine Erklärung davor oder danach."
     )
 
@@ -347,6 +423,9 @@ def main() -> int:
         return 0
 
     columns = data.get("columns", [])[:N_COLS]
+    for col in columns:
+        col["paragraphs"] = dedupe_column_paragraphs(col.get("paragraphs"))
+
     # Sicherheitsnetz: Spalten mit nicht belegbaren Zahlen aussortieren
     # (Platz bleibt dann bei den alten Inhalten stehen, statt falsche Zahlen zu zeigen)
     checked = []
