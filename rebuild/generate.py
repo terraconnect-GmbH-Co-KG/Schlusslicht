@@ -183,21 +183,63 @@ def _is_duplicate_sentence(s_norm: str, seen_norm: list, threshold: float) -> bo
     return False
 
 
+_STOPWORTE = {
+    "und", "oder", "der", "die", "das", "des", "dem", "den", "ein", "eine",
+    "einer", "eines", "einem", "einen", "ist", "sind", "war", "waren",
+    "wird", "werden", "wurde", "wurden", "hat", "haben", "hatte", "hatten",
+    "nicht", "auch", "aber", "doch", "noch", "nur", "schon", "sehr", "mehr",
+    "kein", "keine", "keinen", "keiner", "für", "von", "mit", "bei", "nach",
+    "vor", "über", "unter", "zwischen", "durch", "ohne", "um", "an", "auf",
+    "aus", "in", "im", "zu", "zum", "zur", "dass", "wenn", "weil", "als",
+    "wie", "was", "wer", "wo", "dieser", "diese", "dieses", "diesem",
+    "diesen", "sich", "sein", "seine", "seiner", "seinem", "seinen", "ihre",
+    "ihrer", "ihrem", "ihren", "ihr", "ihm", "ihn", "man", "es", "er", "sie",
+    "wir", "du", "ich", "damit", "dabei", "dadurch", "diesen", "wurde",
+}
+
+
+def _significant_words(text: str) -> set:
+    words = re.findall(r"[a-zäöüß]{4,}", text.lower())
+    return {w for w in words if w not in _STOPWORTE}
+
+
+def _paragraphs_content_overlap(a: str, b: str, threshold: float = 0.45) -> bool:
+    """Erkennt inhaltliche Wiederholung zwischen zwei ganzen Absätzen anhand
+    gemeinsamer inhaltstragender Wörter — erwischt auch umformulierte
+    Wiederholungen, die auf Satzebene keine hohe Textähnlichkeit zeigen."""
+    wa, wb = _significant_words(a), _significant_words(b)
+    smaller = min(len(wa), len(wb))
+    if smaller < 4:
+        return False
+    return len(wa & wb) / smaller > threshold
+
+
 def dedupe_paragraphs(paragraphs, threshold=0.75):
-    """Entfernt einzelne Sätze, die einem bereits vorgekommenen Satz in
-    derselben Story zu ähnlich sind (Schutz gegen die Neigung mancher
-    Modelle, denselben Abschluss-/Fazit-Satz mehrfach in leicht
-    abgewandelter Form zu wiederholen — häufiger als ganze doppelte
-    Absätze)."""
+    """Zweistufiger Filter gegen inhaltliche Wiederholung in einer Story:
+    1) Absatzebene — ein ganzer Absatz wird verworfen, wenn er zu einem
+       bereits behaltenen Absatz eine hohe Wortüberlappung hat (fängt auch
+       umformulierte Wiederholungen ab).
+    2) Satzebene — innerhalb der verbleibenden Absätze werden zusätzlich
+       einzelne, textlich (fast) identische Sätze entfernt."""
     def strip_tags(html):
         return re.sub(r"<[^>]+>", "", html or "")
 
-    seen_norm = []
-    result = []
+    # Stufe 1: ganze Absätze mit hoher inhaltlicher Überlappung verwerfen
+    stage1 = []
     for p in paragraphs or []:
         text = strip_tags(p).strip()
         if not text:
             continue
+        if any(_paragraphs_content_overlap(text, strip_tags(kept)) for kept in stage1):
+            log(f"  Inhaltlich wiederholter Absatz entfernt: {text[:90]!r}")
+            continue
+        stage1.append(p)
+
+    # Stufe 2: innerhalb der verbliebenen Absätze doppelte Sätze entfernen
+    seen_norm = []
+    result = []
+    for p in stage1:
+        text = strip_tags(p).strip()
         sentences = re.split(r"(?<=[.!?])\s+", text)
         kept = []
         for s in sentences:
@@ -287,6 +329,21 @@ def get_daily_stories(date_label: str):
         "Recherchiere zunächst aktuelle Schlusslicht-Fälle aus verschiedenen "
         "Bereichen (Sport, Wirtschaft, Politik, Kultur, Wissenschaft, Umwelt, "
         "Medien, Technik). Wähle die 3 stärksten aus.\n\n"
+        "WICHTIG zur Struktur von 'body': Die 4 Absätze haben JEWEILS EINE "
+        "FESTE, EIGENE AUFGABE und dürfen sich inhaltlich NICHT überschneiden "
+        "— auch nicht mit anderen Worten. Bevor du einen Absatz schreibst, "
+        "prüfe: Steht dieser Gedanke schon in einem vorherigen Absatz, auch "
+        "nur sinngemäß? Falls ja, streiche ihn und schreib stattdessen etwas "
+        "wirklich Neues für genau diese Aufgabe:\n"
+        "  Absatz 1 — NUR das Ereignis: was ist passiert, mit Zahlen/Fakten. "
+        "Keine Bewertung, keine Ursachen, keine Folgen.\n"
+        "  Absatz 2 — NUR Hintergrund/Ursache: wie kam es dazu, welche "
+        "Vorgeschichte gibt es. Das Ereignis aus Absatz 1 NICHT wiederholen.\n"
+        "  Absatz 3 — NUR konkrete Auswirkung: wer ist betroffen, welche "
+        "Folgen hat es JETZT. Weder Ereignis noch Ursache wiederholen.\n"
+        "  Absatz 4 — NUR die Einordnung als Systemversagen: die "
+        "Schlussfolgerung, warum das mehr als ein Einzelfall ist. Dieser "
+        "Gedanke darf NUR hier stehen, nirgends vorher angedeutet werden.\n\n"
         "Antworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown:\n"
         "{\n"
         '  "stories": [\n'
@@ -294,7 +351,7 @@ def get_daily_stories(date_label: str):
         '      "cat": "// Kategorie · Zeitraum",\n'
         '      "title": "packender Titel, max 80 Zeichen",\n'
         '      "teaser": "Einleitung, 2-3 Sätze",\n'
-        '      "body": ["<p>Absatz 1</p>", "<p>Absatz 2</p>", "<p>Absatz 3</p>", "<p>Absatz 4</p>"],\n'
+        '      "body": ["<p>Absatz 1: nur das Ereignis</p>", "<p>Absatz 2: nur Hintergrund/Ursache</p>", "<p>Absatz 3: nur konkrete Auswirkung</p>", "<p>Absatz 4: nur die Einordnung als Systemversagen</p>"],\n'
         '      "factbox": ["Fakt 1", "Fakt 2", "Fakt 3"],\n'
         '      "conclusion": "Schlusssatz zum Systemversagen",\n'
         '      "source": "Quellenname und Datum, z.B. Spiegel 22.06.2026 — KEINE Zitationsnummern wie [1]"\n'
