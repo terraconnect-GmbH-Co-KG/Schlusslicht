@@ -25,6 +25,7 @@ Prompt und in der Quellenpflicht stecken, nicht in einem manuellen Schritt.
 import datetime
 import json
 import os
+import re
 import sys
 import time
 
@@ -78,10 +79,34 @@ def extract_json(text):
     if start < 0 or end <= start:
         return None
     try:
-        return json.loads(text[start:end])
+        data = json.loads(text[start:end])
     except json.JSONDecodeError as exc:
         log(f"  JSON-Parsefehler: {exc}")
         return None
+    return sanitize(data)
+
+
+_FREMDSCHRIFT_PATTERN = re.compile(
+    "["
+    "\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7a3"  # CJK, Hiragana/Katakana, Hangul
+    "\u0400-\u04ff\u0600-\u06ff\u0900-\u097f"  # Kyrillisch, Arabisch, Devanagari
+    "]+"
+)
+
+
+def sanitize(obj):
+    """Entfernt rekursiv fremdschriftliche Zeichen (Sprach-Leck des Modells)."""
+    if isinstance(obj, str):
+        cleaned = _FREMDSCHRIFT_PATTERN.sub("", obj)
+        cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+        if cleaned != obj.strip():
+            log(f"  Fremdschrift entfernt: {obj!r} -> {cleaned!r}")
+        return cleaned
+    if isinstance(obj, list):
+        return [sanitize(v) for v in obj]
+    if isinstance(obj, dict):
+        return {k: sanitize(v) for k, v in obj.items()}
+    return obj
 
 
 # ── Recherche ─────────────────────────────────────────────────────────────────
@@ -100,7 +125,13 @@ def get_visionen_content(date_label: str):
         "Jede Quelle braucht eine ECHTE, existierende URL. Ton: sachlich-warm, "
         "nüchtern, mit Zahlen belegt — keine Übertreibung, keine Effekthascherei. "
         "Wo eine gute Nachricht ein 'Aber' hat (z. B. Finanzierungslücke, "
-        "Restrisiko), nenne es ehrlich, statt es wegzulassen. Antworte NUR mit "
+        "Restrisiko), nenne es ehrlich, statt es wegzulassen. Antworte "
+        "AUSSCHLIESSLICH auf Deutsch — keine chinesischen, kyrillischen, "
+        "arabischen oder anderen nicht-lateinischen Schriftzeichen, auch "
+        "nicht einzelne Wörter oder Zeichen davon. Wiederhole niemals "
+        "denselben Fakt oder dieselbe Formulierung innerhalb einer Meldung "
+        "oder über mehrere Meldungen hinweg — jeder Satz muss neue "
+        "Information liefern. Antworte NUR mit "
         "einem einzigen validen JSON-Objekt, keine Erklärungen davor oder danach."
     )
 

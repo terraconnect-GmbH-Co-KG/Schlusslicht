@@ -17,8 +17,10 @@ ohne API-Schlüssel im Browser, lauffähig auf jedem Hoster bzw. GitHub Pages.
 """
 
 import datetime
+import difflib
 import json
 import os
+import re
 import sys
 import time
 
@@ -126,10 +128,91 @@ def extract_json(text):
     if start < 0 or end <= start:
         return None
     try:
-        return json.loads(text[start:end])
+        data = json.loads(text[start:end])
     except json.JSONDecodeError as exc:
         log(f"  JSON-Parsefehler: {exc}")
         return None
+    return sanitize(data)
+
+
+# Unicode-Bereiche, die in deutschen Texten nichts verloren haben und auf
+# ein Sprach-Leck des Modells hindeuten (CJK, Kyrillisch, Hangul, Arabisch, …).
+_FREMDSCHRIFT_PATTERN = re.compile(
+    "["
+    "\u4e00-\u9fff"   # CJK (Chinesisch/Japanisch, Kanji)
+    "\u3040-\u30ff"   # Hiragana/Katakana
+    "\uac00-\ud7a3"   # Hangul (Koreanisch)
+    "\u0400-\u04ff"   # Kyrillisch
+    "\u0600-\u06ff"   # Arabisch
+    "\u0900-\u097f"   # Devanagari
+    "]+"
+)
+
+
+def sanitize(obj):
+    """Entfernt rekursiv fremdschriftliche Zeichen (Sprach-Leck des Modells)
+    aus allen Strings einer verschachtelten JSON-Struktur."""
+    if isinstance(obj, str):
+        cleaned = _FREMDSCHRIFT_PATTERN.sub("", obj)
+        cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+        if cleaned != obj.strip():
+            log(f"  Fremdschrift entfernt: {obj!r} -> {cleaned!r}")
+        return cleaned
+    if isinstance(obj, list):
+        return [sanitize(v) for v in obj]
+    if isinstance(obj, dict):
+        return {k: sanitize(v) for k, v in obj.items()}
+    return obj
+
+
+def _is_duplicate_sentence(s_norm: str, seen_norm: list, threshold: float) -> bool:
+    """Ein Satz gilt als Duplikat, wenn er einem bereits gesehenen Satz sehr
+    ähnlich ist ODER wenn der kürzere der beiden (ohne Schlusspunkt) komplett
+    im längeren enthalten ist — das erwischt auch Fälle, in denen derselbe
+    Kernsatz nur mit einer Einleitung wie 'Am Ende zeigt sich:' wiederholt
+    oder um einen Nebensatz ergänzt wurde."""
+    s_core = s_norm.rstrip(".!? ")
+    for seen in seen_norm:
+        seen_core = seen.rstrip(".!? ")
+        if len(s_core) > 15 and len(seen_core) > 15:
+            shorter, longer = sorted([s_core, seen_core], key=len)
+            if shorter in longer:
+                return True
+        if difflib.SequenceMatcher(None, s_norm, seen).ratio() > threshold:
+            return True
+    return False
+
+
+def dedupe_paragraphs(paragraphs, threshold=0.75):
+    """Entfernt einzelne Sätze, die einem bereits vorgekommenen Satz in
+    derselben Story zu ähnlich sind (Schutz gegen die Neigung mancher
+    Modelle, denselben Abschluss-/Fazit-Satz mehrfach in leicht
+    abgewandelter Form zu wiederholen — häufiger als ganze doppelte
+    Absätze)."""
+    def strip_tags(html):
+        return re.sub(r"<[^>]+>", "", html or "")
+
+    seen_norm = []
+    result = []
+    for p in paragraphs or []:
+        text = strip_tags(p).strip()
+        if not text:
+            continue
+        sentences = re.split(r"(?<=[.!?])\s+", text)
+        kept = []
+        for s in sentences:
+            s = s.strip()
+            if not s:
+                continue
+            s_norm = re.sub(r"\s+", " ", s).lower()
+            if _is_duplicate_sentence(s_norm, seen_norm, threshold):
+                log(f"  Doppelter Satz entfernt: {s[:90]!r}")
+                continue
+            kept.append(s)
+            seen_norm.append(s_norm)
+        if kept:
+            result.append(f"<p>{' '.join(kept)}</p>")
+    return result
 
 
 # ── Recherche: 24 Rubriken ───────────────────────────────────────────────────
@@ -144,7 +227,10 @@ def get_daily_items(date_label: str):
         "keine eigene Meldung, wähle die überraschendste Schlusslicht-Meldung "
         "aus einem ANDEREN passenden Bereich — Aktualität geht vor Rubriktreue.\n\n"
         "Stil: nüchterne schwarze Satire, Fakten plus ein trockener Satz, "
-        "höchstens 130 Zeichen pro Kommentar."
+        "höchstens 130 Zeichen pro Kommentar. Antworte AUSSCHLIESSLICH auf "
+        "Deutsch — keine chinesischen, kyrillischen, arabischen oder anderen "
+        "nicht-lateinischen Schriftzeichen, auch nicht einzelne Wörter oder "
+        "Zeichen davon."
     )
 
     zeilen = "\n".join(f"{num} {beschr}" for num, beschr in RUBRIKEN.items())
@@ -183,7 +269,19 @@ def get_daily_stories(date_label: str):
         "Schreibe 3 tiefe Hintergrundstorys über aktuelle (max. 30 Tage alte) "
         "Schlusslichter aus verschiedenen Bereichen. Nutze die Websuche für echte "
         "Fälle. Stil: investigativ, nüchtern, ohne Sentimentalität — zeige das "
-        "Systemversagen hinter dem Einzelfall. 400-700 Wörter je Story."
+        "Systemversagen hinter dem Einzelfall. 400-700 Wörter je Story. "
+        "Antworte AUSSCHLIESSLICH auf Deutsch — keine chinesischen, "
+        "kyrillischen, arabischen oder anderen nicht-lateinischen "
+        "Schriftzeichen, auch nicht einzelne Wörter oder Zeichen davon.\n\n"
+        "SPRACHLICHE KLARHEIT: Jeder Absatz muss eine NEUE Information oder "
+        "einen neuen Gedanken liefern. Wiederhole niemals denselben Fakt "
+        "oder dieselbe Schlussfolgerung in einem späteren Absatz nur mit "
+        "anderen Worten — das wirkt wie eine Textstreckung. Kein Absatz darf "
+        "im Wesentlichen dasselbe aussagen wie ein vorheriger. Vermeide "
+        "austauschbare Textbaustein-Sätze wie 'Das zeigt ein systemisches "
+        "Versagen' oder 'Dies führt zu einer ständigen Instabilität' als "
+        "wiederkehrende Standardformulierung über mehrere Storys hinweg — "
+        "jede Story braucht ihre eigene, konkrete Schlussfolgerung."
     )
     prompt = (
         "Recherchiere zunächst aktuelle Schlusslicht-Fälle aus verschiedenen "
@@ -208,6 +306,8 @@ def get_daily_stories(date_label: str):
 
     data = extract_json(call_api(system, prompt, max_tokens=6000))
     if data and data.get("stories"):
+        for story in data["stories"]:
+            story["body"] = dedupe_paragraphs(story.get("body"))
         log(f"  {len(data['stories'])} Hintergrundstorys erhalten.")
     else:
         log("  Keine verwertbaren Story-Daten erhalten.")
