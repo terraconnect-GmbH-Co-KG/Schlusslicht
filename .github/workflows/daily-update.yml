@@ -30,6 +30,8 @@ jobs:
     steps:
       - name: Repository auschecken
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       # Datum einmal berechnen – alle nachfolgenden Steps nutzen diese Outputs
       - name: Metadaten festlegen
@@ -81,3 +83,4 @@ jobs:
           files: index.html
           make_latest: true
           overwrite_files: true
+
