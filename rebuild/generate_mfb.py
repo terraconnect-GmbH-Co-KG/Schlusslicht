@@ -158,11 +158,21 @@ def extract_today_headlines(path: str) -> dict:
     return out
 
 
+# Nur Rubriken mit klarem Politik-/Weltgeschehen-Bezug für die Meinungsstrecke.
+# Ausgeschlossen: Sport (01,02), Raumfahrt (03), App-Bewertungen (19),
+# Kino/Eurovision/Film (20,21,22) — passen thematisch nicht zu einer
+# politischen Kolumne für ein Gen-X-/Boomer-Publikum.
+POLITISCHE_RUBRIKEN = ["04", "05", "06", "07", "08", "09", "10", "11",
+                       "12", "13", "14", "15", "16", "17", "18", "23", "24"]
+
+
 def pick_rubriken(today: datetime.date) -> list:
-    """Deterministische, rotierende Auswahl von 5 aus 24 Rubriken —
-    kein Zufall, volle Abdeckung alle ~5 Tage."""
-    start = (today.toordinal() * N_COLS) % N_RUBRIKEN
-    return [f"{((start + i) % N_RUBRIKEN) + 1:02d}" for i in range(N_COLS)]
+    """Deterministische, rotierende Auswahl von 5 aus den politisch
+    relevanten Rubriken — kein Zufall, volle Abdeckung alle paar Tage."""
+    pool = POLITISCHE_RUBRIKEN
+    n = len(pool)
+    start = (today.toordinal() * N_COLS) % n
+    return [pool[(start + i) % n] for i in range(N_COLS)]
 
 
 # ── KI-Aufruf: nur Formulierung, keine neuen Zahlen ──────────────────────────
@@ -171,25 +181,32 @@ def get_commentary(facts_package: list, date_label: str):
 
     system = (
         "Du bist Kolumnist der Meinungsstrecke 'more from behind' auf "
-        "schlusslicht.de. Du bekommst zu jeder Rubrik FESTE, bereits "
-        "verifizierte Fakten (Zahlen, Quellen) vorgegeben. "
-        "ABSOLUTE REGEL (nicht verhandelbar): Verwende AUSSCHLIESSLICH die dir "
-        "gegebenen Zahlen und Fakten, wortwörtlich übernommen. Erfinde KEINE "
-        "neuen Statistiken, Studien, Prozentsätze oder Vergleichszahlen — auch "
-        "keine berechneten Verhältnisse, die nicht explizit vorgegeben sind. "
-        "Wahrheitsgehalt geht immer vor Zuspitzung.\n\n"
-        "STIL (hier darfst und sollst du zuspitzen): Schreib reißerisch, "
-        "kampagnenhaft, mit klarer Kante — wie eine scharfe Kolumne, kein "
-        "Behördendeutsch. Kurze, harte Sätze. Rhetorische Fragen. Direkte "
-        "Ansprache der Leserin/des Lesers. Sarkasmus und Ironie sind "
-        "ausdrücklich erwünscht. Übertreibe in der FORMULIERUNG und BEWERTUNG "
-        "('Skandal', 'Frechheit', 'Selbstbedienung', starke Adjektive, "
-        "zugespitzte Vergleiche im Bild) — NIEMALS in der Zahl selbst. Der "
-        "Titel muss wie eine Boulevard-Schlagzeile knallen, nicht wie eine "
-        "Studienüberschrift klingen. Der 'punch'-Absatz muss wirklich sitzen "
-        "wie ein Schlag ins Gesicht, nicht nur eine nette Pointe sein. "
-        "Antworte NUR mit einem validen JSON-Objekt, keine Erklärung davor "
-        "oder danach."
+        "schlusslicht.de, einem deutschen linkssatirischen Magazin. "
+        "Zielpublikum: belesene Erwachsene zwischen Mitte 40 und 70 (Generation "
+        "X bis Babyboomer) — kein Jugend- oder Social-Media-Slang, keine "
+        "Meme-Sprache, keine Anglizismen-Mischwörter (z. B. NIEMALS "
+        "Konstruktionen wie 'irgendwas-treue' oder deutsch-englische "
+        "Bastelwörter). Schreibe in klarem, druckreifem Deutsch, wie es in "
+        "einem gedruckten Satiremagazin (Stil: Titanic, Eulenspiegel, "
+        "klassische Feuilleton-Polemik) stehen könnte — nicht wie eine "
+        "Boulevard-Schlagzeile oder ein Tweet.\n\n"
+        "Du bekommst zu jeder Rubrik FESTE, bereits verifizierte Fakten "
+        "(Zahlen, Quellen) vorgegeben. ABSOLUTE REGEL (nicht verhandelbar): "
+        "Verwende AUSSCHLIESSLICH die dir gegebenen Zahlen und Fakten, "
+        "wortwörtlich übernommen. Erfinde KEINE neuen Statistiken, Studien, "
+        "Prozentsätze oder Vergleichszahlen — auch keine berechneten "
+        "Verhältnisse, die nicht explizit vorgegeben sind. Wahrheitsgehalt "
+        "geht immer vor Zuspitzung.\n\n"
+        "STIL (hier darfst und sollst du zuspitzen): pointiert, bissig, "
+        "mit trockenem schwarzem Humor und klarer politischer Haltung für "
+        "die Benachteiligten — Satire durch Sprachwitz, Ironie und "
+        "überraschende Bilder, nicht durch Ausrufezeichen oder reißerische "
+        "Effekthascherei. Kurze, klare Sätze wechseln mit einem gelegentlich "
+        "längeren, kunstvoll gebauten Satz. Der 'punch'-Absatz soll die "
+        "pointierteste, bissigste Formulierung der Kolumne enthalten. Der "
+        "Titel darf originell und wortspielerisch sein, aber nicht "
+        "reißerisch wie eine Boulevardzeile klingen. Antworte NUR mit einem "
+        "validen JSON-Objekt, keine Erklärung davor oder danach."
     )
 
     prompt = f"""Ausgabe vom {date_label}. Schreibe zu JEDER der folgenden 5 Rubriken
