@@ -58,6 +58,11 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: python rebuild/generate_visionen.py
 
+      - name: Meinungsseite (more from behind) aktualisieren
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: python rebuild/generate_mfb.py
+
       # Workflow-Artifact (bleibt 90 Tage im Actions-Tab erhalten)
       - name: index.html als Workflow-Artifact hochladen
         uses: actions/upload-artifact@v4
@@ -69,7 +74,7 @@ jobs:
         run: |
           git config user.name  "schlusslicht-bot"
           git config user.email "burkhard.frie@terraconnect.de"
-          git add index.html visionen.html
+          git add index.html visionen.html more_from_behind.html
           if git diff --staged --quiet; then
             echo "Keine Änderungen – heute nichts zu committen."
           else
