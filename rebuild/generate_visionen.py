@@ -36,8 +36,9 @@ from bs4 import BeautifulSoup
 API_KEY = os.environ.get("OPENROUTER_API_KEY", "").strip()
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 MODEL = "perplexity/sonar"
-TEMPLATE = "brightside.template.html"
-OUTPUT = "brightside.html"
+LANG = os.environ.get("SL_LANG", "de").strip().lower()
+TEMPLATE = "brightside.en.template.html" if LANG == "en" else "brightside.template.html"
+OUTPUT = "brightside.en.html" if LANG == "en" else "brightside.html"
 TIMEOUT = 240
 
 WOCHENTAGE = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
@@ -144,7 +145,7 @@ _GEMEINSAME_REGELN = (
     "Ton: sachlich-warm, nüchtern, mit Zahlen belegt — keine Übertreibung, "
     "keine Effekthascherei. Wo eine gute Nachricht ein 'Aber' hat (z. B. "
     "Finanzierungslücke, Restrisiko), nenne es ehrlich, statt es wegzulassen. "
-    "Antworte AUSSCHLIESSLICH auf Deutsch — keine chinesischen, kyrillischen, "
+    "Antworte AUSSCHLIESSLICH auf " + ("Englisch (US)" if LANG == "en" else "Deutsch") + " — keine chinesischen, kyrillischen, "
     "arabischen oder anderen nicht-lateinischen Schriftzeichen, auch nicht "
     "einzelne Wörter oder Zeichen davon. Wiederhole niemals denselben Fakt "
     "oder dieselbe Formulierung innerhalb einer Meldung oder über mehrere "
@@ -312,12 +313,18 @@ def verify_visionen_sources(data: dict) -> dict:
 
     verifizierte_news = []
     for item in data.get("good_news", []):
+        if not isinstance(item, dict):
+            log("  Ungültiger Meldungs-Eintrag (kein Objekt) — übersprungen.")
+            continue
         if url_ok(item.get("source_url"), f"Meldung {item.get('title', '(ohne Titel)')!r}"):
             verifizierte_news.append(item)
     data["good_news"] = verifizierte_news
 
     verifizierte_storys = []
     for st in data.get("stories", []):
+        if not isinstance(st, dict):
+            log("  Ungültiger Story-Eintrag (kein Objekt) — übersprungen.")
+            continue
         quellen_ok = [
             s for s in (st.get("sources") or [])
             if url_ok(s.get("url"), f"Story {st.get('teaser_title', '(ohne Titel)')!r}")
@@ -471,7 +478,7 @@ def main() -> int:
 
     today = datetime.date.today()
     date_label = f"{today.day}. {MONATE[today.month - 1]} {today.year}"
-    build_time = datetime.datetime.utcnow().strftime("%d.%m.%Y %H:%M UTC")
+    build_time = datetime.datetime.now(datetime.timezone.utc).strftime("%d.%m.%Y %H:%M UTC")
     log(f"Visionen-Ausgabe: {date_label}")
 
     template_path = TEMPLATE if os.path.exists(TEMPLATE) else OUTPUT
