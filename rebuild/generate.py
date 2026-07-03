@@ -258,64 +258,204 @@ def dedupe_paragraphs(paragraphs, threshold=0.75):
 
 
 # ── Recherche: 24 Rubriken ───────────────────────────────────────────────────
-def get_daily_items(date_label: str):
-    log("Recherchiere Tagesmeldungen für 24 Rubriken …")
+RUBRIK_BATCHES = [
+    dict(list(RUBRIKEN.items())[i : i + 6]) for i in range(0, len(RUBRIKEN), 6)
+]
 
+
+def _fetch_items_batch(batch: dict, date_label: str, bereits_vergebene_themen: list):
+    """Holt Meldungen für EINE kleine Gruppe von Rubriken (statt für alle 24
+    auf einmal). Kleinere Aufgaben pro Aufruf verhindern, dass das Modell in
+    eine Wiederholungsschleife rutscht und generische Platzhaltersätze statt
+    echter Recherche liefert."""
     system = (
         f"Du bist Chefredakteur von schlusslicht.de, einem deutschen "
         f"linkssatirischen Magazin. Heute ist {date_label}.\n\n"
-        "Finde zu jeder der 24 Rubriken eine ECHTE, tagesaktuelle oder "
+        "Finde zu JEDER der folgenden Rubriken eine ECHTE, tagesaktuelle oder "
         "höchstens 14 Tage alte Meldung via Websuche. Hat eine Rubrik heute "
         "keine eigene Meldung, wähle die überraschendste Schlusslicht-Meldung "
         "aus einem ANDEREN passenden Bereich — Aktualität geht vor Rubriktreue.\n\n"
-        "THEMEN-VIELFALT (unbedingt einhalten): Über alle 24 Rubriken hinweg "
-        "darf JEDES Thema/Ereignis/Verein/jede Person nur EINMAL vorkommen. "
-        "Wähle für eine Rubrik OHNE eigene Meldung niemals ein Thema, das "
-        "bereits in einer anderen Rubrik verwendet wird oder naheliegt "
-        "(z. B. nicht dreimal Fußball nehmen, nur weil dazu am meisten "
-        "Material verfügbar ist). Bevor du eine Ausweich-Meldung wählst, "
-        "prüfe gedanklich alle 24 Themen durch — bei Überschneidung wähle "
-        "etwas anderes. Bevorzuge Vielfalt der Themenbereiche über Bequemlichkeit.\n\n"
-        "Stil: schwarze Satire mit menschlicher Wärme — nicht kalt-nüchtern, "
+        "ABSOLUTES VERBOT VON PLATZHALTERN: Jede Schlagzeile und jeder "
+        "Kommentar muss eine ECHTE, konkrete, recherchierte Meldung mit "
+        "echten Eigennamen, Orten und Zahlen sein. Schreibe NIEMALS "
+        "generische Platzhaltersätze wie 'Land mit niedrigstem Etat: "
+        "2026-Bericht' oder 'Team X: 2026-Ergebnis' — das ist kein "
+        "Stilmittel, sondern ein Fehler. Wenn du keine echte Meldung findest, "
+        "recherchiere weiter oder wähle ein anderes konkretes Thema, aber "
+        "erfinde keine Schema-Lückentext-Sätze.\n\n"
+        "KEINE WIEDERKEHRENDEN STANDARDSÄTZE: Verwende niemals denselben "
+        "Schlusssatz (z. B. 'Stabilität fehlt, um die Saison zu retten') in "
+        "mehreren Rubriken — jeder Kommentar muss individuell zum jeweiligen "
+        "Fall passen.\n\n"
+        + (
+            f"Diese Themen sind in anderen Rubriken heute bereits vergeben — "
+            f"wähle KEIN Ausweichthema, das damit überschneidet: "
+            f"{', '.join(bereits_vergebene_themen)}.\n\n"
+            if bereits_vergebene_themen
+            else ""
+        )
+        + "Stil: schwarze Satire mit menschlicher Wärme — nicht kalt-nüchtern, "
         "sondern erkennbar mit Empathie für die Betroffenen geschrieben. Eine "
         "leichte, erkennbare Haltung darf mitschwingen (Mitgefühl, "
         "Kopfschütteln, Fassungslosigkeit), aber immer auf Basis der Fakten "
         "— nie ins Unsachliche oder Übertriebene abgleiten. Fakten plus ein "
         "pointierter, menschlicher Satz, höchstens 130 Zeichen pro Kommentar. "
-        "Antworte AUSSCHLIESSLICH auf "
-        "Deutsch — keine chinesischen, kyrillischen, arabischen oder anderen "
-        "nicht-lateinischen Schriftzeichen, auch nicht einzelne Wörter oder "
-        "Zeichen davon."
+        "Antworte AUSSCHLIESSLICH auf Deutsch — keine chinesischen, "
+        "kyrillischen, arabischen oder anderen nicht-lateinischen "
+        "Schriftzeichen, auch nicht einzelne Wörter oder Zeichen davon."
     )
 
-    zeilen = "\n".join(f"{num} {beschr}" for num, beschr in RUBRIKEN.items())
+    zeilen = "\n".join(f"{num} {beschr}" for num, beschr in batch.items())
     prompt = (
-        "Suche für JEDE der 24 Rubriken eine aktuelle echte Meldung. "
-        "Nutze die Websuche mehrfach, auf Deutsch und Englisch.\n\n"
+        f"Suche für JEDE dieser {len(batch)} Rubriken eine aktuelle echte "
+        "Meldung. Nutze die Websuche mehrfach, auf Deutsch und Englisch.\n\n"
         f"Rubriken:\n{zeilen}\n\n"
         "Antworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown:\n"
         "{\n"
-        '  "items": {\n'
-        '    "01": {"rubrik_name": "Name falls Rubrik gewechselt wurde, sonst leer", '
-        '"thema": "1-2 Wörter Themen-Schlagwort, z.B. \'Fußball\' oder \'Steuerpolitik\' — '
-        'wird genutzt, um Dopplungen zwischen Rubriken zu vermeiden", '
-        '"headline": "kurze Schlagzeile", "kommentar": "Kommentar, max 130 Zeichen", '
+        f'  "{list(batch.keys())[0]}": {{"rubrik_name": "Name falls Rubrik gewechselt wurde, sonst leer", '
+        '"thema": "1-2 Wörter Themen-Schlagwort, z.B. \'Fußball\' oder \'Steuerpolitik\'", '
+        '"headline": "kurze, konkrete Schlagzeile mit echten Namen/Zahlen", '
+        '"kommentar": "individueller Kommentar, max 130 Zeichen", '
         '"quelle": "Quellenname und Datum, z.B. Reuters 22.06.2026 — KEINE Zitationsnummern wie [1]"},\n'
-        '    ... bis "24" ...\n'
-        "  },\n"
-        '  "spotlight": {"cat": "Kategorie des Tages", "hl": "Schlagzeile", '
-        '"text": "2-3 Sätze Einordnung", "quelle": "Quelle"},\n'
-        '  "ticker": ["8 kurze Ticker-Meldungen, je max 95 Zeichen"]\n'
+        f'  ... für jede der {len(batch)} Rubriken ein Eintrag ...\n'
         "}"
     )
 
-    data = extract_json(call_api(system, prompt, max_tokens=5000))
-    if data and "items" in data:
-        data["items"] = dedupe_rubrik_topics(data["items"])
-        log(f"  {len(data['items'])} Rubrik-Meldungen erhalten.")
+    return extract_json(call_api(system, prompt, max_tokens=2200))
+
+
+def get_daily_items(date_label: str):
+    log("Recherchiere Tagesmeldungen für 24 Rubriken (in 4 Gruppen) …")
+
+    all_items = {}
+    vergebene_themen = []
+    for i, batch in enumerate(RUBRIK_BATCHES, start=1):
+        log(f"  Gruppe {i}/{len(RUBRIK_BATCHES)}: Rubriken {', '.join(batch.keys())}")
+        batch_result = _fetch_items_batch(batch, date_label, vergebene_themen)
+        if not batch_result:
+            log(f"  Gruppe {i}: keine verwertbare Antwort erhalten, wird übersprungen.")
+            continue
+        for num, item in batch_result.items():
+            if num in batch:
+                all_items[num] = item
+                thema = (item.get("thema") or "").strip()
+                if thema:
+                    vergebene_themen.append(thema)
+
+    all_items = dedupe_rubrik_topics(all_items)
+    all_items = strip_repeated_boilerplate(all_items)
+    all_items = review_and_fix_items(all_items, date_label)
+
+    spotlight_ticker = get_spotlight_and_ticker(date_label, all_items)
+
+    if all_items:
+        log(f"  {len(all_items)} Rubrik-Meldungen final erhalten.")
     else:
         log("  Keine verwertbaren Rubrik-Daten erhalten.")
-    return data
+
+    if not all_items and not spotlight_ticker.get("spotlight") and not spotlight_ticker.get("ticker"):
+        return None
+
+    return {"items": all_items, **spotlight_ticker}
+
+
+def strip_repeated_boilerplate(items: dict, max_erlaubt: int = 2) -> dict:
+    """Sicherheitsnetz gegen Wiederholungsschleifen: Wenn derselbe Schluss-
+    satz (letzter Satz des Kommentars) in mehr als max_erlaubt Rubriken
+    wortgleich auftaucht, ist das ein klares Zeichen für degenerierten
+    Modell-Output. Betroffene Rubriken (außer der ersten) werden geleert und
+    behalten ihren bestehenden Stand aus der Vorlage."""
+    def letzter_satz(text):
+        text = re.sub(r"<[^>]+>", "", text or "").strip()
+        parts = re.split(r"(?<=[.!?])\s+", text)
+        return re.sub(r"\s+", " ", parts[-1]).lower() if parts else ""
+
+    zaehler = {}
+    for num, item in items.items():
+        satz = letzter_satz(item.get("kommentar", ""))
+        if satz and len(satz) > 10:
+            zaehler.setdefault(satz, []).append(num)
+
+    for satz, nums in zaehler.items():
+        if len(nums) > max_erlaubt:
+            log(f"  Wiederholungsschleife erkannt ({len(nums)}x identischer "
+                f"Schlusssatz: {satz[:60]!r}) — betroffene Rubriken werden "
+                f"zurückgesetzt: {', '.join(nums[1:])}")
+            for num in nums[1:]:
+                items[num] = {}
+    return items
+
+
+def get_spotlight_and_ticker(date_label: str, items: dict):
+    """Holt Spotlight und Ticker in einem eigenen, kleinen Aufruf (statt als
+    Teil des großen 24-Rubriken-Aufrufs), damit auch diese nicht unter einer
+    überladenen Gesamtaufgabe leiden."""
+    log("  Hole Spotlight und Ticker …")
+    kontext = "; ".join(
+        f"{num}: {it.get('headline', '')}" for num, it in items.items() if it.get("headline")
+    )
+    system = (
+        f"Du bist Chefredakteur von schlusslicht.de. Heute ist {date_label}. "
+        "Antworte AUSSCHLIESSLICH auf Deutsch, keine nicht-lateinischen "
+        "Schriftzeichen. Antworte NUR mit validem JSON."
+    )
+    prompt = (
+        "Wähle aus den folgenden heutigen Rubrik-Meldungen die stärkste als "
+        f"Spotlight aus, und liefere zusätzlich 8 kurze Ticker-Meldungen zu "
+        f"weiteren aktuellen Schlusslicht-Themen (unabhängig von den 24 "
+        f"Rubriken).\n\nHeutige Meldungen:\n{kontext}\n\n"
+        "Antworte als JSON:\n"
+        "{\n"
+        '  "spotlight": {"cat": "Kategorie des Tages", "hl": "Schlagzeile", '
+        '"text": "2-3 Sätze Einordnung", "quelle": "Quelle"},\n'
+        '  "ticker": ["8 kurze Ticker-Meldungen, je max 95 Zeichen, jede zu einem anderen Thema"]\n'
+        "}"
+    )
+    data = extract_json(call_api(system, prompt, max_tokens=1500)) or {}
+    return {"spotlight": data.get("spotlight"), "ticker": data.get("ticker")}
+
+
+def review_and_fix_items(items: dict, date_label: str) -> dict:
+    """Letzter Schritt vor der Veröffentlichung: Ein eigener Prüf-Aufruf
+    liest alle gesammelten Schlagzeilen/Kommentare und schreibt jeden Eintrag
+    neu, der unsinnig, generisch/platzhalterartig oder unzusammenhängend
+    wirkt. Setzt direkt die Anforderung um, Texte vor Veröffentlichung auf
+    Sinnhaftigkeit zu prüfen und bei Bedarf zu überarbeiten."""
+    echte_items = {num: it for num, it in items.items() if it}
+    if not echte_items:
+        return items
+
+    log("  Prüfe alle Rubrik-Texte auf Sinnhaftigkeit vor Veröffentlichung …")
+    system = (
+        "Du bist Chef vom Dienst bei schlusslicht.de und prüfst den Text vor "
+        "der Veröffentlichung ein letztes Mal. Antworte AUSSCHLIESSLICH auf "
+        "Deutsch, keine nicht-lateinischen Schriftzeichen. Antworte NUR mit "
+        "validem JSON, keine Erklärung."
+    )
+    prompt = (
+        "Prüfe jeden der folgenden Einträge: Ist die Schlagzeile eine ECHTE, "
+        "konkrete, in sich sinnvolle Meldung (keine generische "
+        "Platzhalterformulierung, kein abgeschnittener oder "
+        "zusammenhangloser Satz)? Passt der Kommentar inhaltlich zur "
+        "Schlagzeile? Ist es KEINE Wiederholung eines Standardsatzes aus "
+        "einem anderen Eintrag?\n\n"
+        "Ist ein Eintrag fehlerhaft: Schreibe eine plausible, in sich "
+        "stimmige Alternative basierend auf demselben Themenfeld (nutze "
+        "dein Wissen, keine neue Websuche nötig). Ist ein Eintrag bereits "
+        "gut, gib ihn UNVERÄNDERT zurück.\n\n"
+        f"Einträge:\n{json.dumps(echte_items, ensure_ascii=False, indent=2)}\n\n"
+        "Antworte mit demselben JSON-Format, exakt dieselben Schlüssel "
+        "(Rubriknummern), jeweils mit rubrik_name/thema/headline/kommentar/quelle."
+    )
+    reviewed = extract_json(call_api(system, prompt, max_tokens=5000))
+    if not reviewed:
+        log("  Prüf-Durchlauf lieferte kein Ergebnis — unveränderte Texte werden verwendet.")
+        return items
+
+    for num, fixed in reviewed.items():
+        if num in items and isinstance(fixed, dict) and fixed.get("headline"):
+            items[num] = fixed
+    return items
 
 
 def dedupe_rubrik_topics(items: dict) -> dict:
