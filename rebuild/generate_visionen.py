@@ -126,129 +126,205 @@ def sanitize(obj):
 
 
 # ── Recherche ─────────────────────────────────────────────────────────────────
-def get_visionen_content(date_label: str):
-    log("Recherchiere positive, belegte Nachrichten für visionen.html …")
+_GEMEINSAME_REGELN = (
+    "HÖCHSTE PRIORITÄT: Jede einzelne Meldung MUSS auf einer echten, "
+    "existierenden, mit Websuche verifizierten Quelle beruhen (z. B. WHO, IEA, "
+    "IUCN, UN, Weltbank/IMF, Fachjournale wie The Lancet/Nature, offizielle "
+    "Statistikämter, Reuters/dpa für Fakten). Erfinde NIEMALS Zahlen, Studien, "
+    "URLs oder Quellennamen — wenn du zu einem Thema keine echte, aktuelle, "
+    "prüfbare Quelle findest, wähle ein anderes Thema, zu dem du eine hast.\n\n"
+    "QUELLEN-DISZIPLIN (sehr wichtig): Jede Quellen-URL muss zur jeweiligen "
+    "Meldung inhaltlich passen — Name und URL müssen zusammengehören. "
+    "Verwende NIEMALS dieselbe URL für zwei verschiedene Meldungen. Erfinde "
+    "NIEMALS eine Domain, die zum Namen dieser Rubrik oder Website klingt "
+    "(z. B. NIEMALS 'neuevisionen.de', 'visionen-news.de' oder Ähnliches) — "
+    "das sind erfundene Fantasie-Domains, keine echten Quellen. Verwende "
+    "NIEMALS Fantasie-Institutionen wie 'Technikbehörde' oder "
+    "'Gesellschaftsbehörde' — nenne die tatsächliche, echte Organisation.\n\n"
+    "Ton: sachlich-warm, nüchtern, mit Zahlen belegt — keine Übertreibung, "
+    "keine Effekthascherei. Wo eine gute Nachricht ein 'Aber' hat (z. B. "
+    "Finanzierungslücke, Restrisiko), nenne es ehrlich, statt es wegzulassen. "
+    "Antworte AUSSCHLIESSLICH auf Deutsch — keine chinesischen, kyrillischen, "
+    "arabischen oder anderen nicht-lateinischen Schriftzeichen, auch nicht "
+    "einzelne Wörter oder Zeichen davon. Wiederhole niemals denselben Fakt "
+    "oder dieselbe Formulierung innerhalb einer Meldung oder über mehrere "
+    "Meldungen hinweg. Antworte NUR mit einem einzigen validen JSON-Objekt, "
+    "keine Erklärungen davor oder danach."
+)
 
-    system = (
-        "Du bist Redakteur der Rubrik 'Visionen' auf schlusslicht.de — der einzigen "
-        "Seite des Magazins, die ausschließlich konstruktive, positive Entwicklungen "
-        "zeigt. HÖCHSTE PRIORITÄT: Jede einzelne Meldung MUSS auf einer echten, "
-        "existierenden, mit Websuche verifizierten Quelle beruhen (z. B. WHO, IEA, "
-        "IUCN, UN, Weltbank/IMF, Fachjournale wie The Lancet/Nature, offizielle "
-        "Statistikämter, Reuters/dpa für Fakten). Erfinde NIEMALS Zahlen, Studien, "
-        "URLs oder Quellennamen — wenn du zu einem Thema keine echte, aktuelle, "
-        "prüfbare Quelle findest, wähle ein anderes Thema, zu dem du eine hast. "
-        "Jede Quelle braucht eine ECHTE, existierende URL. Ton: sachlich-warm, "
-        "nüchtern, mit Zahlen belegt — keine Übertreibung, keine Effekthascherei. "
-        "Wo eine gute Nachricht ein 'Aber' hat (z. B. Finanzierungslücke, "
-        "Restrisiko), nenne es ehrlich, statt es wegzulassen. Antworte "
-        "AUSSCHLIESSLICH auf Deutsch — keine chinesischen, kyrillischen, "
-        "arabischen oder anderen nicht-lateinischen Schriftzeichen, auch "
-        "nicht einzelne Wörter oder Zeichen davon. Wiederhole niemals "
-        "denselben Fakt oder dieselbe Formulierung innerhalb einer Meldung "
-        "oder über mehrere Meldungen hinweg — jeder Satz muss neue "
-        "Information liefern. Antworte NUR mit "
-        "einem einzigen validen JSON-Objekt, keine Erklärungen davor oder danach."
-    )
 
-    prompt = f"""Erstelle den Inhalt für die Visionen-Seite, Ausgabe {date_label}.
+def get_spotlight(date_label: str):
+    log("  Hole Spotlight …")
+    system = f"Du bist Redakteur der Rubrik 'Visionen' auf schlusslicht.de.\n\n{_GEMEINSAME_REGELN}"
+    prompt = f"""Finde die wichtigste, positive, gut belegte Nachricht der letzten Tage für die Ausgabe {date_label}.
 
 Liefere GENAU dieses JSON-Schema:
-
 {{
-  "stand_date": "{date_label}",
-  "spotlight": {{
-    "tag": "Bereich · Region (z. B. 'Gesundheit · weltweit')",
-    "title": "Prägnante Überschrift der wichtigsten guten Nachricht der letzten Tage",
-    "body_html": "1-2 Absätze als HTML-String, <strong> für Kernzahlen erlaubt, ehrliche Einordnung inkl. eventueller Einschränkungen",
-    "source_name": "Name der Quelle",
-    "source_url": "https://echte-existierende-url",
-    "source_date": "Datum der Quelle, z. B. '8. Mai 2026'",
-    "bignum": "kurze Kennzahl, z. B. '1 von 8' oder '+40%'",
-    "bigcap": "1 Satz Erklärung der Kennzahl"
-  }},
+  "tag": "Bereich · Region (z. B. 'Gesundheit · weltweit')",
+  "title": "Prägnante Überschrift",
+  "body_html": "1-2 Absätze als HTML-String, <strong> für Kernzahlen erlaubt, ehrliche Einordnung",
+  "source_name": "Name der Quelle (echte Organisation)",
+  "source_url": "https://echte-existierende-url, die exakt zu source_name passt",
+  "source_date": "Datum der Quelle, z. B. '8. Mai 2026'",
+  "bignum": "kurze Kennzahl, z. B. '1 von 8' oder '+40%'",
+  "bigcap": "1 Satz Erklärung der Kennzahl"
+}}"""
+    return extract_json(call_api(system, prompt, max_tokens=1200))
+
+
+def get_good_news_batch(date_label: str, anzahl: int, bereiche: str, ausgeschlossene_urls: list):
+    system = f"Du bist Redakteur der Rubrik 'Visionen' auf schlusslicht.de.\n\n{_GEMEINSAME_REGELN}"
+    ausschluss = (
+        f"\n\nDiese URLs sind bereits für andere Meldungen vergeben — verwende "
+        f"KEINE davon erneut: {', '.join(ausgeschlossene_urls)}."
+        if ausgeschlossene_urls
+        else ""
+    )
+    prompt = f"""Finde {anzahl} positive, gut belegte Nachrichten für die Ausgabe {date_label}.
+Bevorzugte Themenbereiche für diese Gruppe: {bereiche}.{ausschluss}
+
+Liefere GENAU dieses JSON-Schema:
+{{
   "good_news": [
     {{
-      "domain": "Themenbereich, z. B. 'Gesundheit'",
+      "domain": "Themenbereich",
       "badge": "Region, z. B. 'Welt' oder 'Deutschland' oder 'Europa'",
       "icon": "ein passendes Emoji",
       "title": "Kurze, konkrete Überschrift",
       "body_html": "2-3 Sätze HTML-String mit Kernaussage und Zahl",
-      "source_name": "Quellenname",
-      "source_url": "https://echte-existierende-url",
+      "source_name": "Name der echten Organisation",
+      "source_url": "https://echte-existierende-url, die exakt zu source_name passt",
       "source_date": "Datum, z. B. 'April 2026'"
     }}
-    // genau 7 Einträge, aus möglichst unterschiedlichen Bereichen
-    // (Gesundheit, Klima & Energie, Natur & Artenschutz, Gesellschaft,
-    // Wissenschaft & Technik, Bildung o.ä.) — nicht alle aus demselben Bereich
-  ],
+    // genau {anzahl} Einträge
+  ]
+}}"""
+    result = extract_json(call_api(system, prompt, max_tokens=2200))
+    return (result or {}).get("good_news", [])
+
+
+def get_background_stories(date_label: str):
+    log("  Hole Hintergrundstorys …")
+    system = f"Du bist Redakteur der Rubrik 'Visionen' auf schlusslicht.de.\n\n{_GEMEINSAME_REGELN}"
+    prompt = f"""Finde 3 positive Entwicklungen mit ausreichend Tiefe für Hintergrundstorys, Ausgabe {date_label}.
+
+Liefere GENAU dieses JSON-Schema:
+{{
   "stories": [
     {{
       "teaser_cat": "Bereich · Region",
       "teaser_title": "Kurztitel für die Vorschau-Kachel",
       "teaser_text": "1-2 Sätze Teaser",
       "modal_cat": "Bereich · Region · Jahr",
-      "modal_title": "Ausführlicherer Titel für den Hintergrund",
-      "lead": "1-2 Sätze Einstieg, warum das relevant ist",
+      "modal_title": "Ausführlicherer Titel",
+      "lead": "1-2 Sätze Einstieg",
       "intro_html": "1 Absatz HTML mit Kontext/Hintergrund",
       "facts": ["Fakt 1 mit Zahl", "Fakt 2 mit Zahl", "Fakt 3 mit Zahl"],
       "einordnung_html": "1 Absatz ehrliche Einordnung inkl. Grenzen/offener Fragen",
       "sources": [
-        {{"name": "Quellenname", "url": "https://echte-url", "date": "Datum"}}
+        {{"name": "Name der echten Organisation", "url": "https://echte-url, die exakt zu name passt", "date": "Datum"}}
       ]
     }}
-    // genau 3 Einträge, thematisch nach Möglichkeit unterschiedlich von den good_news
+    // genau 3 Einträge, thematisch unterschiedlich
   ]
-}}
+}}"""
+    result = extract_json(call_api(system, prompt, max_tokens=3000))
+    return (result or {}).get("stories", [])
 
-Alle Themen müssen sich auf ECHTE, mit Websuche auffindbare aktuelle Entwicklungen
-beziehen. Bevorzuge Meldungen der letzten Tage bis Wochen, wenn verfügbar."""
 
-    raw = call_api(system, prompt, max_tokens=6000)
-    data = extract_json(raw)
-    if not data:
+def get_visionen_content(date_label: str):
+    log("Recherchiere positive, belegte Nachrichten für visionen.html (in Gruppen) …")
+
+    spotlight = get_spotlight(date_label)
+
+    log("  Hole Good-News-Gruppe 1/2 …")
+    gruppe1 = get_good_news_batch(
+        date_label, 4, "Gesundheit, Klima & Energie, Natur & Artenschutz", []
+    )
+    bereits_verwendet = [it.get("source_url", "") for it in gruppe1 if it.get("source_url")]
+
+    log("  Hole Good-News-Gruppe 2/2 …")
+    gruppe2 = get_good_news_batch(
+        date_label, 3, "Gesellschaft, Wissenschaft & Technik, Bildung", bereits_verwendet
+    )
+
+    stories = get_background_stories(date_label)
+
+    data = {
+        "stand_date": date_label,
+        "spotlight": spotlight,
+        "good_news": gruppe1 + gruppe2,
+        "stories": stories,
+    }
+
+    if not data["spotlight"] and not data["good_news"] and not data["stories"]:
         log("  Keine verwertbaren Visionen-Inhalte erhalten.")
         return None
     return verify_visionen_sources(data)
 
 
+_VERDAECHTIGE_DOMAIN_MUSTER = re.compile(
+    r"(neuevisionen|visionen-news|visionennews|schlusslicht-?news)", re.IGNORECASE
+)
+
+
+def _domain_ist_verdaechtig(url: str) -> bool:
+    """Erkennt offensichtlich erfundene Fantasie-Domains, die zufällig zum
+    Namen der eigenen Rubrik/Website passen (z. B. 'neuevisionen.de') —
+    ein starkes Anzeichen für eine halluzinierte statt echte Quelle."""
+    return bool(_VERDAECHTIGE_DOMAIN_MUSTER.search(url or ""))
+
+
 def verify_visionen_sources(data: dict) -> dict:
     """Prüft technisch JEDE angegebene Quellen-URL (Spotlight, Good-News-
-    Kacheln, Hintergrundstorys). Ohne nachweislich erreichbare URL wird der
-    jeweilige Baustein komplett verworfen — keine Veröffentlichung ohne
-    prüfbare Quelle."""
-    log("  Verifiziere Quellen-URLs technisch (HTTP-Check) …")
+    Kacheln, Hintergrundstorys). Ohne nachweislich erreichbare, plausible UND
+    innerhalb der Ausgabe einzigartige URL wird der jeweilige Baustein
+    komplett verworfen — keine Veröffentlichung ohne prüfbare, passende
+    Quelle."""
+    log("  Verifiziere Quellen-URLs technisch (HTTP-Check + Plausibilität + Einzigartigkeit) …")
+
+    bereits_verwendete_urls = set()
+
+    def url_ok(url: str, label: str) -> bool:
+        url = (url or "").strip()
+        if not url:
+            log(f"  {label}: keine Quellen-URL angegeben — verworfen.")
+            return False
+        if _domain_ist_verdaechtig(url):
+            log(f"  {label}: Quellen-URL sieht nach erfundener Fantasie-Domain "
+                f"aus ({url}) — verworfen.")
+            return False
+        if url in bereits_verwendete_urls:
+            log(f"  {label}: dieselbe URL wurde bereits für eine andere "
+                f"Meldung verwendet ({url}) — verworfen (jede Quelle muss "
+                f"einzigartig zur jeweiligen Meldung passen).")
+            return False
+        if not verify_url(url):
+            log(f"  {label}: Quellen-URL nicht erreichbar ({url}) — verworfen.")
+            return False
+        bereits_verwendete_urls.add(url)
+        log(f"  {label}: Quelle verifiziert ({url})")
+        return True
 
     sp = data.get("spotlight")
-    if sp:
-        url = (sp.get("source_url") or "").strip()
-        if not verify_url(url):
-            log(f"  Spotlight: Quellen-URL fehlt oder nicht erreichbar "
-                f"({url or 'keine URL angegeben'}) — Spotlight verworfen.")
-            data["spotlight"] = None
-        else:
-            log(f"  Spotlight: Quelle verifiziert ({url})")
+    if sp and not url_ok(sp.get("source_url"), "Spotlight"):
+        data["spotlight"] = None
 
     verifizierte_news = []
     for item in data.get("good_news", []):
-        url = (item.get("source_url") or "").strip()
-        if not verify_url(url):
-            log(f"  Meldung {item.get('title', '(ohne Titel)')!r}: Quellen-URL "
-                f"fehlt oder nicht erreichbar ({url or 'keine URL angegeben'}) "
-                f"— verworfen.")
-            continue
-        verifizierte_news.append(item)
+        if url_ok(item.get("source_url"), f"Meldung {item.get('title', '(ohne Titel)')!r}"):
+            verifizierte_news.append(item)
     data["good_news"] = verifizierte_news
 
     verifizierte_storys = []
     for st in data.get("stories", []):
         quellen_ok = [
             s for s in (st.get("sources") or [])
-            if verify_url((s.get("url") or "").strip())
+            if url_ok(s.get("url"), f"Story {st.get('teaser_title', '(ohne Titel)')!r}")
         ]
         if not quellen_ok:
             log(f"  Story {st.get('teaser_title', '(ohne Titel)')!r}: keine "
-                f"einzige erreichbare Quelle — komplett verworfen.")
+                f"einzige gültige Quelle — komplett verworfen.")
             continue
         st["sources"] = quellen_ok
         verifizierte_storys.append(st)
