@@ -49,6 +49,22 @@ def log(msg: str) -> None:
     print(f"[{datetime.datetime.now():%H:%M:%S}] {msg}", flush=True)
 
 
+def verify_url(url: str, timeout: int = 8) -> bool:
+    """Prüft, ob eine Quellen-URL tatsächlich existiert und erreichbar ist.
+    Technische Absicherung gegen halluzinierte Quellen — siehe generate.py."""
+    if not url or not isinstance(url, str) or not url.strip().lower().startswith("http"):
+        return False
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; SchlusslichtBot/1.0)"}
+    try:
+        r = requests.head(url, timeout=timeout, allow_redirects=True, headers=headers)
+        if r.status_code >= 400:
+            r = requests.get(url, timeout=timeout, allow_redirects=True, headers=headers, stream=True)
+        return r.status_code < 400
+    except requests.RequestException as exc:
+        log(f"  Quellen-URL nicht erreichbar: {url} ({exc.__class__.__name__})")
+        return False
+
+
 def call_api(system: str, prompt: str, max_tokens: int, retries: int = 3):
     headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
     body = {
@@ -193,6 +209,53 @@ beziehen. Bevorzuge Meldungen der letzten Tage bis Wochen, wenn verfügbar."""
     if not data:
         log("  Keine verwertbaren Visionen-Inhalte erhalten.")
         return None
+    return verify_visionen_sources(data)
+
+
+def verify_visionen_sources(data: dict) -> dict:
+    """Prüft technisch JEDE angegebene Quellen-URL (Spotlight, Good-News-
+    Kacheln, Hintergrundstorys). Ohne nachweislich erreichbare URL wird der
+    jeweilige Baustein komplett verworfen — keine Veröffentlichung ohne
+    prüfbare Quelle."""
+    log("  Verifiziere Quellen-URLs technisch (HTTP-Check) …")
+
+    sp = data.get("spotlight")
+    if sp:
+        url = (sp.get("source_url") or "").strip()
+        if not verify_url(url):
+            log(f"  Spotlight: Quellen-URL fehlt oder nicht erreichbar "
+                f"({url or 'keine URL angegeben'}) — Spotlight verworfen.")
+            data["spotlight"] = None
+        else:
+            log(f"  Spotlight: Quelle verifiziert ({url})")
+
+    verifizierte_news = []
+    for item in data.get("good_news", []):
+        url = (item.get("source_url") or "").strip()
+        if not verify_url(url):
+            log(f"  Meldung {item.get('title', '(ohne Titel)')!r}: Quellen-URL "
+                f"fehlt oder nicht erreichbar ({url or 'keine URL angegeben'}) "
+                f"— verworfen.")
+            continue
+        verifizierte_news.append(item)
+    data["good_news"] = verifizierte_news
+
+    verifizierte_storys = []
+    for st in data.get("stories", []):
+        quellen_ok = [
+            s for s in (st.get("sources") or [])
+            if verify_url((s.get("url") or "").strip())
+        ]
+        if not quellen_ok:
+            log(f"  Story {st.get('teaser_title', '(ohne Titel)')!r}: keine "
+                f"einzige erreichbare Quelle — komplett verworfen.")
+            continue
+        st["sources"] = quellen_ok
+        verifizierte_storys.append(st)
+    data["stories"] = verifizierte_storys
+
+    log(f"  Ergebnis: Spotlight {'OK' if data.get('spotlight') else 'verworfen'}, "
+        f"{len(data['good_news'])}/7 Meldungen, {len(data['stories'])}/3 Storys verifiziert.")
     return data
 
 
