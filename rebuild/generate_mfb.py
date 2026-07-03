@@ -51,8 +51,13 @@ TIMEOUT = 240
 N_COLS = 5
 N_RUBRIKEN = 24
 
-MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
-          "August", "September", "Oktober", "November", "Dezember"]
+MONATE = (
+    ["January", "February", "March", "April", "May", "June", "July",
+     "August", "September", "October", "November", "December"]
+    if LANG == "en" else
+    ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
+     "August", "September", "Oktober", "November", "Dezember"]
+)
 
 
 def log(msg: str) -> None:
@@ -437,7 +442,9 @@ def main() -> int:
         return 1
 
     today = datetime.date.today()
-    date_label = f"{today.day}. {MONATE[today.month - 1]} {today.year}"
+    date_label = (f"{MONATE[today.month - 1]} {today.day}, {today.year}"
+                  if LANG == "en" else
+                  f"{today.day}. {MONATE[today.month - 1]} {today.year}")
     log(f"more_from_behind-Ausgabe: {date_label}")
 
     if not os.path.exists(FACTS_SOURCE):

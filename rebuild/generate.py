@@ -36,29 +36,18 @@ TEMPLATE = "index.en.template.html" if LANG == "en" else "index.template.html"
 OUTPUT = "index.en.html" if LANG == "en" else "index.html"
 TIMEOUT = 240
 
-WOCHENTAGE = [
-    "Montag",
-    "Dienstag",
-    "Mittwoch",
-    "Donnerstag",
-    "Freitag",
-    "Samstag",
-    "Sonntag",
-]
-MONATE = [
-    "Januar",
-    "Februar",
-    "März",
-    "April",
-    "Mai",
-    "Juni",
-    "Juli",
-    "August",
-    "September",
-    "Oktober",
-    "November",
-    "Dezember",
-]
+WOCHENTAGE = (
+    ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    if LANG == "en" else
+    ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
+)
+MONATE = (
+    ["January", "February", "March", "April", "May", "June", "July",
+     "August", "September", "October", "November", "December"]
+    if LANG == "en" else
+    ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
+     "August", "September", "Oktober", "November", "Dezember"]
+)
 
 # Die 24 Rubriken der Seite
 RUBRIKEN = {
@@ -802,8 +791,9 @@ def main() -> int:
 
     today = datetime.date.today()
     date_label = (
-        f"{WOCHENTAGE[today.weekday()]}, {today.day}. "
-        f"{MONATE[today.month - 1]} {today.year}"
+        (f"{WOCHENTAGE[today.weekday()]}, {MONATE[today.month - 1]} {today.day}, {today.year}"
+         if LANG == "en" else
+         f"{WOCHENTAGE[today.weekday()]}, {today.day}. {MONATE[today.month - 1]} {today.year}")
     )
     build_time = datetime.datetime.now(datetime.timezone.utc).strftime("%d.%m.%Y %H:%M UTC")
     log(f"Tagesausgabe: {date_label}")
