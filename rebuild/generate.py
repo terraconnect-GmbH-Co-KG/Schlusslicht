@@ -93,6 +93,25 @@ def log(msg: str) -> None:
     print(f"[{datetime.datetime.now():%H:%M:%S}] {msg}", flush=True)
 
 
+def verify_url(url: str, timeout: int = 8) -> bool:
+    """Prüft, ob eine Quellen-URL tatsächlich existiert und erreichbar ist
+    (kein 404, keine DNS-Auflösung fehlgeschlagen, keine Zeitüberschreitung).
+    Technische Absicherung gegen halluzinierte Quellen: Eine Meldung ohne
+    nachweislich funktionierende URL wird NICHT veröffentlicht."""
+    if not url or not isinstance(url, str) or not url.strip().lower().startswith("http"):
+        return False
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; SchlusslichtBot/1.0)"}
+    try:
+        r = requests.head(url, timeout=timeout, allow_redirects=True, headers=headers)
+        if r.status_code >= 400:
+            # Manche Server lehnen HEAD ab -> mit GET nachprüfen, bevor wir aufgeben
+            r = requests.get(url, timeout=timeout, allow_redirects=True, headers=headers, stream=True)
+        return r.status_code < 400
+    except requests.RequestException as exc:
+        log(f"  Quellen-URL nicht erreichbar: {url} ({exc.__class__.__name__})")
+        return False
+
+
 def call_api(system: str, prompt: str, max_tokens: int, retries: int = 3):
     """Ruft die OpenRouter-API mit Web-Search-Server-Tool auf und liefert den Text."""
     headers = {
@@ -287,6 +306,16 @@ def _fetch_items_batch(batch: dict, date_label: str, bereits_vergebene_themen: l
         "Schlusssatz (z. B. 'Stabilität fehlt, um die Saison zu retten') in "
         "mehreren Rubriken — jeder Kommentar muss individuell zum jeweiligen "
         "Fall passen.\n\n"
+        "ABSOLUTES VERBOT VON ERFUNDENEN QUELLEN — HÖCHSTE PRIORITÄT: "
+        "Erfinde NIEMALS Firmennamen, Ereignisse, Zahlen oder Studien. Jede "
+        "Meldung MUSS von einer echten, mit Websuche auffindbaren Quelle "
+        "stammen, UND du musst die tatsächliche, funktionierende URL dieser "
+        "Quelle angeben (die Seite, die du bei der Websuche gefunden hast — "
+        "keine geratene oder aus dem Gedächtnis rekonstruierte URL). Findest "
+        "du zu einer Rubrik keine echte Meldung mit einer echten, "
+        "existierenden URL, dann liefere für diese Rubrik GAR KEINEN "
+        "Eintrag (lass sie im JSON weg), statt etwas zu erfinden. Eine "
+        "fehlende Meldung ist immer besser als eine erfundene.\n\n"
         + (
             f"Diese Themen sind in anderen Rubriken heute bereits vergeben — "
             f"wähle KEIN Ausweichthema, das damit überschneidet: "
@@ -316,7 +345,8 @@ def _fetch_items_batch(batch: dict, date_label: str, bereits_vergebene_themen: l
         '"thema": "1-2 Wörter Themen-Schlagwort, z.B. \'Fußball\' oder \'Steuerpolitik\'", '
         '"headline": "kurze, konkrete Schlagzeile mit echten Namen/Zahlen", '
         '"kommentar": "individueller Kommentar, max 130 Zeichen", '
-        '"quelle": "Quellenname und Datum, z.B. Reuters 22.06.2026 — KEINE Zitationsnummern wie [1]"},\n'
+        '"quelle": "Quellenname und Datum, z.B. Reuters 22.06.2026 — KEINE Zitationsnummern wie [1]", '
+        '"quelle_url": "die ECHTE, vollständige URL der Quelle (https://...) — PFLICHTFELD, ohne echte funktionierende URL keine Veröffentlichung"},\n'
         f'  ... für jede der {len(batch)} Rubriken ein Eintrag ...\n'
         "}"
     )
@@ -416,45 +446,64 @@ def get_spotlight_and_ticker(date_label: str, items: dict):
 
 
 def review_and_fix_items(items: dict, date_label: str) -> dict:
-    """Letzter Schritt vor der Veröffentlichung: Ein eigener Prüf-Aufruf
-    liest alle gesammelten Schlagzeilen/Kommentare und schreibt jeden Eintrag
-    neu, der unsinnig, generisch/platzhalterartig oder unzusammenhängend
-    wirkt. Setzt direkt die Anforderung um, Texte vor Veröffentlichung auf
-    Sinnhaftigkeit zu prüfen und bei Bedarf zu überarbeiten."""
+    """Letzter Schritt vor der Veröffentlichung: Prüft Sinnhaftigkeit UND
+    verifiziert technisch jede Quellen-URL. WICHTIG: Dieser Schritt darf
+    NIEMALS neue Inhalte erfinden — er darf nur bestehende, bereits
+    recherchierte Einträge bestätigen oder verwerfen. Ein verworfener
+    Eintrag wird geleert (behält den bestehenden Stand aus der Vorlage)
+    statt durch erfundenen Ersatz ausgetauscht zu werden."""
     echte_items = {num: it for num, it in items.items() if it}
     if not echte_items:
         return items
 
+    # Schritt 1: Sinnhaftigkeits-Prüfung durch die KI — reine Ja/Nein-Bewertung,
+    # KEIN Umschreiben oder Erfinden von Inhalten.
     log("  Prüfe alle Rubrik-Texte auf Sinnhaftigkeit vor Veröffentlichung …")
     system = (
-        "Du bist Chef vom Dienst bei schlusslicht.de und prüfst den Text vor "
-        "der Veröffentlichung ein letztes Mal. Antworte AUSSCHLIESSLICH auf "
-        "Deutsch, keine nicht-lateinischen Schriftzeichen. Antworte NUR mit "
-        "validem JSON, keine Erklärung."
+        "Du bist Chef vom Dienst bei schlusslicht.de und prüfst Texte vor "
+        "der Veröffentlichung. Du erfindest NIEMALS neue Inhalte — du "
+        "bewertest ausschließlich, ob die vorliegenden Einträge bereits "
+        "sinnvoll sind. Antworte AUSSCHLIESSLICH auf Deutsch. Antworte NUR "
+        "mit validem JSON, keine Erklärung."
     )
     prompt = (
-        "Prüfe jeden der folgenden Einträge: Ist die Schlagzeile eine ECHTE, "
-        "konkrete, in sich sinnvolle Meldung (keine generische "
-        "Platzhalterformulierung, kein abgeschnittener oder "
-        "zusammenhangloser Satz)? Passt der Kommentar inhaltlich zur "
-        "Schlagzeile? Ist es KEINE Wiederholung eines Standardsatzes aus "
-        "einem anderen Eintrag?\n\n"
-        "Ist ein Eintrag fehlerhaft: Schreibe eine plausible, in sich "
-        "stimmige Alternative basierend auf demselben Themenfeld (nutze "
-        "dein Wissen, keine neue Websuche nötig). Ist ein Eintrag bereits "
-        "gut, gib ihn UNVERÄNDERT zurück.\n\n"
+        "Prüfe jeden der folgenden Einträge NUR auf Sinnhaftigkeit: Ist die "
+        "Schlagzeile eine konkrete, in sich sinnvolle Aussage (keine "
+        "generische Platzhalterformulierung wie 'X: 2026-Bericht', kein "
+        "abgeschnittener oder zusammenhangloser Satz)? Passt der Kommentar "
+        "inhaltlich zur Schlagzeile? Ist es KEINE Wiederholung eines "
+        "Standardsatzes aus einem anderen Eintrag?\n\n"
+        "WICHTIG: Du bewertest nur, du erfindest oder änderst keine Inhalte. "
+        "Für jeden Eintrag gib zurück, ob er sinnvoll ist "
+        '(\"ok\": true) oder nicht (\"ok\": false, mit kurzer "grund"-Angabe).\n\n'
         f"Einträge:\n{json.dumps(echte_items, ensure_ascii=False, indent=2)}\n\n"
-        "Antworte mit demselben JSON-Format, exakt dieselben Schlüssel "
-        "(Rubriknummern), jeweils mit rubrik_name/thema/headline/kommentar/quelle."
+        "Antworte als JSON:\n"
+        '{"01": {"ok": true}, "02": {"ok": false, "grund": "generischer Platzhalter"}, ...}'
     )
-    reviewed = extract_json(call_api(system, prompt, max_tokens=5000))
-    if not reviewed:
-        log("  Prüf-Durchlauf lieferte kein Ergebnis — unveränderte Texte werden verwendet.")
-        return items
+    urteil = extract_json(call_api(system, prompt, max_tokens=2000)) or {}
 
-    for num, fixed in reviewed.items():
-        if num in items and isinstance(fixed, dict) and fixed.get("headline"):
-            items[num] = fixed
+    for num in list(echte_items.keys()):
+        bewertung = urteil.get(num, {})
+        if bewertung.get("ok") is False:
+            log(f"  Rubrik {num}: Sinnhaftigkeits-Prüfung fehlgeschlagen "
+                f"({bewertung.get('grund', 'kein Grund angegeben')}) — verworfen.")
+            items[num] = {}
+
+    # Schritt 2: Technische URL-Verifikation — UNABHÄNGIG von der KI-Bewertung,
+    # das ist die eigentliche Absicherung gegen halluzinierte Quellen.
+    log("  Verifiziere Quellen-URLs technisch (HTTP-Check) …")
+    for num, item in list(items.items()):
+        if not item:
+            continue
+        url = (item.get("quelle_url") or "").strip()
+        if not verify_url(url):
+            log(f"  Rubrik {num}: Quellen-URL fehlt oder nicht erreichbar "
+                f"({url or 'keine URL angegeben'}) — Meldung verworfen, "
+                f"bestehender Stand bleibt.")
+            items[num] = {}
+        else:
+            log(f"  Rubrik {num}: Quelle verifiziert ({url})")
+
     return items
 
 
@@ -521,7 +570,14 @@ def get_daily_stories(date_label: str):
         "austauschbare Textbaustein-Sätze wie 'Das zeigt ein systemisches "
         "Versagen' oder 'Dies führt zu einer ständigen Instabilität' als "
         "wiederkehrende Standardformulierung über mehrere Storys hinweg — "
-        "jede Story braucht ihre eigene, konkrete Schlussfolgerung."
+        "jede Story braucht ihre eigene, konkrete Schlussfolgerung.\n\n"
+        "ABSOLUTES VERBOT VON ERFUNDENEN QUELLEN — HÖCHSTE PRIORITÄT: "
+        "Erfinde NIEMALS Firmennamen, Personen, Ereignisse oder Zahlen. Jede "
+        "Story MUSS auf einem echten, mit Websuche gefundenen Fall beruhen, "
+        "UND du musst die tatsächliche, funktionierende URL dieser Quelle "
+        "angeben. Findest du keinen echten Fall mit einer echten, "
+        "existierenden URL für einen Bereich, wähle einen anderen Bereich, "
+        "zu dem du eine echte Quelle hast — aber erfinde niemals einen Fall."
     )
     prompt = (
         "Recherchiere zunächst aktuelle Schlusslicht-Fälle aus verschiedenen "
@@ -552,7 +608,8 @@ def get_daily_stories(date_label: str):
         '      "body": ["<p>Absatz 1: nur das Ereignis</p>", "<p>Absatz 2: nur Hintergrund/Ursache</p>", "<p>Absatz 3: nur konkrete Auswirkung</p>", "<p>Absatz 4: nur die Einordnung als Systemversagen</p>"],\n'
         '      "factbox": ["Fakt 1", "Fakt 2", "Fakt 3"],\n'
         '      "conclusion": "Schlusssatz zum Systemversagen",\n'
-        '      "source": "Quellenname und Datum, z.B. Spiegel 22.06.2026 — KEINE Zitationsnummern wie [1]"\n'
+        '      "source": "Quellenname und Datum, z.B. Spiegel 22.06.2026 — KEINE Zitationsnummern wie [1]",\n'
+        '      "source_url": "die ECHTE, vollständige URL der Quelle (https://...) — PFLICHTFELD, ohne echte funktionierende URL keine Veröffentlichung"\n'
         "    }\n"
         "    ... 3 Storys ...\n"
         "  ]\n"
@@ -561,11 +618,25 @@ def get_daily_stories(date_label: str):
 
     data = extract_json(call_api(system, prompt, max_tokens=6000))
     if data and data.get("stories"):
+        log("  Verifiziere Quellen-URLs der Hintergrundstorys …")
+        verifizierte_storys = []
         for story in data["stories"]:
+            url = (story.get("source_url") or "").strip()
+            if not verify_url(url):
+                log(f"  Story {story.get('title', '(ohne Titel)')!r}: Quellen-URL "
+                    f"fehlt oder nicht erreichbar ({url or 'keine URL angegeben'}) "
+                    f"— komplett verworfen, keine Halluzinationen ohne Beleg.")
+                continue
+            log(f"  Story {story.get('title', '')!r}: Quelle verifiziert ({url})")
             story["body"] = dedupe_paragraphs(story.get("body"))
-        log(f"  {len(data['stories'])} Hintergrundstorys erhalten.")
+            verifizierte_storys.append(story)
+        data["stories"] = verifizierte_storys
+        log(f"  {len(data['stories'])} von 3 Hintergrundstorys verifiziert und übernommen.")
+        if not data["stories"]:
+            data = None
     else:
         log("  Keine verwertbaren Story-Daten erhalten.")
+        data = None
     return data
 
 
