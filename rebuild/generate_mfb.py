@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-generate_mfb.py — Tagesaktualisierung für more_from_behind.html
+generate_mfb.py — Tagesaktualisierung für insights.html
 ================================================================================
 Wird vom GitHub-Actions-Workflow .github/workflows/daily-update.yml gestartet,
 nach generate.py und generate_visionen.py.
@@ -24,8 +24,8 @@ Ablauf:
      ~5 Tage, deterministisch, kein Zufall).
   4. Lässt die KI für jede der 5 Rubriken einen Meinungskommentar auf Basis
      der vorgegebenen Fakten schreiben.
-  5. Baut Text in more_from_behind.template.html ein, schreibt
-     more_from_behind.html.
+  5. Baut Text in insights.template.html ein, schreibt
+     insights.html.
 """
 
 import datetime
@@ -42,10 +42,10 @@ from bs4 import BeautifulSoup
 API_KEY = os.environ.get("OPENROUTER_API_KEY", "").strip()
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 MODEL = "perplexity/sonar"
-TEMPLATE = "more_from_behind.template.html"
+TEMPLATE = "insights.template.html"
 FACTS_SOURCE = "index.template.html"
 TODAY_SOURCE = "index.html"
-OUTPUT = "more_from_behind.html"
+OUTPUT = "insights.html"
 TIMEOUT = 240
 N_COLS = 5
 N_RUBRIKEN = 24
@@ -460,7 +460,7 @@ def main() -> int:
 
     data = get_commentary(facts_package, date_label)
     if not data:
-        log("Keine Inhalte erzeugt — more_from_behind.html bleibt unverändert.")
+        log("Keine Inhalte erzeugt — insights.html bleibt unverändert.")
         return 0
 
     columns = data.get("columns", [])[:N_COLS]
