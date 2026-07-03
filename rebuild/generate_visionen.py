@@ -42,8 +42,13 @@ OUTPUT = "brightside.en.html" if LANG == "en" else "brightside.html"
 TIMEOUT = 240
 
 WOCHENTAGE = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
-MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
-          "August", "September", "Oktober", "November", "Dezember"]
+MONATE = (
+    ["January", "February", "March", "April", "May", "June", "July",
+     "August", "September", "October", "November", "December"]
+    if LANG == "en" else
+    ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
+     "August", "September", "Oktober", "November", "Dezember"]
+)
 
 
 def log(msg: str) -> None:
@@ -380,7 +385,7 @@ def inject(html: str, data, date_label: str, build_time: str) -> str:
     set_html(soup.select_one("#spot-src"), src_html)
     set_text(soup.select_one("#spot-bignum"), sp.get("bignum"))
     set_text(soup.select_one("#spot-bigcap"), sp.get("bigcap"))
-    set_text(soup.select_one("#spotStand"), f"Stand: {date_label}")
+    set_text(soup.select_one("#spotStand"), ("As of: " if LANG == "en" else "Stand: ") + date_label)
 
     # ── Good-News-Grid ───────────────────────────────────────────────────────
     for i, item in enumerate(data.get("good_news", [])[:7], start=1):
@@ -453,7 +458,7 @@ def inject(html: str, data, date_label: str, build_time: str) -> str:
 
     # ── SEO: Title, Description, OG, Twitter ─────────────────────────────────
     if sp.get("title"):
-        og_title = f"Visionen — {sp['title']} | SCHLUSSLICHT"
+        og_title = f"Brightside — {sp['title']} | SCHLUSSLICHT"
         title_tag = soup.find("title")
         if title_tag:
             title_tag.string = og_title
@@ -477,7 +482,9 @@ def main() -> int:
         return 1
 
     today = datetime.date.today()
-    date_label = f"{today.day}. {MONATE[today.month - 1]} {today.year}"
+    date_label = (f"{MONATE[today.month - 1]} {today.day}, {today.year}"
+                  if LANG == "en" else
+                  f"{today.day}. {MONATE[today.month - 1]} {today.year}")
     build_time = datetime.datetime.now(datetime.timezone.utc).strftime("%d.%m.%Y %H:%M UTC")
     log(f"Visionen-Ausgabe: {date_label}")
 
