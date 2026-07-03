@@ -268,8 +268,21 @@ def get_daily_items(date_label: str):
         "höchstens 14 Tage alte Meldung via Websuche. Hat eine Rubrik heute "
         "keine eigene Meldung, wähle die überraschendste Schlusslicht-Meldung "
         "aus einem ANDEREN passenden Bereich — Aktualität geht vor Rubriktreue.\n\n"
-        "Stil: nüchterne schwarze Satire, Fakten plus ein trockener Satz, "
-        "höchstens 130 Zeichen pro Kommentar. Antworte AUSSCHLIESSLICH auf "
+        "THEMEN-VIELFALT (unbedingt einhalten): Über alle 24 Rubriken hinweg "
+        "darf JEDES Thema/Ereignis/Verein/jede Person nur EINMAL vorkommen. "
+        "Wähle für eine Rubrik OHNE eigene Meldung niemals ein Thema, das "
+        "bereits in einer anderen Rubrik verwendet wird oder naheliegt "
+        "(z. B. nicht dreimal Fußball nehmen, nur weil dazu am meisten "
+        "Material verfügbar ist). Bevor du eine Ausweich-Meldung wählst, "
+        "prüfe gedanklich alle 24 Themen durch — bei Überschneidung wähle "
+        "etwas anderes. Bevorzuge Vielfalt der Themenbereiche über Bequemlichkeit.\n\n"
+        "Stil: schwarze Satire mit menschlicher Wärme — nicht kalt-nüchtern, "
+        "sondern erkennbar mit Empathie für die Betroffenen geschrieben. Eine "
+        "leichte, erkennbare Haltung darf mitschwingen (Mitgefühl, "
+        "Kopfschütteln, Fassungslosigkeit), aber immer auf Basis der Fakten "
+        "— nie ins Unsachliche oder Übertriebene abgleiten. Fakten plus ein "
+        "pointierter, menschlicher Satz, höchstens 130 Zeichen pro Kommentar. "
+        "Antworte AUSSCHLIESSLICH auf "
         "Deutsch — keine chinesischen, kyrillischen, arabischen oder anderen "
         "nicht-lateinischen Schriftzeichen, auch nicht einzelne Wörter oder "
         "Zeichen davon."
@@ -284,6 +297,8 @@ def get_daily_items(date_label: str):
         "{\n"
         '  "items": {\n'
         '    "01": {"rubrik_name": "Name falls Rubrik gewechselt wurde, sonst leer", '
+        '"thema": "1-2 Wörter Themen-Schlagwort, z.B. \'Fußball\' oder \'Steuerpolitik\' — '
+        'wird genutzt, um Dopplungen zwischen Rubriken zu vermeiden", '
         '"headline": "kurze Schlagzeile", "kommentar": "Kommentar, max 130 Zeichen", '
         '"quelle": "Quellenname und Datum, z.B. Reuters 22.06.2026 — KEINE Zitationsnummern wie [1]"},\n'
         '    ... bis "24" ...\n'
@@ -296,10 +311,49 @@ def get_daily_items(date_label: str):
 
     data = extract_json(call_api(system, prompt, max_tokens=5000))
     if data and "items" in data:
+        data["items"] = dedupe_rubrik_topics(data["items"])
         log(f"  {len(data['items'])} Rubrik-Meldungen erhalten.")
     else:
         log("  Keine verwertbaren Rubrik-Daten erhalten.")
     return data
+
+
+def dedupe_rubrik_topics(items: dict) -> dict:
+    """Erkennt, wenn zwei verschiedene Rubriken heute dasselbe Themen-
+    Schlagwort tragen (z. B. zweimal 'Fußball' in fachfremden Rubriken —
+    auch wenn es um unterschiedliche Vereine/Ligen geht), und verwirft die
+    später einsortierte Duplikat-Meldung. Diese Rubrik behält dann ihren
+    bestehenden Stand aus der Vorlage statt einer doppelten Meldung.
+    Fällt zusätzlich auf einen Wortüberlappungs-Vergleich zurück, falls das
+    Modell kein 'thema'-Feld liefert."""
+    seen_themen = {}
+    kept_texts = {}
+    for num in sorted(items.keys()):
+        item = items.get(num) or {}
+        combined = f"{item.get('headline', '')} {item.get('kommentar', '')}".strip()
+        if not combined:
+            continue
+        thema = (item.get("thema") or "").strip().lower()
+        thema_norm = re.sub(r"[^a-zäöüß ]", "", thema)
+
+        is_dup = False
+        if thema_norm and thema_norm in seen_themen:
+            is_dup = True
+        elif not thema_norm:
+            # Kein Themen-Schlagwort geliefert -> Rückfallprüfung per Wortüberlappung
+            is_dup = any(_paragraphs_content_overlap(combined, prev, 0.5) for prev in kept_texts.values())
+
+        if is_dup:
+            quelle_info = f"Thema '{thema}'" if thema_norm else combined[:70]
+            log(f"  Rubrik {num}: {quelle_info} überschneidet sich mit einer "
+                f"anderen Rubrik heute — Meldung verworfen, bestehender Stand bleibt.")
+            items[num] = {}
+            continue
+
+        if thema_norm:
+            seen_themen[thema_norm] = num
+        kept_texts[num] = combined
+    return items
 
 
 # ── Recherche: 3 Hintergrundstorys ──────────────────────────────────────────
@@ -310,8 +364,12 @@ def get_daily_stories(date_label: str):
         f"Du bist Hintergrundredakteur von schlusslicht.de. Heute ist {date_label}.\n\n"
         "Schreibe 3 tiefe Hintergrundstorys über aktuelle (max. 30 Tage alte) "
         "Schlusslichter aus verschiedenen Bereichen. Nutze die Websuche für echte "
-        "Fälle. Stil: investigativ, nüchtern, ohne Sentimentalität — zeige das "
-        "Systemversagen hinter dem Einzelfall. 400-700 Wörter je Story. "
+        "Fälle. Stil: investigativ, aber menschlich — zeige erkennbares "
+        "Mitgefühl mit den Betroffenen und eine klare, aber sachlich "
+        "begründete Haltung zum Systemversagen. Keine kalte Distanz, aber "
+        "auch keine Larmoyanz oder Übertreibung — jede Emotion muss sich aus "
+        "den geschilderten Fakten ergeben, nicht aus Adjektiven allein. "
+        "Zeige das Systemversagen hinter dem Einzelfall. 400-700 Wörter je Story. "
         "Antworte AUSSCHLIESSLICH auf Deutsch — keine chinesischen, "
         "kyrillischen, arabischen oder anderen nicht-lateinischen "
         "Schriftzeichen, auch nicht einzelne Wörter oder Zeichen davon.\n\n"
