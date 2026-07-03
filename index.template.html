@@ -449,6 +449,14 @@
   /* ── KI-Quellenangabe pro Rubrik ── */
   .ai-tag  { font-family:var(--mono); font-size:.54rem; letter-spacing:.06em; text-transform:uppercase;
              color:var(--green-deep); padding:4px 0 8px; line-height:1.4; }
+/* COUNTER */
+#counter-bar{display:none;align-items:center;justify-content:center;gap:18px;background:var(--red);padding:9px 36px;border-bottom:2px solid rgba(0,0,0,.15);flex-wrap:wrap;}
+.ctr-label{font-family:"IBM Plex Mono",monospace;font-size:.56rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.7);}
+.ctr-num{font-family:"Bebas Neue",sans-serif;font-size:2rem;line-height:1;color:#fff;letter-spacing:.04em;min-width:70px;text-align:center;transition:opacity .5s ease;opacity:0;}
+.ctr-num.on{opacity:1;}
+.ctr-live{display:inline-flex;align-items:center;gap:5px;font-family:"IBM Plex Mono",monospace;font-size:.5rem;letter-spacing:.14em;color:rgba(255,255,255,.55);text-transform:uppercase;}
+.ctr-dot{width:6px;height:6px;background:#fff;border-radius:50%;animation:blink 1.4s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.25;}}
 </style>
 </head>
 <body>
@@ -469,6 +477,12 @@
 <span class="nav-date" id="navDate">—</span>
 <span hidden="" id="nav-issue-label"></span></div>
 </header>
+<!-- COUNTER BAR -->
+<div id="counter-bar" style="margin-top:60px;">
+<span class="ctr-label">Besuche auf schlusslicht.de</span>
+<span class="ctr-num" id="ctr-num">…</span>
+<span class="ctr-live"><span class="ctr-dot"></span>&nbsp;Echtzeit-Zähler</span>
+</div>
 <!-- ══════════ TICKER ══════════ -->
 <div aria-hidden="true" class="ticker">
 <div class="ticker-inner" id="ticker">
@@ -1096,9 +1110,15 @@
         Datum/Uhrzeit, abgerufene URL, Referrer, Browser und Betriebssystem.
         Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO.</p>
 <h4>Cookies &amp; Tracking</h4>
-<p>Diese statische Seite setzt keine Tracking- oder Werbe-Cookies und bindet keine externen
-        Analyse-Dienste ein. Geladen werden lediglich Schriftarten von Google Fonts; dabei wird Ihre
-        IP-Adresse an Google übermittelt. Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO.</p>
+<p>Diese statische Seite setzt keine Tracking- oder Werbe-Cookies und bindet keine
+        personenbezogenen Analyse-Dienste ein. Geladen werden Schriftarten von Google Fonts; dabei
+        wird Ihre IP-Adresse an Google übermittelt. Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO.</p>
+<h4>Besucherzähler</h4>
+<p>Diese Seite zeigt einen öffentlichen Besucherzähler über den externen Dienst CounterAPI
+        (counterapi.dev). Gespeichert wird ausschließlich ein anonymer, aggregierter Zählwert (keine
+        IP-Adressen, keine personenbezogenen Daten, kein Tracking-Cookie). Die Zählung erfolgt
+        sitzungsbasiert per sessionStorage im Browser, sodass ein Seitenaufruf pro Sitzung nur einmal
+        gezählt wird. Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO.</p>
 </div>
 <div class="lblk" id="imp-q">
 <h2>Verwendete Datenquellen</h2>
@@ -1233,6 +1253,35 @@
   var WD = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
   var MO = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
 
+  /* ── Besucherzähler ────────────────────────────────────────────────────── */
+  var CTR_CFG = {
+    ctrNamespace: "schlusslicht-de",
+    ctrKey: "besuche",
+    ctrBase: "https://api.counterapi.dev/v1",
+    sessionKey: "sl_sess_v5"
+  };
+  async function initCounter() {
+    var el = $("ctr-num");
+    var fmt = function(n){ return Number(n).toLocaleString("de-DE"); };
+    try {
+      var counted = sessionStorage.getItem(CTR_CFG.sessionKey) === "1";
+      var r = await fetch(
+        CTR_CFG.ctrBase + "/" + CTR_CFG.ctrNamespace + "/" + CTR_CFG.ctrKey + "/" + (counted ? "get" : "up"),
+        { cache: "no-store" }
+      );
+      if (!r.ok) throw new Error(r.status);
+      var d = await r.json();
+      var n = d.count != null ? d.count : (d.value != null ? d.value : 0);
+      if (el) { el.textContent = fmt(n); el.classList.add("on"); }
+      var bar = $("counter-bar");
+      if (bar) bar.style.display = "flex";
+      if (!counted) sessionStorage.setItem(CTR_CFG.sessionKey, "1");
+    } catch (e) {
+      if (el) el.textContent = "—";
+      console.warn("Counter:", e.message);
+    }
+  }
+
   function weekNum(d){ var j=new Date(d.getFullYear(),0,1); return Math.ceil((((d-j)/86400000)+j.getDay()+1)/7); }
   function doy(d){ var s=new Date(d.getFullYear(),0,0); return Math.floor((d-s)/86400000); }
 
@@ -1298,7 +1347,7 @@
     m.addEventListener("click",function(e){ if(e.target===m){ m.classList.remove("open"); document.body.style.overflow=""; } });
   });
 
-  document.addEventListener("DOMContentLoaded",function(){ setDates(); rubrikDesTages(); });
+  document.addEventListener("DOMContentLoaded",function(){ setDates(); rubrikDesTages(); initCounter(); });
 </script>
 </body>
 </html>
