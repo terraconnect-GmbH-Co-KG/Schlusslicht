@@ -42,10 +42,11 @@ from bs4 import BeautifulSoup
 API_KEY = os.environ.get("OPENROUTER_API_KEY", "").strip()
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 MODEL = "perplexity/sonar"
-TEMPLATE = "insights.template.html"
+LANG = os.environ.get("SL_LANG", "de").strip().lower()
+TEMPLATE = "insights.en.template.html" if LANG == "en" else "insights.template.html"
 FACTS_SOURCE = "index.template.html"
 TODAY_SOURCE = "index.html"
-OUTPUT = "insights.html"
+OUTPUT = "insights.en.html" if LANG == "en" else "insights.html"
 TIMEOUT = 240
 N_COLS = 5
 N_RUBRIKEN = 24
@@ -463,7 +464,7 @@ def main() -> int:
         log("Keine Inhalte erzeugt — insights.html bleibt unverändert.")
         return 0
 
-    columns = data.get("columns", [])[:N_COLS]
+    columns = [c for c in data.get("columns", [])[:N_COLS] if isinstance(c, dict)]
     for col in columns:
         col["paragraphs"] = dedupe_column_paragraphs(col.get("paragraphs"))
 

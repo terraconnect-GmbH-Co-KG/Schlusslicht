@@ -31,8 +31,9 @@ from bs4 import BeautifulSoup
 API_KEY = os.environ.get("OPENROUTER_API_KEY", "").strip()
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 MODEL = "perplexity/sonar"  # beliebiges OpenRouter-Modell hier eintragen
-TEMPLATE = "index.template.html"
-OUTPUT = "index.html"
+LANG = os.environ.get("SL_LANG", "de").strip().lower()
+TEMPLATE = "index.en.template.html" if LANG == "en" else "index.template.html"
+OUTPUT = "index.en.html" if LANG == "en" else "index.html"
 TIMEOUT = 240
 
 WOCHENTAGE = [
@@ -329,7 +330,7 @@ def _fetch_items_batch(batch: dict, date_label: str, bereits_vergebene_themen: l
         "Kopfschütteln, Fassungslosigkeit), aber immer auf Basis der Fakten "
         "— nie ins Unsachliche oder Übertriebene abgleiten. Fakten plus ein "
         "pointierter, menschlicher Satz, höchstens 130 Zeichen pro Kommentar. "
-        "Antworte AUSSCHLIESSLICH auf Deutsch — keine chinesischen, "
+        "Antworte AUSSCHLIESSLICH auf " + ("Englisch (US)" if LANG == "en" else "Deutsch") + " — keine chinesischen, "
         "kyrillischen, arabischen oder anderen nicht-lateinischen "
         "Schriftzeichen, auch nicht einzelne Wörter oder Zeichen davon."
     )
@@ -366,11 +367,14 @@ def get_daily_items(date_label: str):
             log(f"  Gruppe {i}: keine verwertbare Antwort erhalten, wird übersprungen.")
             continue
         for num, item in batch_result.items():
-            if num in batch:
+            if num in batch and isinstance(item, dict) and item.get("headline"):
                 all_items[num] = item
                 thema = (item.get("thema") or "").strip()
                 if thema:
                     vergebene_themen.append(thema)
+            elif num in batch:
+                log(f"  Rubrik {num}: leerer oder ungültiger Eintrag von der "
+                    f"KI geliefert — übersprungen, bestehender Stand bleibt.")
 
     all_items = dedupe_rubrik_topics(all_items)
     all_items = strip_repeated_boilerplate(all_items)
@@ -426,7 +430,7 @@ def get_spotlight_and_ticker(date_label: str, items: dict):
     )
     system = (
         f"Du bist Chefredakteur von schlusslicht.de. Heute ist {date_label}. "
-        "Antworte AUSSCHLIESSLICH auf Deutsch, keine nicht-lateinischen "
+        "Antworte AUSSCHLIESSLICH auf " + ("Englisch (US)" if LANG == "en" else "Deutsch") + ", keine nicht-lateinischen "
         "Schriftzeichen. Antworte NUR mit validem JSON."
     )
     prompt = (
@@ -463,7 +467,7 @@ def review_and_fix_items(items: dict, date_label: str) -> dict:
         "Du bist Chef vom Dienst bei schlusslicht.de und prüfst Texte vor "
         "der Veröffentlichung. Du erfindest NIEMALS neue Inhalte — du "
         "bewertest ausschließlich, ob die vorliegenden Einträge bereits "
-        "sinnvoll sind. Antworte AUSSCHLIESSLICH auf Deutsch. Antworte NUR "
+        "sinnvoll sind. Antworte AUSSCHLIESSLICH auf " + ("Englisch (US)" if LANG == "en" else "Deutsch") + ". Antworte NUR "
         "mit validem JSON, keine Erklärung."
     )
     prompt = (
@@ -559,7 +563,7 @@ def get_daily_stories(date_label: str):
         "auch keine Larmoyanz oder Übertreibung — jede Emotion muss sich aus "
         "den geschilderten Fakten ergeben, nicht aus Adjektiven allein. "
         "Zeige das Systemversagen hinter dem Einzelfall. 400-700 Wörter je Story. "
-        "Antworte AUSSCHLIESSLICH auf Deutsch — keine chinesischen, "
+        "Antworte AUSSCHLIESSLICH auf " + ("Englisch (US)" if LANG == "en" else "Deutsch") + " — keine chinesischen, "
         "kyrillischen, arabischen oder anderen nicht-lateinischen "
         "Schriftzeichen, auch nicht einzelne Wörter oder Zeichen davon.\n\n"
         "SPRACHLICHE KLARHEIT: Jeder Absatz muss eine NEUE Information oder "
@@ -621,6 +625,9 @@ def get_daily_stories(date_label: str):
         log("  Verifiziere Quellen-URLs der Hintergrundstorys …")
         verifizierte_storys = []
         for story in data["stories"]:
+            if not isinstance(story, dict):
+                log("  Ungültiger Story-Eintrag (kein Objekt) — übersprungen.")
+                continue
             url = (story.get("source_url") or "").strip()
             if not verify_url(url):
                 log(f"  Story {story.get('title', '(ohne Titel)')!r}: Quellen-URL "
@@ -798,7 +805,7 @@ def main() -> int:
         f"{WOCHENTAGE[today.weekday()]}, {today.day}. "
         f"{MONATE[today.month - 1]} {today.year}"
     )
-    build_time = datetime.datetime.utcnow().strftime("%d.%m.%Y %H:%M UTC")
+    build_time = datetime.datetime.now(datetime.timezone.utc).strftime("%d.%m.%Y %H:%M UTC")
     log(f"Tagesausgabe: {date_label}")
 
     template_path = TEMPLATE if os.path.exists(TEMPLATE) else OUTPUT
