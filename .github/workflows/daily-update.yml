@@ -48,19 +48,37 @@ jobs:
       - name: Abhängigkeiten installieren
         run: pip install --quiet requests beautifulsoup4
 
-      - name: Tagesinhalte recherchieren und einbauen
+      - name: Tagesinhalte recherchieren und einbauen (DE)
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: python rebuild/generate.py
 
-      - name: Visionen-Seite recherchieren und einbauen
+      - name: Tagesinhalte recherchieren und einbauen (EN)
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          SL_LANG: en
+        run: python rebuild/generate.py
+
+      - name: Brightside-Seite recherchieren und einbauen (DE)
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: python rebuild/generate_visionen.py
 
-      - name: Meinungsseite (more from behind) aktualisieren
+      - name: Brightside-Seite recherchieren und einbauen (EN)
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          SL_LANG: en
+        run: python rebuild/generate_visionen.py
+
+      - name: Insights-Seite aktualisieren (DE)
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: python rebuild/generate_mfb.py
+
+      - name: Insights-Seite aktualisieren (EN)
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          SL_LANG: en
         run: python rebuild/generate_mfb.py
 
       # Workflow-Artifact (bleibt 90 Tage im Actions-Tab erhalten)
@@ -74,7 +92,7 @@ jobs:
         run: |
           git config user.name  "schlusslicht-bot"
           git config user.email "burkhard.frie@terraconnect.de"
-          git add index.html brightside.html insights.html
+          git add index.html brightside.html insights.html index.en.html brightside.en.html insights.en.html
           if git diff --staged --quiet; then
             echo "Keine Änderungen – heute nichts zu committen."
           else

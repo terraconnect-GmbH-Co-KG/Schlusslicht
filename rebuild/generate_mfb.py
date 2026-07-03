@@ -316,7 +316,7 @@ def get_commentary(facts_package: list, date_label: str):
         "pointierteste, bissigste Formulierung der Kolumne enthalten. Der "
         "Titel darf originell und wortspielerisch sein, aber nicht "
         "reißerisch wie eine Boulevardzeile klingen. Antworte "
-        "AUSSCHLIESSLICH auf Deutsch — keine chinesischen, kyrillischen, "
+        "AUSSCHLIESSLICH auf " + ("Englisch (US)" if LANG == "en" else "Deutsch") + " — keine chinesischen, kyrillischen, "
         "arabischen oder anderen nicht-lateinischen Schriftzeichen, auch "
         "nicht einzelne Wörter oder Zeichen davon.\n\n"
         "SPRACHLICHE KLARHEIT: Jeder der 4 Absätze hat eine feste, eigene "
