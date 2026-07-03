@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-generate_visionen.py — Tagesaktualisierung für visionen.html
+generate_visionen.py — Tagesaktualisierung für brightside.html
 ================================================================================
 Wird vom GitHub-Actions-Workflow .github/workflows/daily-update.yml gestartet,
 direkt im Anschluss an generate.py.
 
 Ablauf:
-  1. Liest die Vorlage  visionen.template.html.
+  1. Liest die Vorlage  brightside.template.html.
   2. Recherchiert per OpenRouter-API (perplexity/sonar, eingebaute Websuche)
      a) ein Spotlight ("Heute im Licht"),
      b) 7 kurze, belegte gute Nachrichten aus unterschiedlichen Bereichen,
      c) 3 Hintergrundgeschichten mit Fakten und Einordnung.
-  3. Baut die Inhalte fest in das HTML ein und schreibt  visionen.html.
+  3. Baut die Inhalte fest in das HTML ein und schreibt  brightside.html.
 
 WICHTIG zur Sorgfaltspflicht: Diese Seite behandelt Gesundheits-/Wissenschafts-
 themen. Der Prompt verlangt ausdrücklich echte, prüfbare Quellen (WHO, IEA,
@@ -36,8 +36,8 @@ from bs4 import BeautifulSoup
 API_KEY = os.environ.get("OPENROUTER_API_KEY", "").strip()
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 MODEL = "perplexity/sonar"
-TEMPLATE = "visionen.template.html"
-OUTPUT = "visionen.html"
+TEMPLATE = "brightside.template.html"
+OUTPUT = "brightside.html"
 TIMEOUT = 240
 
 WOCHENTAGE = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
@@ -233,7 +233,7 @@ Liefere GENAU dieses JSON-Schema:
 
 
 def get_visionen_content(date_label: str):
-    log("Recherchiere positive, belegte Nachrichten für visionen.html (in Gruppen) …")
+    log("Recherchiere positive, belegte Nachrichten für brightside.html (in Gruppen) …")
 
     spotlight = get_spotlight(date_label)
 
@@ -476,14 +476,14 @@ def main() -> int:
 
     template_path = TEMPLATE if os.path.exists(TEMPLATE) else OUTPUT
     if not os.path.exists(template_path):
-        log("FEHLER: Weder visionen.template.html noch visionen.html gefunden.")
+        log("FEHLER: Weder brightside.template.html noch brightside.html gefunden.")
         return 1
     with open(template_path, encoding="utf-8") as fh:
         html = fh.read()
 
     data = get_visionen_content(date_label)
     if not data:
-        log("Keine Inhalte erzeugt — visionen.html bleibt unverändert.")
+        log("Keine Inhalte erzeugt — brightside.html bleibt unverändert.")
         return 0
 
     html = inject(html, data, date_label, build_time)

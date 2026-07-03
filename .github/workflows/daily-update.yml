@@ -74,7 +74,7 @@ jobs:
         run: |
           git config user.name  "schlusslicht-bot"
           git config user.email "burkhard.frie@terraconnect.de"
-          git add index.html visionen.html more_from_behind.html
+          git add index.html brightside.html insights.html
           if git diff --staged --quiet; then
             echo "Keine Änderungen – heute nichts zu committen."
           else
