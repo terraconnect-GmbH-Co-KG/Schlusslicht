@@ -81,6 +81,17 @@ jobs:
           SL_LANG: en
         run: python rebuild/generate_mfb.py
 
+      - name: Nonconformist-Seite aktualisieren (DE)
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: python rebuild/generate_ncf.py
+
+      - name: Nonconformist-Seite aktualisieren (EN)
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          SL_LANG: en
+        run: python rebuild/generate_ncf.py
+
       # Workflow-Artifact (bleibt 90 Tage im Actions-Tab erhalten)
       - name: index.html als Workflow-Artifact hochladen
         uses: actions/upload-artifact@v4
@@ -92,7 +103,7 @@ jobs:
         run: |
           git config user.name  "schlusslicht-bot"
           git config user.email "burkhard.frie@terraconnect.de"
-          git add index.html brightside.html insights.html index.en.html brightside.en.html insights.en.html
+          git add index.html brightside.html insights.html index.en.html brightside.en.html insights.en.html nonconformist.html nonconformist.en.html
           if git diff --staged --quiet; then
             echo "Keine Änderungen – heute nichts zu committen."
           else
