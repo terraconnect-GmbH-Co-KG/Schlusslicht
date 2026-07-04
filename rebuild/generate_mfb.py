@@ -65,6 +65,14 @@ def log(msg: str) -> None:
 
 
 def call_api(system: str, prompt: str, max_tokens: int, retries: int = 3):
+    if LANG == "en":
+        system = (
+            "CRITICAL LANGUAGE RULE — HIGHEST PRIORITY: Write EVERY single output "
+            "value (headlines, comments, titles, paragraphs, tags, labels, captions, "
+            "facts, teasers, ticker items) in ENGLISH (US) ONLY. The instructions "
+            "below are written in German, but your output must be entirely in "
+            "English. NEVER output German words or sentences.\n\n" + system
+        )
     headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
     body = {
         "model": MODEL,
@@ -301,7 +309,7 @@ def get_commentary(facts_package: list, date_label: str):
         "X bis Babyboomer) — kein Jugend- oder Social-Media-Slang, keine "
         "Meme-Sprache, keine Anglizismen-Mischwörter (z. B. NIEMALS "
         "Konstruktionen wie 'irgendwas-treue' oder deutsch-englische "
-        "Bastelwörter). Schreibe in klarem, druckreifem Deutsch, wie es in "
+        "Bastelwörter). Schreibe in klarer, druckreifer Sprache, wie es in "
         "einem gedruckten Satiremagazin (Stil: Titanic, Eulenspiegel, "
         "klassische Feuilleton-Polemik) stehen könnte — nicht wie eine "
         "Boulevard-Schlagzeile oder ein Tweet.\n\n"
@@ -342,7 +350,7 @@ Liefere GENAU dieses JSON-Schema:
   "columns": [
     {{
       "rubrik_num": "die Nummer aus der Vorgabe",
-      "tag": "Standpunkt · Kurzthema",
+      "tag": "" + ("Standpoint · short topic" if LANG == "en" else "Standpunkt · Kurzthema") + "",
       "title": "kreativer, prägnanter Titel (wie eine Schlagzeile, max 40 Zeichen)",
       "paragraphs": [
         {{"text": "Absatz 1 — NUR: Einstieg mit einer der vorgegebenen Zahlen, nüchtern dargestellt. Keine Bewertung.", "punch": false}},

@@ -72,6 +72,14 @@ def verify_url(url: str, timeout: int = 8) -> bool:
 
 
 def call_api(system: str, prompt: str, max_tokens: int, retries: int = 3):
+    if LANG == "en":
+        system = (
+            "CRITICAL LANGUAGE RULE — HIGHEST PRIORITY: Write EVERY single output "
+            "value (headlines, comments, titles, paragraphs, tags, labels, captions, "
+            "facts, teasers, ticker items) in ENGLISH (US) ONLY. The instructions "
+            "below are written in German, but your output must be entirely in "
+            "English. NEVER output German words or sentences.\n\n" + system
+        )
     headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
     body = {
         "model": MODEL,
