@@ -429,7 +429,9 @@ def inject(html: str, columns: list, facts: dict) -> str:
                 li.append(strong)
 
         # Quelle: aus den deterministisch extrahierten Fakten, nicht von der KI
-        src_text = f"Quelle: {fact.get('table_title', '')} · {fact.get('table_period', '')} (Rubrik {rubrik_num})"
+        src_text = (f"Source: {fact.get('table_title', '')} · {fact.get('table_period', '')} (Category {rubrik_num})"
+                    if LANG == "en" else
+                    f"Quelle: {fact.get('table_title', '')} · {fact.get('table_period', '')} (Rubrik {rubrik_num})")
         set_text(soup.select_one(f"#col{i}-src"), src_text)
 
     return str(soup)

@@ -752,7 +752,9 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
     set_text(soup.select_one("#nav-issue-label"), date_label)
     set_text(
         soup.select_one("#update-time"),
-        f"Stand: {build_time} — automatisch erstellt am {date_label}",
+        (f"As of: {build_time} — automatically generated on {date_label}"
+         if LANG == "en" else
+         f"Stand: {build_time} — automatisch erstellt am {date_label}"),
     )
 
     # ── SEO: Title, Description, Open Graph, Twitter Card ─────────────────

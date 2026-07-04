@@ -459,6 +459,20 @@
 .lang-toggle{font-family:"IBM Plex Mono",monospace;font-size:.62rem;font-weight:700;letter-spacing:.12em;padding:4px 10px;border:1.5px solid currentColor;border-radius:3px;text-decoration:none;color:inherit;opacity:.75;transition:opacity .2s;}
 .lang-toggle:hover{opacity:1;}
 </style>
+<script>
+(function(){
+  try{
+    var pref=localStorage.getItem("sl_lang");
+    var map={"index.en.html":"index.html","brightside.en.html":"brightside.html","insights.en.html":"insights.html"};
+    var here=location.pathname.split("/").pop();
+    if(pref==="de"&&map[here]!==undefined){location.replace(map[here]);return;}
+    document.addEventListener("DOMContentLoaded",function(){
+      var t=document.querySelector(".lang-toggle");
+      if(t)t.addEventListener("click",function(){try{localStorage.setItem("sl_lang","de");}catch(e){}});
+    });
+  }catch(e){}
+})();
+</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -472,8 +486,8 @@
 <li><a href="#rubriken">24 Categories</a></li>
 <li><a href="#manifest">Manifesto</a></li>
 <li><a href="#impressum">Legal Notice</a></li>
-<li><a class="mfb" href="insights.html">Insights →</a></li>
-<li><a class="vis" href="brightside.html">Brightside ☀</a></li>
+<li><a class="mfb" href="insights.en.html">Insights →</a></li>
+<li><a class="vis" href="brightside.en.html">Brightside ☀</a></li>
 </ul>
 <a class="lang-toggle" href="index.html" title="Zur deutschen Version">DE</a>
 <span class="nav-date" id="navDate">—</span>
@@ -506,7 +520,7 @@
 <div class="hero-cta rise rise-3">
 <a class="btn btn-red" href="#rubriken">All 24 categories</a>
 <a class="btn btn-ghost" href="#stories">Background stories</a>
-<a class="hero-mfb" href="insights.html">Prefer plain talk? → Insights</a>
+<a class="hero-mfb" href="insights.en.html">Prefer plain talk? → Insights</a>
 </div>
 </div>
 <!-- SIGNATURE: die Weltrangliste, read from the bottom -->
@@ -1140,8 +1154,8 @@
 <li><a href="#impressum">Legal Notice</a></li>
 <li><a href="#imp-d">Datenschutz</a></li>
 <li><a href="#imp-q">Datenquellen</a></li>
-<li><a class="mfb" href="insights.html">Insights →</a></li>
-<li><a class="vis" href="brightside.html">Brightside ☀</a></li>
+<li><a class="mfb" href="insights.en.html">Insights →</a></li>
+<li><a class="vis" href="brightside.en.html">Brightside ☀</a></li>
 </ul>
 <span class="copy">© 2026 Burkhard Frie · Nottuln · Backwards is a direction too.</span>
 </div>
