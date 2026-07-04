@@ -103,6 +103,14 @@ def verify_url(url: str, timeout: int = 8) -> bool:
 
 
 def call_api(system: str, prompt: str, max_tokens: int, retries: int = 3):
+    if LANG == "en":
+        system = (
+            "CRITICAL LANGUAGE RULE — HIGHEST PRIORITY: Write EVERY single output "
+            "value (headlines, comments, titles, paragraphs, tags, labels, captions, "
+            "facts, teasers, ticker items) in ENGLISH (US) ONLY. The instructions "
+            "below are written in German, but your output must be entirely in "
+            "English. NEVER output German words or sentences.\n\n" + system
+        )
     """Ruft die OpenRouter-API mit Web-Search-Server-Tool auf und liefert den Text."""
     headers = {
         "Authorization": f"Bearer {API_KEY}",
@@ -694,6 +702,8 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
     # ── Ticker ────────────────────────────────────────────────────────────
     if items and items.get("ticker"):
         inner = soup.select_one(".ticker-inner")
+        if inner is not None:
+            inner["data-dup"] = "1"
         if inner is not None:
             inner.clear()
             doppelt = list(items["ticker"]) + list(items["ticker"])

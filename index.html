@@ -1291,6 +1291,10 @@
   });
 
   document.addEventListener("DOMContentLoaded",function(){ setDates(); rubrikDesTages(); initCounter(); });
+  document.addEventListener("DOMContentLoaded",function(){
+    var ti=document.getElementById("ticker");
+    if(ti&&ti.dataset.dup!=="1"){ti.innerHTML+=ti.innerHTML;ti.dataset.dup="1";}
+  });
 </script>
 </body>
 </html>

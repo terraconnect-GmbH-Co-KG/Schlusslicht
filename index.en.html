@@ -557,13 +557,13 @@
 <section class="section" id="ueber">
 <div class="wrap">
 <div class="sec-head">
-<h2>Der letzte Platz hat immer Platz.</h2>
+<h2>There's always room at the bottom.</h2>
 <span class="meta">// Das Konzept</span>
 </div>
 <div class="about-grid">
 <article class="about-card">
 <span aria-hidden="true" class="ico">📊</span>
-<h3>Echte Daten</h3>
+<h3>Real data</h3>
 <p>We invent nothing. Behind every number is a verifiable source – from the World Bank
         to the MLS standings. Those at the very bottom deserve at least to be quoted correctly.</p>
 </article>
@@ -1302,30 +1302,30 @@
 
   /* Category of the Day (rein clientseitig, keine Netzaufrufe) */
   var RUBRIKEN = [
-    {icon:"⚽",name:"Sport: MLS",desc:"Tabellenende – wer heute ganz unten steht."},
-    {icon:"🏀",name:"Sport: WNBA",desc:"Das Schlusslicht der Liga."},
-    {icon:"🔭",name:"Astronomie",desc:"Gescheiterte Missionen und gekürzte Budgets."},
-    {icon:"⚛️",name:"Forschung",desc:"Länder mit dem kleinsten F&E-Budget."},
-    {icon:"🦋",name:"Species Extinction",desc:"Ausgestorbene und bedrohte Arten."},
-    {icon:"🗳️",name:"Micro Parties",desc:"0,1 %. Angetreten. Gescheitert."},
-    {icon:"💶",name:"Low Wages",desc:"Branchen mit dem niedrigsten Stundenlohn."},
-    {icon:"🚆",name:"Deutsche Bahn",desc:"Pünktlichkeit und Investitionsstau."},
-    {icon:"📰",name:"Press Freedom",desc:"RSF-Index: wer ganz unten steht."},
-    {icon:"💰",name:"Corruption",desc:"CPI: die korruptesten Staaten."},
-    {icon:"🌿",name:"Climate Action",desc:"Kein Land erhält „sehr gut“."},
-    {icon:"🏦",name:"Tax Avoidance",desc:"Was Konzerne nicht zahlen."},
-    {icon:"😢",name:"World Happiness",desc:"Unglücklichste Länder und Ursachen."},
-    {icon:"📚",name:"Education",desc:"PISA und die Educationslücken."},
-    {icon:"🏥",name:"Life Expectancy",desc:"Kein Schicksal, sondern Politik."},
-    {icon:"📉",name:"BIP pro Kopf",desc:"Ärmste Länder, gleiche UN-Stimme."},
-    {icon:"🐌",name:"Internet",desc:"Langsamstes Netz – oft bewusst."},
-    {icon:"🗞️",name:"Sterbende Media",desc:"Jede Woche stirbt eine Lokalzeitung."},
-    {icon:"📱",name:"App-Ratings",desc:"Einstern-Reviews nach Konzernentscheidungen."},
-    {icon:"🎬",name:"Box-Office Flopss",desc:"Große Budgets, kleine Einnahmen."},
-    {icon:"🎵",name:"Eurovision",desc:"Germany regelmäßig unter den letzten fünf."},
-    {icon:"🍅",name:"Rotten Tomatoes",desc:"Perfekte Katastrophen, dokumentiert."},
-    {icon:"📈",name:"Markets & Insolvency",desc:"Historische Kurseinbrüche."},
-    {icon:"🗣️",name:"Sprachen",desc:"Alle 14 Tage stirbt eine Sprache."}
+    {icon:"⚽",name:"Sports: MLS",desc:"Bottom of the table – who is last today."},
+    {icon:"🏀",name:"Sports: WNBA",desc:"The league's last-placed team."},
+    {icon:"🔭",name:"Astronomy",desc:"Failed missions and slashed budgets."},
+    {icon:"⚛️",name:"Research",desc:"Countries with the smallest R&D budgets."},
+    {icon:"🦋",name:"Species Extinction",desc:"Extinct and endangered species."},
+    {icon:"🗳️",name:"Micro Parties",desc:"0.1%. Ran. Failed."},
+    {icon:"💶",name:"Low Wages",desc:"Sectors with the lowest hourly pay."},
+    {icon:"🚆",name:"Deutsche Bahn",desc:"Punctuality and investment backlog."},
+    {icon:"📰",name:"Press Freedom",desc:"RSF index: who sits at the bottom."},
+    {icon:"💰",name:"Corruption",desc:"CPI: the most corrupt states."},
+    {icon:"🌿",name:"Climate Action",desc:"No country rated \u201every good\u201c."},
+    {icon:"🏦",name:"Tax Avoidance",desc:"What corporations don't pay."},
+    {icon:"😢",name:"World Happiness",desc:"Unhappiest countries and why."},
+    {icon:"📚",name:"Education",desc:"PISA and the education gaps."},
+    {icon:"🏥",name:"Life Expectancy",desc:"Not fate, but policy."},
+    {icon:"📉",name:"GDP per capita",desc:"Poorest countries, same UN vote."},
+    {icon:"🐌",name:"Internet",desc:"Slowest networks – often by design."},
+    {icon:"🗞️",name:"Dying Media",desc:"A local paper dies every week."},
+    {icon:"📱",name:"App Ratings",desc:"One-star reviews after corporate decisions."},
+    {icon:"🎬",name:"Box-Office Flops",desc:"Big budgets, tiny revenues."},
+    {icon:"🎵",name:"Eurovision",desc:"Germany regularly among the bottom five."},
+    {icon:"🍅",name:"Rotten Tomatoes",desc:"Perfect disasters, documented."},
+    {icon:"📈",name:"Markets & Insolvency",desc:"Historic stock collapses."},
+    {icon:"🗣️",name:"Languages",desc:"A language dies every 14 days."}
   ];
   function rubrikDesTages(){
     var i = (doy(new Date())+7) % RUBRIKEN.length, r = RUBRIKEN[i];
@@ -1355,6 +1355,10 @@
   });
 
   document.addEventListener("DOMContentLoaded",function(){ setDates(); rubrikDesTages(); initCounter(); });
+  document.addEventListener("DOMContentLoaded",function(){
+    var ti=document.getElementById("ticker");
+    if(ti&&ti.dataset.dup!=="1"){ti.innerHTML+=ti.innerHTML;ti.dataset.dup="1";}
+  });
 </script>
 </body>
 </html>
