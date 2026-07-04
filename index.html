@@ -149,9 +149,9 @@
   }
   .brand b { color:var(--red); font-weight:800; }
   .nav-links { display:flex; gap:6px; list-style:none; margin-left:auto; align-items:center; }
-  .nav-links a {
-    font-family:var(--mono); font-size:.7rem; letter-spacing:.1em; text-transform:uppercase;
-    color:var(--ink-2); text-decoration:none; padding:8px 11px; border-radius:8px;
+  .nav-links a {white-space:nowrap;
+    font-family:var(--mono); font-size:.62rem; letter-spacing:.05em; text-transform:uppercase;
+    color:var(--ink-2); text-decoration:none; padding:7px 9px; border-radius:8px;
     transition:background .15s, color .15s;
   }
   .nav-links a:hover { background:var(--paper-2); color:var(--ink); }
@@ -419,6 +419,9 @@
   .aitem .at { font-size:.9rem; color:var(--ink-2); line-height:1.45; }
 
   /* ───────────────── RESPONSIVE ───────────────── */
+  @media (max-width:1280px) {
+    .nav-date { display:none; }
+  }
   @media (max-width:1080px) {
     .hero-grid { grid-template-columns:1fr; }
     .about-grid, .stories-grid, .rubgrid { grid-template-columns:repeat(2,1fr); }
@@ -428,7 +431,7 @@
     .legal-grid { grid-template-columns:1fr; gap:24px; }
     .legal-nav { position:static; }
   }
-  @media (max-width:760px) {
+  @media (max-width:900px) {
     .nav-links { display:none; }
     .nav-links.show {
       display:flex; position:absolute; top:66px; left:0; right:0; flex-direction:column; gap:2px;
