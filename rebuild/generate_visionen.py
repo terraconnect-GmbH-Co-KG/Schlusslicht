@@ -360,12 +360,14 @@ def set_html(node, html_value):
         node.append(BeautifulSoup(str(html_value), "html.parser"))
 
 
-def make_source_html(name, url, date, prefix="Quelle"):
+def make_source_html(name, url, date, prefix=None):
+    if prefix is None:
+        prefix = "Source" if LANG == "en" else "Quelle"
     name = (name or "").strip()
     url = (url or "").strip()
     date = (date or "").strip()
     if not name:
-        return f"{prefix}: KI-recherchiert"
+        return f"{prefix}: " + ("AI-researched" if LANG == "en" else "KI-recherchiert")
     if url:
         link = f'<a href="{url}" target="_blank" rel="noopener">{name}</a>'
     else:
@@ -438,23 +440,35 @@ def inject(html: str, data, date_label: str, build_time: str) -> str:
                 link = f'<a href="{url}" target="_blank" rel="noopener">{name}</a>' if url else name
                 parts.append(link + (f", {date}" if date else ""))
             if parts:
-                set_html(soup.select_one(f"#vs{i}-modal-src"), "Quellen: " + " · ".join(parts))
+                set_html(soup.select_one(f"#vs{i}-modal-src"), ("Sources: " if LANG == "en" else "Quellen: ") + " · ".join(parts))
 
     # ── Transparenz-Hinweis: ehrlich auf Vollautomatisierung umgestellt ──────
     note = soup.select_one("#transp-note")
     if note is not None:
         note.clear()
-        note.append(BeautifulSoup(
-            f"<b>Ehrlich gesagt:</b> Diese Seite wird vollautomatisch durch eine "
-            f"KI-gestützte Recherche mit Websuche erstellt (Stand dieser Ausgabe: "
-            f"{date_label}). Jede Meldung muss eine echte, verlinkte Quelle "
-            f"(WHO, IEA, IUCN, UN, Weltbank, Fachjournale u. a.) nennen — eine "
-            f"manuelle Redaktionsprüfung vor Veröffentlichung findet nicht mehr "
-            f"statt. Fehler gefunden? Schreiben Sie an "
-            f'<a href="mailto:hallo@schlusslicht.de" style="color:#ffe1b0;">hallo@schlusslicht.de</a> '
-            f"– wir korrigieren transparent.",
-            "html.parser",
-        ))
+        if LANG == "en":
+            note_html = (
+                f"<b>Full disclosure:</b> This page is generated fully automatically by "
+                f"AI-assisted research with web search (as of this edition: "
+                f"{date_label}). Every item must cite a real, linked source "
+                f"(WHO, IEA, IUCN, UN, World Bank, peer-reviewed journals, etc.) — no "
+                f"manual editorial review takes place before publication. Found an "
+                f'error? Write to <a href="mailto:hallo@schlusslicht.de" '
+                f'style="color:#ffe1b0;">hallo@schlusslicht.de</a> '
+                f"— we correct transparently."
+            )
+        else:
+            note_html = (
+                f"<b>Ehrlich gesagt:</b> Diese Seite wird vollautomatisch durch eine "
+                f"KI-gestützte Recherche mit Websuche erstellt (Stand dieser Ausgabe: "
+                f"{date_label}). Jede Meldung muss eine echte, verlinkte Quelle "
+                f"(WHO, IEA, IUCN, UN, Weltbank, Fachjournale u. a.) nennen — eine "
+                f"manuelle Redaktionsprüfung vor Veröffentlichung findet nicht mehr "
+                f"statt. Fehler gefunden? Schreiben Sie an "
+                f'<a href="mailto:hallo@schlusslicht.de" style="color:#ffe1b0;">hallo@schlusslicht.de</a> '
+                f"– wir korrigieren transparent."
+            )
+        note.append(BeautifulSoup(note_html, "html.parser"))
 
     # ── SEO: Title, Description, OG, Twitter ─────────────────────────────────
     if sp.get("title"):
