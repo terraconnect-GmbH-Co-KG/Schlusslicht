@@ -111,6 +111,12 @@ def call_api(system: str, prompt: str, max_tokens: int, retries: int = 3):
             "below are written in German, but your output must be entirely in "
             "English. NEVER output German words or sentences.\n\n" + system
         )
+        prompt = (
+            prompt
+            + "\n\nFINAL REMINDER — MANDATORY: Every output value in the JSON must "
+            "be written in ENGLISH (US). German output is INVALID and will be "
+            "rejected. Translate any German source material into English."
+        )
     """Ruft die OpenRouter-API mit Web-Search-Server-Tool auf und liefert den Text."""
     headers = {
         "Authorization": f"Bearer {API_KEY}",
@@ -136,6 +142,40 @@ def call_api(system: str, prompt: str, max_tokens: int, retries: int = 3):
     return None
 
 
+_DE_STOPWORTE_GATE = {"der", "die", "das", "und", "nicht", "eine", "einen", "mit",
+                      "für", "von", "wird", "sind", "auch", "sich", "wurde", "beim",
+                      "über", "gegen", "wegen", "seit", "noch", "nur", "dass"}
+
+
+def _wirkt_deutsch(obj) -> bool:
+    """Heuristik: Sammelt alle String-Werte einer JSON-Struktur und prüft, ob
+    der Text ueberwiegend deutsch wirkt (Umlaute oder viele deutsche
+    Stoppwoerter). Nur im EN-Modus relevant."""
+    texte = []
+
+    def sammle(o):
+        if isinstance(o, str):
+            texte.append(o)
+        elif isinstance(o, list):
+            for v in o:
+                sammle(v)
+        elif isinstance(o, dict):
+            for v in o.values():
+                sammle(v)
+
+    sammle(obj)
+    gesamt = " ".join(texte)
+    if len(gesamt) < 60:
+        return False
+    if re.search(r"[äöüßÄÖÜ]", gesamt):
+        return True
+    woerter = re.findall(r"[a-zA-Z]+", gesamt.lower())
+    if not woerter:
+        return False
+    treffer = sum(1 for w in woerter if w in _DE_STOPWORTE_GATE)
+    return (treffer / len(woerter)) > 0.08
+
+
 def extract_json(text):
     """Schält ein JSON-Objekt aus der Modellantwort."""
     if not text:
@@ -149,7 +189,12 @@ def extract_json(text):
     except json.JSONDecodeError as exc:
         log(f"  JSON-Parsefehler: {exc}")
         return None
-    return sanitize(data)
+    data = sanitize(data)
+    if LANG == "en" and _wirkt_deutsch(data):
+        log("  SPRACH-SCHRANKE: Antwort wirkt deutsch, obwohl Englisch verlangt "
+            "war — komplett verworfen, bestehender (englischer) Stand bleibt.")
+        return None
+    return data
 
 
 # Unicode-Bereiche, die in deutschen Texten nichts verloren haben und auf
@@ -708,7 +753,7 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
             inner.clear()
             doppelt = list(items["ticker"]) + list(items["ticker"])
             for txt in doppelt:
-                item = soup.new_tag("span", attrs={"class": "tk-item"})
+                item = soup.new_tag("span", attrs={"class": "tk"})
                 item.append(f"{txt} ")
                 sep = soup.new_tag("span", attrs={"class": "tk-sep"})
                 sep.string = "✦"
