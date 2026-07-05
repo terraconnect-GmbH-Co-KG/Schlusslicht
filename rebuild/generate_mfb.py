@@ -17,10 +17,10 @@ Seite, die explizit als "pointiert und parteiisch, aber überprüfbar" beworben
 wird.
 
 Ablauf:
-  1. Liest die 24 Rubrik-Tabellen aus index.template.html (feste Fakten).
+  1. Liest die Rubrik-Tabellen aus index.template.html (feste Fakten).
   2. Liest die heutigen Schlagzeilen/Kommentare aus dem frisch gebauten
      index.html (aktueller Anlass des Tages je Rubrik).
-  3. Wählt per Datum rotierend 5 von 24 Rubriken aus (volle Abdeckung alle
+  3. Wählt per Datum rotierend 5 politische Rubriken aus (volle Abdeckung alle
      ~5 Tage, deterministisch, kein Zufall).
   4. Lässt die KI für jede der 5 Rubriken einen Meinungskommentar auf Basis
      der vorgegebenen Fakten schreiben.
@@ -263,7 +263,7 @@ def dedupe_column_paragraphs(paragraphs, threshold=0.75):
 
 # ── Deterministische Fakten-Extraktion aus den Rubrik-Tabellen ───────────────
 def extract_rubrik_facts(path: str) -> dict:
-    """Liest alle 24 Rubrik-Tabellen aus und liefert strukturierte Fakten
+    """Liest alle Rubrik-Tabellen aus und liefert strukturierte Fakten
     (Name, Tabellentitel, Zeilen, Fußzeile) — ohne jede KI-Beteiligung."""
     with open(path, encoding="utf-8") as fh:
         soup = BeautifulSoup(fh, "html.parser")
@@ -330,8 +330,7 @@ def extract_today_headlines(path: str) -> dict:
 # Ausgeschlossen: Sport (01,02), Raumfahrt (03), App-Bewertungen (19),
 # Kino/Eurovision/Film (20,21,22) — passen thematisch nicht zu einer
 # politischen Kolumne für ein Gen-X-/Boomer-Publikum.
-POLITISCHE_RUBRIKEN = ["04", "05", "06", "07", "08", "09", "10", "11",
-                       "12", "13", "14", "15", "16", "17", "18", "23", "24"]
+POLITISCHE_RUBRIKEN = ["02", "03", "04", "05", "06", "07", "08"]
 
 
 def pick_rubriken(today: datetime.date) -> list:

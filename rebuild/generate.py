@@ -8,7 +8,7 @@ Wird vom GitHub-Actions-Workflow .github/workflows/daily-update.yml gestartet.
 Ablauf:
   1. Liest die Vorlage  index.template.html  (Fallback: index.html).
   2. Recherchiert per OpenRouter-API mit Web-Search-Server-Tool
-       a) tagesaktuelle Meldungen für alle 24 Rubriken,
+       a) tagesaktuelle Meldungen für alle 8 Rubriken,
        b) 3 frische Hintergrundstorys.
   3. Baut die Inhalte fest in das HTML ein und schreibt  index.html.
 
@@ -49,32 +49,16 @@ MONATE = (
      "August", "September", "Oktober", "November", "Dezember"]
 )
 
-# Die 24 Rubriken der Seite
+# Die 8 Rubriken der Seite (nur eine Sport-Rubrik)
 RUBRIKEN = {
-    "01": "Sport / MLS — schlechtestes Team im Tabellenende",
-    "02": "Sport / Basketball — WNBA o. a. Liga, schlechtestes Team",
-    "03": "Raumfahrt & Astronomie — Missionsscheitern, Budgetkürzung, Panne",
-    "04": "Forschungsbudget — Land mit niedrigstem F&E-Etat, aktueller Bericht",
-    "05": "Artensterben — bedrohte/ausgestorbene Art, neues Gutachten",
-    "06": "Kleinstparteien — Wahlergebnis Deutschland, Land/Kommune",
-    "07": "Niedriglohn — Branche, Tarifabschluss, Studie",
-    "08": "Bahn & ÖPNV — Pünktlichkeit, Ausfall, Streik, Investitionsstau",
-    "09": "Pressefreiheit — RSF-Bericht, inhaftierter Journalist, Einschränkung",
-    "10": "Korruption — CPI, verhafteter Politiker, Korruptionsskandal",
-    "11": "Klimaschutz — verfehltes Ziel, Emissionsrekord, CCPI",
-    "12": "Steuervermeidung — Konzern, Steuerlücke, EU-Strafe",
-    "13": "Glück & Zufriedenheit — unglücklichstes Land, Studie, Report",
-    "14": "Bildung — PISA, Bildungslücke, Vergleichsstudie, Ranking",
-    "15": "Lebenserwartung — aktuellster WHO-Bericht, Ländervergleich",
-    "16": "Armut & BIP — ärmstes Land, Weltbank-Bericht",
-    "17": "Internet — langsamstes Land, gesperrtes Netz, Zensur",
-    "18": "Medien — Zeitungseinstellung, Auflagenrückgang, Entlassungen",
-    "19": "App-Bewertungen — negative Reviews nach Skandal/Entscheidung",
-    "20": "Kino-Flop — Box-Office-Katastrophe",
-    "21": "Eurovision — Vorbereitung, Teilnehmer, Quotenflop",
-    "22": "Film/Serie — aktuell schlechteste Rotten-Tomatoes-Bewertung",
-    "23": "Börse & Insolvenz — Kurseinbruch, Insolvenz, Managementversagen",
-    "24": "Sprachen & Kultur — Sprachtod, bedrohte Sprache, Statement",
+    "01": "Sport / MLS — schlechtestes Team im Tabellenende (die einzige Sport-Rubrik)",
+    "02": "Niedriglohn — Branche, Tarifabschluss, Studie",
+    "03": "Bahn & ÖPNV — Pünktlichkeit, Ausfall, Streik, Investitionsstau",
+    "04": "Pressefreiheit — RSF-Index, Journalist inhaftiert/bedroht, Zensur",
+    "05": "Korruption — CPI, aktueller Fall mit Urteil/Anklage (nur belegt!)",
+    "06": "Klimaschutz — CCPI, verfehltes Ziel, Rückschritt eines Landes",
+    "07": "Steuervermeidung — Konzern-Konstrukt, Urteil, Nachzahlung (nur belegt!)",
+    "08": "Medien — Zeitungssterben, Auflagenkollaps, Redaktionsschließung",
 }
 
 
@@ -319,9 +303,10 @@ def dedupe_paragraphs(paragraphs, threshold=0.75):
     return result
 
 
-# ── Recherche: 24 Rubriken ───────────────────────────────────────────────────
+# ── Recherche: 8 Rubriken ───────────────────────────────────────────────────
 RUBRIK_BATCHES = [
-    dict(list(RUBRIKEN.items())[i : i + 6]) for i in range(0, len(RUBRIKEN), 6)
+    {k: RUBRIKEN[k] for k in ["01", "02", "03", "04"]},
+    {k: RUBRIKEN[k] for k in ["05", "06", "07", "08"]},
 ]
 
 
@@ -398,7 +383,7 @@ def _fetch_items_batch(batch: dict, date_label: str, bereits_vergebene_themen: l
 
 
 def get_daily_items(date_label: str):
-    log("Recherchiere Tagesmeldungen für 24 Rubriken (in 4 Gruppen) …")
+    log(f"Recherchiere Tagesmeldungen für {len(RUBRIKEN)} Rubriken (in {len(RUBRIK_BATCHES)} Gruppen) …")
 
     all_items = {}
     vergebene_themen = []
@@ -700,7 +685,7 @@ def set_text(node, value):
 def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
 
-    # ── 24 Rubrik-Meldungen ───────────────────────────────────────────────
+    # ── Rubrik-Meldungen ───────────────────────────────────────────────
     if items and items.get("items"):
         for num, it in items["items"].items():
             card = soup.select_one(f'[data-rubrik="{num}"]')
@@ -820,7 +805,7 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
         hl = (sp.get("hl") or "").strip()
         txt = (sp.get("text") or "").strip()
         og_title = f"SCHLUSSLICHT — {hl}" if hl else "SCHLUSSLICHT — Das Magazin der Letzten"
-        og_desc = txt[:155] if txt else "Das Magazin der Letzten. 24 Rubriken täglich aktuell."
+        og_desc = txt[:155] if txt else "Das Magazin der Letzten. 8 Rubriken täglich aktuell."
 
         title_tag = soup.find("title")
         if title_tag:
