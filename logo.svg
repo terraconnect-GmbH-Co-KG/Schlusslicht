@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<defs>
+<radialGradient id="g" cx="50%" cy="50%" r="50%">
+<stop offset="0%" stop-color="#F0322D" stop-opacity=".65"/>
+<stop offset="70%" stop-color="#F0322D" stop-opacity=".15"/>
+<stop offset="100%" stop-color="#F0322D" stop-opacity="0"/>
+</radialGradient>
+<linearGradient id="l" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#FF6A5E"/>
+<stop offset="55%" stop-color="#F0322D"/>
+<stop offset="100%" stop-color="#C5201A"/>
+</linearGradient>
+</defs>
+<rect x="7" y="14" width="10" height="36" rx="3" fill="#211C17"/>
+<rect x="21" y="23" width="10" height="27" rx="3" fill="#211C17"/>
+<rect x="35" y="32" width="10" height="18" rx="3" fill="#211C17"/>
+<circle cx="54" cy="43.5" r="19" fill="url(#g)"/>
+<rect x="48" y="37" width="12" height="13" rx="4" fill="url(#l)"/>
+<rect x="50.5" y="40.2" width="7" height="1.9" rx=".95" fill="#FFD9D4" opacity=".95"/>
+<rect x="50.5" y="43.6" width="7" height="1.9" rx=".95" fill="#FFC9C2" opacity=".75"/>
+</svg>

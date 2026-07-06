@@ -57,12 +57,15 @@
   .essay .aside{font-family:var(--mono);font-size:.72rem;color:var(--ink3);border-top:1px solid var(--line);padding-top:14px;max-width:720px;}
   .foot{padding:44px 0 60px;color:var(--ink3);font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;}
   .foot a{color:var(--ink2);}
+  .brand .logo-mark { width:30px; height:30px; display:inline-block; vertical-align:-7px; margin-right:9px; }
+  .brand:hover .logo-mark rect[fill^="url"] { filter:brightness(1.15); }
 </style>
+<link href="logo.svg" rel="icon" type="image/svg+xml"/>
 </head>
 <body>
 <header class="site">
 <div class="wrap nav">
-<a class="brand" href="index.html">SCHLUSSLICHT</a>
+<a class="brand" href="index.html"><svg aria-hidden="true" class="logo-mark" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="slg" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#F0322D" stop-opacity=".65"/><stop offset="70%" stop-color="#F0322D" stop-opacity=".15"/><stop offset="100%" stop-color="#F0322D" stop-opacity="0"/></radialGradient><linearGradient id="sll" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FF6A5E"/><stop offset="55%" stop-color="#F0322D"/><stop offset="100%" stop-color="#C5201A"/></linearGradient></defs><rect x="7" y="14" width="10" height="36" rx="3" fill="currentColor"/><rect x="21" y="23" width="10" height="27" rx="3" fill="currentColor"/><rect x="35" y="32" width="10" height="18" rx="3" fill="currentColor"/><circle cx="54" cy="43.5" r="19" fill="url(#slg)"/><rect x="48" y="37" width="12" height="13" rx="4" fill="url(#sll)"/><rect x="50.5" y="40.2" width="7" height="1.9" rx=".95" fill="#FFD9D4" opacity=".95"/><rect x="50.5" y="43.6" width="7" height="1.9" rx=".95" fill="#FFC9C2" opacity=".75"/></svg>SCHLUSSLICHT</a>
 <ul class="nav-links">
 <li><a href="index.html">Startseite</a></li>
 <li><a class="mfb" href="insights.html">Insights →</a></li>
