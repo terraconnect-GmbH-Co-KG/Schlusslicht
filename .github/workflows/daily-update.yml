@@ -1,125 +1,64 @@
 name: Tägliche Aktualisierung – schlusslicht.de
 
-# ─────────────────────────────────────────────────────────────────────────
-#  Baut die Seite jeden Morgen neu: recherchiert per OpenRouter-API + Websuche
-#  tagesaktuelle Meldungen für alle 24 Rubriken sowie 3 Hintergrundstorys,
-#  schreibt sie fest in index.html, committet das Ergebnis und legt ein
-#  GitHub Release mit der fertigen index.html als Artifact an.
-# ─────────────────────────────────────────────────────────────────────────
-
 on:
   schedule:
-    # 04:10 UTC  ≈  05:10 (Winter) / 06:10 (Sommer) deutscher Zeit.
-    # Hinweis: GitHub kann geplante Läufe um einige Minuten verzögern.
     - cron: '10 4 * * *'
-  workflow_dispatch: # erlaubt zusätzlich den manuellen Start per Knopf
+  workflow_dispatch:
 
-# Schreibrecht, damit der Workflow committen und Releases anlegen darf
 permissions:
   contents: write
 
-# Verhindert, dass sich zwei Läufe überschneiden
-concurrency:
-  group: daily-update
-  cancel-in-progress: false
-
 jobs:
-  rebuild:
+  update:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Repository auschecken
-        uses: actions/checkout@v4
-        with:
-          ref: main
+      - uses: actions/checkout@v4
 
-      # Datum einmal berechnen – alle nachfolgenden Steps nutzen diese Outputs
-      - name: Metadaten festlegen
-        id: meta
-        run: |
-          echo "release_name=Tagesausgabe $(date -u +'%d.%m.%Y')" >> $GITHUB_OUTPUT
-          echo "tag=tagesausgabe-$(date -u +'%Y-%m-%d')"           >> $GITHUB_OUTPUT
-
-      - name: Python einrichten
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Abhängigkeiten installieren
-        run: pip install --quiet requests beautifulsoup4
+      - run: pip install --quiet requests beautifulsoup4
 
-      - name: Tagesinhalte recherchieren und einbauen (DE)
+      # Versuche ALLE Seiten mit API zu aktualisieren (DE + EN je einmal)
+      - name: Mit API aktualisieren (wenn verfügbar)
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        run: python rebuild/generate.py
-
-      - name: Tagesinhalte recherchieren und einbauen (EN)
-        env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          SL_LANG: en
-        run: python rebuild/generate.py
-
-      - name: Brightside-Seite recherchieren und einbauen (DE)
-        env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        run: python rebuild/generate_visionen.py
-
-      - name: Brightside-Seite recherchieren und einbauen (EN)
-        env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          SL_LANG: en
-        run: python rebuild/generate_visionen.py
-
-      - name: Insights-Seite aktualisieren (DE)
-        env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        run: python rebuild/generate_mfb.py
-
-      - name: Insights-Seite aktualisieren (EN)
-        env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          SL_LANG: en
-        run: python rebuild/generate_mfb.py
-
-      - name: Nonconformist-Seite aktualisieren (DE)
-        env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        run: python rebuild/generate_ncf.py
-
-      - name: Nonconformist-Seite aktualisieren (EN)
-        env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          SL_LANG: en
-        run: python rebuild/generate_ncf.py
-
-      # Workflow-Artifact (bleibt 90 Tage im Actions-Tab erhalten)
-      - name: index.html als Workflow-Artifact hochladen
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.meta.outputs.release_name }}
-          path: index.html
-
-      - name: Neue Ausgabe committen
         run: |
-          git config user.name  "schlusslicht-bot"
+          python rebuild/generate.py 2>&1 || true
+          SL_LANG=en python rebuild/generate.py 2>&1 || true
+          python rebuild/generate_visionen.py 2>&1 || true
+          SL_LANG=en python rebuild/generate_visionen.py 2>&1 || true
+          python rebuild/generate_mfb.py 2>&1 || true
+          SL_LANG=en python rebuild/generate_mfb.py 2>&1 || true
+          python rebuild/generate_ncf.py 2>&1 || true
+          SL_LANG=en python rebuild/generate_ncf.py 2>&1 || true
+        continue-on-error: true
+
+      # FALLBACK: Wenn API-Fehler → aktualisiere mindestens Datum
+      - name: Fallback — Aktualisiere Datum (bei API-Fehler)
+        run: |
+          python rebuild/fallback_update.py index.html de || true
+          python rebuild/fallback_update.py index.en.html en || true
+          python rebuild/fallback_update.py brightside.html de || true
+          python rebuild/fallback_update.py brightside.en.html en || true
+          python rebuild/fallback_update.py insights.html de || true
+          python rebuild/fallback_update.py insights.en.html en || true
+          python rebuild/fallback_update.py nonconformist.html de || true
+          python rebuild/fallback_update.py nonconformist.en.html en || true
+        continue-on-error: true
+
+      # Commit und Push — HTML-Seiten UND die Story-Historie
+      # (story_history.json MUSS committet werden, sonst geht die
+      # Wiederholungssperre bei jedem Lauf verloren, weil GitHub-Actions-
+      # Runner ephemeral sind und nur der committete Repo-Stand bleibt)
+      - name: Commit und Push
+        run: |
+          git config user.name "schlusslicht-bot"
           git config user.email "burkhard.frie@terraconnect.de"
-          git add index.html brightside.html insights.html index.en.html brightside.en.html insights.en.html nonconformist.html nonconformist.en.html
-          if git diff --staged --quiet; then
-            echo "Keine Änderungen – heute nichts zu committen."
-          else
-            git commit -m "${{ steps.meta.outputs.release_name }}"
+          git add *.html rebuild/story_history.json 2>/dev/null || true
+          git diff --staged --quiet || (
+            git commit -m "Tagesausgabe $(date -u +'%d.%m.%Y')"
             git push
-            echo "Neue Tagesausgabe veröffentlicht."
-          fi
-
-      # GitHub Release anlegen (oder bei Mehrfach-Run des Tages aktualisieren)
-      # und index.html als Release-Asset anhängen
-      - name: GitHub Release erstellen und index.html anhängen
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.meta.outputs.tag }}
-          name: ${{ steps.meta.outputs.release_name }}
-          files: index.html
-          make_latest: true
-          overwrite_files: true
-
+          )
+        continue-on-error: true

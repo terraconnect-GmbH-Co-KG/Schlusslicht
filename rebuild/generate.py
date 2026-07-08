@@ -408,16 +408,17 @@ def get_daily_items(date_label: str):
     all_items = review_and_fix_items(all_items, date_label)
 
     spotlight_ticker = get_spotlight_and_ticker(date_label, all_items)
+    upside = get_upside_widget(date_label)
 
     if all_items:
         log(f"  {len(all_items)} Rubrik-Meldungen final erhalten.")
     else:
         log("  Keine verwertbaren Rubrik-Daten erhalten.")
 
-    if not all_items and not spotlight_ticker.get("spotlight") and not spotlight_ticker.get("ticker"):
+    if not all_items and not spotlight_ticker.get("spotlight") and not spotlight_ticker.get("ticker") and not upside:
         return None
 
-    return {"items": all_items, **spotlight_ticker}
+    return {"items": all_items, "upside": upside, **spotlight_ticker}
 
 
 def strip_repeated_boilerplate(items: dict, max_erlaubt: int = 2) -> dict:
@@ -577,9 +578,133 @@ def dedupe_rubrik_topics(items: dict) -> dict:
 
 
 # ── Recherche: 3 Hintergrundstorys ──────────────────────────────────────────
+def get_upside_widget(date_label: str):
+    """Holt 4 ECHTE, aktuell belegte 'ganz hinten'-Fakten für das Signature-
+    Widget im Hero-Bereich ('Heute ganz hinten'). Dieses Widget war bisher
+    fest im Template einprogrammiert und wurde NIE aktualisiert — das wird
+    hier behoben: echte Recherche + URL-Verifikation wie bei den Rubriken."""
+    log("Recherchiere Signature-Widget 'Heute ganz hinten' …")
+    system = (
+        f"Du bist Chefredakteur von schlusslicht.de. Heute ist {date_label}. "
+        "Antworte AUSSCHLIESSLICH auf " + ("Englisch (US)" if LANG == "en" else "Deutsch") +
+        ", keine chinesischen, kyrillischen, arabischen oder anderen "
+        "nicht-lateinischen Schriftzeichen.\n\n"
+        "Finde 4 ECHTE, aktuell gültige 'Schlusslicht'-Fakten aus VIER "
+        "unterschiedlichen Themenfeldern (z. B. ein Länder-Index wie "
+        "Pressefreiheit-Rangliste, Korruptionsindex oder Glücksindex, eine "
+        "Sport-Tabelle mit letztem Platz, ein Wirtschafts- oder "
+        "Sozialindikator, ein weiterer aktueller Index). Jeder Fakt braucht: "
+        "die aktuelle Rangposition (Zahl), den Namen (Land/Team/"
+        "Organisation), eine kurze Kategorie-Bezeichnung (max. 24 Zeichen, "
+        "z. B. 'Pressefreiheit' oder 'MLS, 0 Punkte').\n\n"
+        "ABSOLUTES VERBOT VON ERFUNDENEN WERTEN: Erfinde niemals Ränge oder "
+        "Zahlen. Nutze die Websuche, und liefere zu jedem Eintrag die "
+        "tatsächliche, funktionierende Quellen-URL, mit der sich Rang und "
+        "Wert nachprüfen lassen. Findest du für ein Themenfeld keine echte, "
+        "belegbare aktuelle Zahl, lass diesen Eintrag weg statt zu raten."
+    )
+    prompt = (
+        "Antworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown:\n"
+        "{\n"
+        '  "items": [\n'
+        '    {"rank": "180", "name": "Eritrea", "category": "Pressefreiheit", '
+        '"source_url": "die ECHTE, vollständige URL (https://...) — PFLICHTFELD"},\n'
+        "    ... genau 4 Einträge aus 4 verschiedenen Themenfeldern ...\n"
+        "  ]\n"
+        "}"
+    )
+    data = extract_json(call_api(system, prompt, max_tokens=1200))
+    if not data or not data.get("items"):
+        log("  Keine verwertbaren Daten für Signature-Widget erhalten — bleibt unverändert.")
+        return None
+
+    verified = []
+    for it in data["items"]:
+        if not isinstance(it, dict):
+            continue
+        url = (it.get("source_url") or "").strip()
+        name = (it.get("name") or "").strip()
+        if not verify_url(url):
+            log(f"  Widget-Eintrag {name or '(ohne Namen)'!r}: Quelle nicht "
+                f"erreichbar ({url or 'keine URL'}) — übersprungen.")
+            continue
+        if not name or not (it.get("rank") or "").strip():
+            log("  Widget-Eintrag unvollständig (Name/Rang fehlt) — übersprungen.")
+            continue
+        log(f"  Widget-Eintrag {name!r} ({it.get('category', '')}): Quelle verifiziert.")
+        verified.append(it)
+
+    if not verified:
+        log("  0 von 4 Widget-Einträgen verifiziert — Widget bleibt unverändert.")
+        return None
+    if len(verified) < 4:
+        log(f"  Nur {len(verified)}/4 Einträge verifiziert — Widget wird nur teilweise aktualisiert.")
+    return verified[:4]
+
+
+# ── Story-Historie (Wiederholungssperre) ─────────────────────────────────────
+STORY_HISTORY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "story_history.json")
+STORY_HISTORY_KEEP_DAYS = 60
+
+
+def load_story_history() -> list:
+    if not os.path.exists(STORY_HISTORY_PATH):
+        return []
+    try:
+        with open(STORY_HISTORY_PATH, encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, list) else []
+    except Exception as exc:
+        log(f"  Story-Historie konnte nicht gelesen werden: {exc}")
+        return []
+
+
+def save_story_history(history: list) -> None:
+    cutoff = datetime.date.today() - datetime.timedelta(days=STORY_HISTORY_KEEP_DAYS)
+    pruned = []
+    for entry in history:
+        try:
+            d = datetime.date.fromisoformat(entry.get("date", ""))
+        except (ValueError, TypeError, AttributeError):
+            continue
+        if d >= cutoff:
+            pruned.append(entry)
+    try:
+        with open(STORY_HISTORY_PATH, "w", encoding="utf-8") as fh:
+            json.dump(pruned, fh, ensure_ascii=False, indent=2)
+    except Exception as exc:
+        log(f"  Story-Historie konnte nicht gespeichert werden: {exc}")
+
+
+def _normalize_key(text: str) -> str:
+    text = (text or "").lower()
+    text = re.sub(r"[^a-z0-9äöüß]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def is_recently_used(entity: str, title: str, history: list) -> bool:
+    e_norm = _normalize_key(entity)
+    t_norm = _normalize_key(title)
+    for entry in history:
+        if e_norm and e_norm == _normalize_key(entry.get("entity", "")):
+            return True
+        if t_norm and t_norm == _normalize_key(entry.get("title", "")):
+            return True
+    return False
+
+
 def get_daily_stories(date_label: str):
     log("Recherchiere 3 Hintergrundstorys …")
 
+    history = load_story_history()
+    verbotene_themen = sorted({
+        (entry.get("entity") or "").strip()
+        for entry in history
+        if (entry.get("entity") or "").strip()
+    })
+    if verbotene_themen:
+        log(f"  {len(verbotene_themen)} Themen aus den letzten "
+            f"{STORY_HISTORY_KEEP_DAYS} Tagen bereits behandelt — werden ausgeschlossen.")
     system = (
         f"Du bist Hintergrundredakteur von schlusslicht.de. Heute ist {date_label}.\n\n"
         "Schreibe 3 tiefe Hintergrundstorys über aktuelle (max. 30 Tage alte) "
@@ -609,6 +734,15 @@ def get_daily_stories(date_label: str):
         "angeben. Findest du keinen echten Fall mit einer echten, "
         "existierenden URL für einen Bereich, wähle einen anderen Bereich, "
         "zu dem du eine echte Quelle hast — aber erfinde niemals einen Fall."
+        + (
+            "\n\nABSOLUTE WIEDERHOLUNGSSPERRE — HÖCHSTE PRIORITÄT: Diese Fälle "
+            "wurden in den letzten " + str(STORY_HISTORY_KEEP_DAYS) + " Tagen "
+            "auf schlusslicht.de bereits als Hintergrundstory veröffentlicht — "
+            "wähle für KEINEN davon erneut denselben Fall oder dieselbe Entität, "
+            "auch nicht mit neuen Formulierungen: " + ", ".join(verbotene_themen) + ". "
+            "Wähle ausschließlich neue, bisher nicht behandelte Fälle."
+            if verbotene_themen else ""
+        )
     )
     prompt = (
         "Recherchiere zunächst aktuelle Schlusslicht-Fälle aus verschiedenen "
@@ -634,6 +768,8 @@ def get_daily_stories(date_label: str):
         '  "stories": [\n'
         "    {\n"
         '      "cat": "// Kategorie · Zeitraum",\n'
+        '      "entity": "Kurzname des Falls/der Haupt-Entität zur eindeutigen '
+        'Wiedererkennung, z.B. \'Philadelphia Union\' oder \'Eritrea Pressefreiheit\' — PFLICHTFELD",\n'
         '      "title": "packender Titel, max 80 Zeichen",\n'
         '      "teaser": "Einleitung, 2-3 Sätze",\n'
         '      "body": ["<p>Absatz 1: nur das Ereignis</p>", "<p>Absatz 2: nur Hintergrund/Ursache</p>", "<p>Absatz 3: nur konkrete Auswirkung</p>", "<p>Absatz 4: nur die Einordnung als Systemversagen</p>"],\n'
@@ -655,6 +791,13 @@ def get_daily_stories(date_label: str):
             if not isinstance(story, dict):
                 log("  Ungültiger Story-Eintrag (kein Objekt) — übersprungen.")
                 continue
+            entity = (story.get("entity") or "").strip()
+            title = (story.get("title") or "").strip()
+            if is_recently_used(entity, title, history):
+                log(f"  Story {title or entity!r}: bereits in den letzten "
+                    f"{STORY_HISTORY_KEEP_DAYS} Tagen veröffentlicht — "
+                    f"WIEDERHOLUNG verworfen (Wiederholungssperre).")
+                continue
             url = (story.get("source_url") or "").strip()
             if not verify_url(url):
                 log(f"  Story {story.get('title', '(ohne Titel)')!r}: Quellen-URL "
@@ -668,6 +811,17 @@ def get_daily_stories(date_label: str):
         log(f"  {len(data['stories'])} von 3 Hintergrundstorys verifiziert und übernommen.")
         if not data["stories"]:
             data = None
+        else:
+            today_iso = datetime.date.today().isoformat()
+            for story in data["stories"]:
+                history.append({
+                    "date": today_iso,
+                    "entity": (story.get("entity") or "").strip(),
+                    "title": (story.get("title") or "").strip(),
+                })
+            save_story_history(history)
+            log(f"  Story-Historie aktualisiert ({len(history)} Einträge, "
+                f"Wiederholungssperre für {STORY_HISTORY_KEEP_DAYS} Tage).")
     else:
         log("  Keine verwertbaren Story-Daten erhalten.")
         data = None
@@ -719,6 +873,27 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
                 cur = rnum.get_text()
                 sep = cur.find(" ⸺ ")
                 set_text(rnum, (cur[: sep + 3] + rname) if sep > 0 else cur)
+
+    # ── Signature-Widget "Heute ganz hinten" (Hero) ────────────────────────
+    if items and items.get("upside"):
+        rows = soup.select(".upside .lrow")
+        for i, it in enumerate(items["upside"]):
+            if i >= len(rows):
+                break
+            row = rows[i]
+            rank_val = str(it.get("rank", "")).strip()
+            if rank_val and not rank_val.endswith("."):
+                rank_val += "."
+            set_text(row.select_one(".rk"), rank_val)
+            nm = row.select_one(".nm")
+            if nm is not None:
+                lamp = nm.select_one(".lamp")
+                nm.clear()
+                if lamp:
+                    nm.append(lamp)
+                nm.append(str(it.get("name", "")).strip())
+            set_text(row.select_one(".vl"), it.get("category"))
+        log(f"  Signature-Widget aktualisiert ({len(items['upside'])} von 4 Zeilen).")
 
     # ── Spotlight (Tagesausgabe) ──────────────────────────────────────────
     if items and items.get("spotlight"):
@@ -826,10 +1001,63 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
 
 
 # ── Hauptprogramm ────────────────────────────────────────────────────────────
+def fallback_update():
+    """FALLBACK: Aktualisiert nur das Datum, nicht Inhalte"""
+    output_file = OUTPUT if not LANG else OUTPUT.replace(".html", f".{LANG}.html")
+    
+    if not os.path.exists(output_file):
+        log(f"✗ FALLBACK fehlgeschlagen: {output_file} nicht gefunden")
+        return False
+    
+    try:
+        with open(output_file, "r", encoding="utf-8") as f:
+            html = f.read()
+        
+        # Ersetze Datum im HTML
+        today = datetime.date.today()
+        date_label = (
+            f"{WOCHENTAGE[today.weekday()]}, {MONATE[today.month - 1]} {today.day}, {today.year}"
+            if LANG == "en" else
+            f"{WOCHENTAGE[today.weekday()]}, {today.day}. {MONATE[today.month - 1]} {today.year}"
+        )
+        
+        # Ersetze <time> Tag
+        html = re.sub(
+            r"<time[^>]*>.*?</time>",
+            f"<time>{date_label}</time>",
+            html,
+            count=1
+        )
+        
+        # Aktualisiere Updated-Feld
+        build_time = datetime.datetime.now(datetime.timezone.utc).strftime("%d.%m.%Y %H:%M UTC")
+        html = re.sub(
+            r'"updated"\s*:\s*"[^"]*"',
+            f'"updated": "{build_time}"',
+            html
+        )
+        
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write(html)
+        
+        log(f"✓ FALLBACK erfolgreich: {output_file} — Datum aktualisiert")
+        return True
+    except Exception as e:
+        log(f"✗ FALLBACK Fehler: {e}")
+        return False
+
+
 def main() -> int:
+    # Prüfe API-Key
     if not API_KEY:
-        log("FEHLER: Umgebungsvariable OPENROUTER_API_KEY fehlt.")
-        return 1
+        log("⚠️  OPENROUTER_API_KEY fehlt — nutze FALLBACK-Modus")
+        result = fallback_update()
+        if result:
+            log("✓ Fallback-Update abgeschlossen")
+            return 0
+        else:
+            log("✗ Fallback-Update fehlgeschlagen")
+            return 1
 
     today = datetime.date.today()
     date_label = (
