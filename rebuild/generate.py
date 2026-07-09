@@ -71,16 +71,37 @@ def verify_url(url: str, timeout: int = 8) -> bool:
     """Prüft, ob eine Quellen-URL tatsächlich existiert und erreichbar ist
     (kein 404, keine DNS-Auflösung fehlgeschlagen, keine Zeitüberschreitung).
     Technische Absicherung gegen halluzinierte Quellen: Eine Meldung ohne
-    nachweislich funktionierende URL wird NICHT veröffentlicht."""
+    nachweislich funktionierende URL wird NICHT veröffentlicht.
+
+    WICHTIG: Viele seriöse Institutionsseiten (transparency.org,
+    worldhappiness.report, transfermarkt.de, …) blocken automatisierte
+    Anfragen per Bot-Schutz (403/429/503), OBWOHL die Seite echt existiert.
+    Das ist kein Beleg für eine halluzinierte URL — nur ein 404/410 oder ein
+    echter Verbindungsfehler (DNS/Timeout) ist ein verlässliches Indiz dafür,
+    dass die URL nicht existiert. Bot-Blockaden werden daher als
+    'nicht verifizierbar, aber nicht widerlegt' behandelt und durchgelassen."""
     if not url or not isinstance(url, str) or not url.strip().lower().startswith("http"):
         return False
-    headers = {"User-Agent": "Mozilla/5.0 (compatible; SchlusslichtBot/1.0)"}
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                      "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
+    }
+    BOT_BLOCK_CODES = {401, 403, 405, 429, 503}
     try:
         r = requests.head(url, timeout=timeout, allow_redirects=True, headers=headers)
         if r.status_code >= 400:
             # Manche Server lehnen HEAD ab -> mit GET nachprüfen, bevor wir aufgeben
             r = requests.get(url, timeout=timeout, allow_redirects=True, headers=headers, stream=True)
-        return r.status_code < 400
+        if r.status_code < 400:
+            return True
+        if r.status_code in BOT_BLOCK_CODES:
+            log(f"  Quelle antwortet mit HTTP {r.status_code} (Bot-Schutz, keine "
+                f"echte Nicht-Existenz) — wird trotzdem akzeptiert: {url}")
+            return True
+        # Echtes 404/410/5xx (außer 503) -> Quelle existiert nachweislich nicht
+        return False
     except requests.RequestException as exc:
         log(f"  Quellen-URL nicht erreichbar: {url} ({exc.__class__.__name__})")
         return False
@@ -178,6 +199,47 @@ def extract_json(text):
         log("  SPRACH-SCHRANKE: Antwort wirkt deutsch, obwohl Englisch verlangt "
             "war — komplett verworfen, bestehender (englischer) Stand bleibt.")
         return None
+    return data
+
+
+def call_api_json(system: str, prompt: str, max_tokens: int, repair_retries: int = 2):
+    """Wie call_api() + extract_json(), aber mit Selbstkorrektur: Wenn die
+    Modellantwort kein gültiges JSON ergibt (z.B. durch Abschneiden bei zu
+    knappem max_tokens oder nicht escapte Anführungszeichen im Fließtext),
+    wird dem Modell der exakte Parse-Fehler zurückgemeldet und es bekommt
+    bis zu `repair_retries` weitere Versuche, gültiges JSON zu liefern."""
+    raw = call_api(system, prompt, max_tokens=max_tokens)
+    data = extract_json(raw)
+    attempt = 0
+    while data is None and raw and attempt < repair_retries:
+        attempt += 1
+        # Versuche zu erkennen, WARUM es fehlschlug, um gezielt zu reparieren
+        text = raw.replace("```json", "").replace("```", "").strip()
+        start, end = text.find("{"), text.rfind("}") + 1
+        parse_error = "unbekannt"
+        if start >= 0 and end > start:
+            try:
+                json.loads(text[start:end])
+            except json.JSONDecodeError as exc:
+                parse_error = str(exc)
+        log(f"  JSON war ungültig ({parse_error}) — bitte Modell um Korrektur "
+            f"(Versuch {attempt}/{repair_retries}) …")
+        repair_prompt = (
+            "Deine letzte Antwort war KEIN gültiges JSON — Fehler beim Parsen: "
+            f"\"{parse_error}\". Häufige Ursachen: abgeschnittene Antwort (zu "
+            "lang für das Token-Limit) oder nicht escapte Anführungszeichen "
+            "in Fließtext. Antworte JETZT ERNEUT auf dieselbe Aufgabe, aber "
+            "diesmal: (1) kürzer und prägnanter formulieren, falls die "
+            "Antwort zu lang wurde, (2) alle doppelten Anführungszeichen "
+            "innerhalb von Textwerten mit \\\" escapen, (3) AUSSCHLIESSLICH "
+            "das vollständige, gültige JSON-Objekt ausgeben, keine Markdown-"
+            "Codeblöcke, kein einleitender oder abschließender Text.\n\n"
+            f"Ursprüngliche Aufgabe:\n{prompt}"
+        )
+        raw = call_api(system, repair_prompt, max_tokens=max_tokens)
+        data = extract_json(raw)
+    if data is None:
+        log(f"  JSON-Selbstkorrektur nach {attempt} Versuch(en) gescheitert — gebe auf.")
     return data
 
 
@@ -613,7 +675,7 @@ def get_upside_widget(date_label: str):
         "  ]\n"
         "}"
     )
-    data = extract_json(call_api(system, prompt, max_tokens=1200))
+    data = call_api_json(system, prompt, max_tokens=1200)
     if not data or not data.get("items"):
         log("  Keine verwertbaren Daten für Signature-Widget erhalten — bleibt unverändert.")
         return None
@@ -783,7 +845,7 @@ def get_daily_stories(date_label: str):
         "}"
     )
 
-    data = extract_json(call_api(system, prompt, max_tokens=6000))
+    data = call_api_json(system, prompt, max_tokens=8000)
     if data and data.get("stories"):
         log("  Verifiziere Quellen-URLs der Hintergrundstorys …")
         verifizierte_storys = []
