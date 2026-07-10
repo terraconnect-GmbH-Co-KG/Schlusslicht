@@ -1190,11 +1190,22 @@ def main() -> int:
     build_time = datetime.datetime.now(datetime.timezone.utc).strftime("%d.%m.%Y %H:%M UTC")
     log(f"Tagesausgabe: {date_label}")
 
-    template_path = TEMPLATE if os.path.exists(TEMPLATE) else OUTPUT
+    # WICHTIG (Root-Cause-Fix): OUTPUT (gestriges, echtes Ergebnis) wird
+    # bevorzugt geladen, NICHT das statische TEMPLATE. Das Template enthält
+    # ursprüngliche Platzhalter-Beispielinhalte (u.a. "The Actor", "Dawit
+    # Isaac", "Mars Climate Orbiter" als Storys sowie Eritrea/Afghanistan/
+    # Südsudan/Philadelphia Union im Signature-Widget). Solange TEMPLATE
+    # bevorzugt wurde, fiel JEDER Fehlschlag (nicht verifizierbare Quelle,
+    # Story-Wiederholungssperre, JSON-Parsefehler) nicht auf den echten
+    # Stand von GESTERN zurück, sondern auf diese uralten Tag-0-Platzhalter
+    # — wodurch dieselben veralteten Storys/Kategorien immer wieder
+    # auftauchten, obwohl an anderer Stelle im selben Lauf frische, echte
+    # Inhalte erfolgreich verifiziert wurden.
+    template_path = OUTPUT if os.path.exists(OUTPUT) else TEMPLATE
     if not os.path.exists(template_path):
-        log("FEHLER: Weder index.template.html noch index.html gefunden.")
+        log("FEHLER: Weder index.html noch index.template.html gefunden.")
         return 1
-    log(f"Verwende Vorlage: {template_path}")
+    log(f"Verwende als Basis: {template_path}")
     with open(template_path, encoding="utf-8") as fh:
         html = fh.read()
 

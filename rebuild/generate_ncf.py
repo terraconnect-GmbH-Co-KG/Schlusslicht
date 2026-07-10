@@ -289,7 +289,9 @@ def main() -> int:
         log("Keine Essays erzeugt — Seite bleibt unverändert (bestehender Stand).")
         return 0
 
-    html = open(TEMPLATE, encoding="utf-8").read()
+    base_path = OUTPUT if os.path.exists(OUTPUT) else TEMPLATE
+    log(f"Verwende als Basis: {base_path}")
+    html = open(base_path, encoding="utf-8").read()
     html = inject(html, essays, date_label)
     open(OUTPUT, "w", encoding="utf-8").write(html)
     log(f"{OUTPUT} geschrieben ({len(essays)} Essays).")

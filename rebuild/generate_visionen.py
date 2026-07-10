@@ -614,10 +614,14 @@ def main() -> int:
     build_time = datetime.datetime.now(datetime.timezone.utc).strftime("%d.%m.%Y %H:%M UTC")
     log(f"Visionen-Ausgabe: {date_label}")
 
-    template_path = TEMPLATE if os.path.exists(TEMPLATE) else OUTPUT
+    # Root-Cause-Fix (identisch zu generate.py): OUTPUT (gestriger, echter
+    # Stand) wird bevorzugt geladen statt des statischen TEMPLATE mit
+    # Tag-0-Platzhalterinhalten.
+    template_path = OUTPUT if os.path.exists(OUTPUT) else TEMPLATE
     if not os.path.exists(template_path):
-        log("FEHLER: Weder brightside.template.html noch brightside.html gefunden.")
+        log("FEHLER: Weder brightside.html noch brightside.template.html gefunden.")
         return 1
+    log(f"Verwende als Basis: {template_path}")
     with open(template_path, encoding="utf-8") as fh:
         html = fh.read()
 

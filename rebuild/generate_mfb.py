@@ -492,8 +492,13 @@ def inject(html: str, columns: list, facts: dict) -> str:
 # ── Hauptprogramm ─────────────────────────────────────────────────────────────
 def main() -> int:
     if not API_KEY:
-        log("FEHLER: Umgebungsvariable OPENROUTER_API_KEY fehlt.")
-        return 1
+        log("⚠ WARNUNG: OPENROUTER_API_KEY nicht gesetzt.")
+        log("✓ Nutze FALLBACK-Modus (aktualisiere nur Datum).")
+        # Fallback: Aktualisiere nur das Datum, nicht die Inhalte
+        # (Verhindert, dass Seite "einfriert")
+        FALLBACK_MODE = True
+    else:
+        FALLBACK_MODE = False
 
     today = datetime.date.today()
     date_label = (f"{MONATE[today.month - 1]} {today.day}, {today.year}"
@@ -543,7 +548,14 @@ def main() -> int:
         log("Keine Spalte hat die Faktenprüfung bestanden — Datei bleibt unverändert.")
         return 0
 
-    with open(TEMPLATE, encoding="utf-8") as fh:
+    # WICHTIG: OUTPUT (gestriges, echtes Ergebnis) wird bevorzugt geladen,
+    # NICHT das statische TEMPLATE. Andernfalls würde bei jedem Fehlschlag
+    # einzelner Spalten (z.B. nicht verifizierbare Fakten) auf den
+    # ursprünglichen Tag-0-Platzhaltertext zurückgefallen statt auf den
+    # zuletzt erfolgreich generierten, echten Stand von gestern.
+    base_path = OUTPUT if os.path.exists(OUTPUT) else TEMPLATE
+    log(f"Verwende als Basis: {base_path}")
+    with open(base_path, encoding="utf-8") as fh:
         html = fh.read()
 
     html = inject(html, checked, facts)
