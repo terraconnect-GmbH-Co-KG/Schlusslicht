@@ -513,17 +513,16 @@ def get_daily_items(date_label: str):
     all_items = review_and_fix_items(all_items, date_label)
 
     spotlight_ticker = get_spotlight_and_ticker(date_label, all_items)
-    upside = get_upside_widget(date_label)
 
     if all_items:
         log(f"  {len(all_items)} Rubrik-Meldungen final erhalten.")
     else:
         log("  Keine verwertbaren Rubrik-Daten erhalten.")
 
-    if not all_items and not spotlight_ticker.get("spotlight") and not spotlight_ticker.get("ticker") and not upside:
+    if not all_items and not spotlight_ticker.get("spotlight") and not spotlight_ticker.get("ticker"):
         return None
 
-    return {"items": all_items, "upside": upside, **spotlight_ticker}
+    return {"items": all_items, **spotlight_ticker}
 
 
 def strip_repeated_boilerplate(items: dict, max_erlaubt: int = 2) -> dict:
@@ -683,71 +682,6 @@ def dedupe_rubrik_topics(items: dict) -> dict:
 
 
 # ── Recherche: 3 Hintergrundstorys ──────────────────────────────────────────
-def get_upside_widget(date_label: str):
-    """Holt 4 ECHTE, aktuell belegte 'ganz hinten'-Fakten für das Signature-
-    Widget im Hero-Bereich ('Heute ganz hinten'). Dieses Widget war bisher
-    fest im Template einprogrammiert und wurde NIE aktualisiert — das wird
-    hier behoben: echte Recherche + URL-Verifikation wie bei den Rubriken."""
-    log("Recherchiere Signature-Widget 'Heute ganz hinten' …")
-    system = (
-        f"Du bist Chefredakteur von schlusslicht.de. Heute ist {date_label}. "
-        "Antworte AUSSCHLIESSLICH auf " + ("Englisch (US)" if LANG == "en" else "Deutsch") +
-        ", keine chinesischen, kyrillischen, arabischen oder anderen "
-        "nicht-lateinischen Schriftzeichen.\n\n"
-        "Finde 4 ECHTE, aktuell gültige 'Schlusslicht'-Fakten aus VIER "
-        "unterschiedlichen Themenfeldern (z. B. ein Länder-Index wie "
-        "Pressefreiheit-Rangliste, Korruptionsindex oder Glücksindex, eine "
-        "Sport-Tabelle mit letztem Platz, ein Wirtschafts- oder "
-        "Sozialindikator, ein weiterer aktueller Index). Jeder Fakt braucht: "
-        "die aktuelle Rangposition (Zahl), den Namen (Land/Team/"
-        "Organisation), eine kurze Kategorie-Bezeichnung (max. 24 Zeichen, "
-        "z. B. 'Pressefreiheit' oder 'MLS, 0 Punkte').\n\n"
-        "ABSOLUTES VERBOT VON ERFUNDENEN WERTEN: Erfinde niemals Ränge oder "
-        "Zahlen. Nutze die Websuche, und liefere zu jedem Eintrag die "
-        "tatsächliche, funktionierende Quellen-URL, mit der sich Rang und "
-        "Wert nachprüfen lassen. Findest du für ein Themenfeld keine echte, "
-        "belegbare aktuelle Zahl, lass diesen Eintrag weg statt zu raten."
-    )
-    prompt = (
-        "Antworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown:\n"
-        "{\n"
-        '  "items": [\n'
-        '    {"rank": "180", "name": "Eritrea", "category": "Pressefreiheit", '
-        '"source_url": "die ECHTE, vollständige URL (https://...) — PFLICHTFELD"},\n'
-        "    ... genau 4 Einträge aus 4 verschiedenen Themenfeldern ...\n"
-        "  ]\n"
-        "}"
-    )
-    data = call_api_json(system, prompt, max_tokens=1200)
-    if not data or not data.get("items"):
-        log("  Keine verwertbaren Daten für Signature-Widget erhalten — bleibt unverändert.")
-        return None
-
-    verified = []
-    for it in data["items"]:
-        if not isinstance(it, dict):
-            continue
-        url = (it.get("source_url") or "").strip()
-        name = (it.get("name") or "").strip()
-        if not verify_url(url):
-            log(f"  Widget-Eintrag {name or '(ohne Namen)'!r}: Quelle nicht "
-                f"erreichbar ({url or 'keine URL'}) — übersprungen.")
-            continue
-        if not name or not (it.get("rank") or "").strip():
-            log("  Widget-Eintrag unvollständig (Name/Rang fehlt) — übersprungen.")
-            continue
-        log(f"  Widget-Eintrag {name!r} ({it.get('category', '')}): Quelle verifiziert.")
-        verified.append(it)
-
-    if not verified:
-        log("  0 von 4 Widget-Einträgen verifiziert — Widget bleibt unverändert.")
-        return None
-    if len(verified) < 4:
-        log(f"  Nur {len(verified)}/4 Einträge verifiziert — Widget wird nur teilweise aktualisiert.")
-    return verified[:4]
-
-
-# ── Story-Historie (Wiederholungssperre) ─────────────────────────────────────
 STORY_HISTORY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "story_history.json")
 STORY_HISTORY_KEEP_DAYS = 60
 
@@ -978,44 +912,6 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
                 cur = rnum.get_text()
                 sep = cur.find(" ⸺ ")
                 set_text(rnum, (cur[: sep + 3] + rname) if sep > 0 else cur)
-
-    # ── Signature-Widget "Heute ganz hinten" (Hero) ────────────────────────
-    # WICHTIG: Wenn nur z.B. 1 von 4 Einträgen verifiziert werden konnte,
-    # dürfen die übrigen 3 Zeilen NICHT den alten Template-Text (Eritrea/
-    # Afghanistan/Südsudan/Philadelphia Union) stehen lassen — das sah für
-    # Außenstehende wie "gar nichts hat sich aktualisiert" aus, obwohl
-    # technisch 1 Zeile korrekt frisch verifiziert wurde. Nicht gefüllte
-    # Zeilen werden daher jetzt ausgeblendet statt stehen gelassen.
-    if items and items.get("upside") is not None:
-        rows = soup.select(".upside .lrow")
-        upside_data = items["upside"] or []
-        for i, row in enumerate(rows):
-            if i < len(upside_data):
-                it = upside_data[i]
-                rank_val = str(it.get("rank", "")).strip()
-                if rank_val and not rank_val.endswith("."):
-                    rank_val += "."
-                set_text(row.select_one(".rk"), rank_val)
-                nm = row.select_one(".nm")
-                if nm is not None:
-                    lamp = nm.select_one(".lamp")
-                    nm.clear()
-                    if lamp:
-                        nm.append(lamp)
-                    nm.append(str(it.get("name", "")).strip())
-                set_text(row.select_one(".vl"), it.get("category"))
-                # Falls diese Zeile bei einem früheren (Teil-)Update
-                # ausgeblendet worden war, jetzt wieder sichtbar machen.
-                existing_style = row.get("style", "")
-                row["style"] = re.sub(r"display:\s*none;?", "", existing_style).strip("; ")
-            else:
-                # Keine verifizierten Daten für diese Zeile -> ausblenden,
-                # statt veralteten Stand mit frischen Zeilen zu mischen.
-                existing_style = row.get("style", "")
-                if "display:none" not in existing_style:
-                    row["style"] = (existing_style + ";display:none;").lstrip("; ")
-        log(f"  Signature-Widget aktualisiert ({len(upside_data)} von {len(rows)} "
-            f"Zeilen mit verifizierten Daten; restliche Zeilen ausgeblendet).")
 
     # ── Spotlight (Tagesausgabe) ──────────────────────────────────────────
     if items and items.get("spotlight"):

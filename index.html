@@ -184,7 +184,7 @@
   /* ───────────────── HERO ───────────────── */
   .hero { padding:clamp(48px,7vw,92px) 0 clamp(40px,5vw,64px); }
   .hero-grid {
-    display:grid; grid-template-columns:1.05fr .95fr; gap:clamp(28px,5vw,72px); align-items:center;
+    display:grid; grid-template-columns:1fr; gap:clamp(28px,5vw,72px); align-items:center;
   }
   .hero-eyebrow { margin-bottom:22px; }
   .hero h1 {
@@ -220,37 +220,7 @@
   }
   .hero-mfb:hover { color:var(--red); border-color:var(--red); }
 
-  /* signature: the leaderboard read from the bottom */
-  .upside {
-    background:var(--card); border:1px solid var(--line); border-radius:var(--r);
-    box-shadow:var(--shadow); overflow:hidden;
-  }
-  .upside-top {
-    display:flex; align-items:center; justify-content:space-between; gap:10px;
-    padding:14px 18px; border-bottom:1px solid var(--line); background:var(--paper-2);
-  }
-  .upside-top .t { font-family:var(--mono); font-size:.66rem; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-2); }
-  .upside-top .flip { font-family:var(--mono); font-size:.6rem; letter-spacing:.12em; text-transform:uppercase; color:var(--red); display:inline-flex; gap:6px; align-items:center; }
-  .upside-top .flip::before { content:"↑"; }
-  .lrow {
-    display:grid; grid-template-columns:46px 1fr auto; gap:12px; align-items:center;
-    padding:13px 18px; border-bottom:1px solid var(--line-2);
-  }
-  .lrow:last-child { border-bottom:none; }
-  .lrow .rk { font-family:var(--display); font-weight:700; color:var(--ink-3); text-align:center; }
-  .lrow .nm { font-family:var(--serif); }
-  .lrow .vl { font-family:var(--mono); font-size:.85rem; color:var(--ink-2); }
-  .lrow.is-last {
-    background:linear-gradient(90deg, var(--red-tint), transparent 80%);
-    border-left:4px solid var(--red);
-  }
-  .lrow.is-last .rk { color:var(--red); font-size:1.6rem; }
-  .lrow.is-last .nm { font-family:var(--display); font-weight:700; font-size:1.18rem; display:flex; align-items:center; gap:9px; }
-  .lrow.is-last .nm .lamp { width:11px; height:11px; border-radius:50%; background:var(--red); box-shadow:0 0 0 4px var(--red-tint), 0 0 14px rgba(240,50,45,.6); flex-shrink:0; animation:pulse 2.6s ease-in-out infinite; }
-  .lrow.is-last .vl { color:var(--red); font-weight:600; }
-  .upside-foot { padding:11px 18px; font-family:var(--mono); font-size:.6rem; letter-spacing:.05em; color:var(--ink-3); background:var(--paper-2); }
-
-  @keyframes pulse { 0%,100%{ opacity:1 } 50%{ opacity:.35 } }
+  50%{ opacity:.35 } }
   @keyframes rise { from{ opacity:0; transform:translateY(18px) } to{ opacity:1; transform:translateY(0) } }
   .rise { animation:rise .7s cubic-bezier(.2,.7,.2,1) both; }
   .rise-1 { animation-delay:.05s } .rise-2 { animation-delay:.14s } .rise-3 { animation-delay:.24s }
@@ -529,34 +499,7 @@
 <a class="hero-mfb" href="insights.html">Lieber Klartext? → Insights</a>
 </div>
 </div>
-<!-- SIGNATURE: die Weltrangliste, von unten gelesen -->
-<aside aria-label="Weltrangliste, von unten gelesen" class="upside rise rise-3">
-<div class="upside-top">
-<span class="t">Heute ganz hinten</span>
-<span class="flip">von unten gelesen</span>
-</div>
-<div class="lrow is-last" style="">
-<span class="rk">180.</span>
-<span class="nm"><span aria-hidden="true" class="lamp"></span>Eritrea</span>
-<span class="vl">Pressefreiheit</span>
-</div>
-<div class="lrow" style="display:none;">
-<span class="rk">1.</span>
-<span class="nm">Norwegen</span>
-<span class="vl">Glücksindex</span>
-</div>
-<div class="lrow" style="display:none;">
-<span class="rk">179.</span>
-<span class="nm">Nordkorea</span>
-<span class="vl">Pressefreiheit</span>
-</div>
-<div class="lrow" style="display:none;">
-<span class="rk">1.</span>
-<span class="nm">Brasilien</span>
-<span class="vl">Korruptionsindex</span>
-</div>
-<div class="upside-foot">Dieselben Ranglisten wie überall — nur andersherum gelesen.</div>
-</aside>
+
 </div>
 </section>
 <!-- ══════════ ÜBER UNS ══════════ -->
