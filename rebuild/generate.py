@@ -424,17 +424,27 @@ def _fetch_items_batch(batch: dict, date_label: str, bereits_vergebene_themen: l
         f"Du bist Chefredakteur von schlusslicht.de, einem deutschen "
         f"linkssatirischen Magazin. Heute ist {date_label}.\n\n"
         "Finde zu JEDER der folgenden Rubriken eine ECHTE, tagesaktuelle oder "
-        "höchstens 14 Tage alte Meldung via Websuche. Hat eine Rubrik heute "
-        "keine eigene Meldung, wähle die überraschendste Schlusslicht-Meldung "
-        "aus einem ANDEREN passenden Bereich — Aktualität geht vor Rubriktreue.\n\n"
+        "höchstens 14 Tage alte Meldung via Websuche.\n\n"
+        "STRIKTE KATEGORIETREUE — NICHT VERHANDELBAR: Die Meldung MUSS "
+        "inhaltlich zur jeweiligen Rubrik passen. Eine Meldung über "
+        "Korruption gehört AUSSCHLIESSLICH in die Korruptions-Rubrik, eine "
+        "Meldung über Klimaschutz AUSSCHLIESSLICH in die Klimaschutz-"
+        "Rubrik, usw. — niemals vermischen, niemals eine Meldung aus einem "
+        "fachfremden Bereich in eine andere Rubrik einsetzen, auch nicht "
+        "als 'überraschende Ausnahme'. Findest du für eine Rubrik heute "
+        "keine passende, aktuelle UND belegte Meldung, dann liefere für "
+        "diese Rubrik GAR KEINEN Eintrag (lass sie im JSON komplett weg) "
+        "— eine fehlende Meldung ist immer besser als eine thematisch "
+        "falsch zugeordnete.\n\n"
         "ABSOLUTES VERBOT VON PLATZHALTERN: Jede Schlagzeile und jeder "
         "Kommentar muss eine ECHTE, konkrete, recherchierte Meldung mit "
         "echten Eigennamen, Orten und Zahlen sein. Schreibe NIEMALS "
         "generische Platzhaltersätze wie 'Land mit niedrigstem Etat: "
         "2026-Bericht' oder 'Team X: 2026-Ergebnis' — das ist kein "
         "Stilmittel, sondern ein Fehler. Wenn du keine echte Meldung findest, "
-        "recherchiere weiter oder wähle ein anderes konkretes Thema, aber "
-        "erfinde keine Schema-Lückentext-Sätze.\n\n"
+        "recherchiere weiter oder liefere gar keinen Eintrag für diese "
+        "Rubrik, aber erfinde keine Schema-Lückentext-Sätze und wechsle "
+        "niemals das Thema der Rubrik.\n\n"
         "KEINE WIEDERKEHRENDEN STANDARDSÄTZE: Verwende niemals denselben "
         "Schlusssatz (z. B. 'Stabilität fehlt, um die Saison zu retten') in "
         "mehreren Rubriken — jeder Kommentar muss individuell zum jeweiligen "
@@ -474,7 +484,7 @@ def _fetch_items_batch(batch: dict, date_label: str, bereits_vergebene_themen: l
         f"Rubriken:\n{zeilen}\n\n"
         "Antworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown:\n"
         "{\n"
-        f'  "{list(batch.keys())[0]}": {{"rubrik_name": "Name falls Rubrik gewechselt wurde, sonst leer", '
+        f'  "{list(batch.keys())[0]}": {{'
         '"thema": "1-2 Wörter Themen-Schlagwort, z.B. \'Fußball\' oder \'Steuerpolitik\'", '
         '"headline": "kurze, konkrete Schlagzeile mit echten Namen/Zahlen", '
         '"kommentar": "individueller Kommentar, max 130 Zeichen", '
@@ -609,10 +619,20 @@ def review_and_fix_items(items: dict, date_label: str) -> dict:
         "abgeschnittener oder zusammenhangloser Satz)? Passt der Kommentar "
         "inhaltlich zur Schlagzeile? Ist es KEINE Wiederholung eines "
         "Standardsatzes aus einem anderen Eintrag?\n\n"
+        "ZUSÄTZLICH — KATEGORIE-KOHÄRENZ (sehr wichtig, häufigster Fehler): "
+        "Jeder Eintrag hat ein Feld 'rubrik_soll' — die Kategorie, der er "
+        "zugeordnet ist. Prüfe, ob Schlagzeile UND Kommentar TATSÄCHLICH "
+        "inhaltlich zu dieser Kategorie gehören. Beispiel für einen Fehler, "
+        "den du erkennen musst: rubrik_soll='Klimaschutz', aber die "
+        "Schlagzeile handelt tatsächlich von einem Korruptionsfall — das "
+        "ist eine KATEGORIE-FEHLZUORDNUNG und muss mit ok:false markiert "
+        "werden, selbst wenn Schlagzeile und Kommentar für sich genommen "
+        "sinnvoll und gut belegt sind.\n\n"
         "WICHTIG: Du bewertest nur, du erfindest oder änderst keine Inhalte. "
-        "Für jeden Eintrag gib zurück, ob er sinnvoll ist "
-        '(\"ok\": true) oder nicht (\"ok\": false, mit kurzer "grund"-Angabe).\n\n'
-        f"Einträge:\n{json.dumps(echte_items, ensure_ascii=False, indent=2)}\n\n"
+        "Für jeden Eintrag gib zurück, ob er sinnvoll UND kategorietreu ist "
+        '(\"ok\": true) oder nicht (\"ok\": false, mit kurzer "grund"-Angabe, '
+        'z.B. "Kategorie-Fehlzuordnung: Text handelt von Korruption statt Klimaschutz").\n\n'
+        f"Einträge:\n{json.dumps({num: {**it, 'rubrik_soll': RUBRIKEN.get(num, '')} for num, it in echte_items.items()}, ensure_ascii=False, indent=2)}\n\n"
         "Antworte als JSON:\n"
         '{"01": {"ok": true}, "02": {"ok": false, "grund": "generischer Platzhalter"}, ...}'
     )
@@ -898,20 +918,20 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
                         else "✦ Tagesaktuell"
                     ),
                 )
-            # Schlagzeile (Text nach „ — ")
+            # Schlagzeile (Text nach „ — "). Der Präfix vor dem Gedankenstrich
+            # (die Rubrik-Bezeichnung, z.B. "Klimaschutz-Index") bleibt IMMER
+            # fest — Themenwechsel sind nicht mehr erlaubt (siehe System-
+            # Prompt: strikte Kategorietreue), daher gibt es auch kein
+            # rubrik_name-Feld mehr, das dieses Präfix überschreiben könnte.
+            # Das verhindert genau den Fehler, bei dem eine Rubrik-Überschrift
+            # ("Klimaschutz-Index") mit inhaltlich fachfremdem Text (z.B. über
+            # Korruption) kombiniert wurde.
             headline = (it.get("headline") or "").strip()
             rtit = card.select_one(".rtit")
             if rtit and headline and len(headline) > 4:
                 cur = rtit.get_text()
                 dash = cur.find(" — ")
                 set_text(rtit, (cur[: dash + 3] + headline) if dash > 0 else headline)
-            # Rubrikname nur wenn Rubrik gewechselt wurde
-            rname = (it.get("rubrik_name") or "").strip()
-            rnum = card.select_one(".rnum")
-            if rnum and rname:
-                cur = rnum.get_text()
-                sep = cur.find(" ⸺ ")
-                set_text(rnum, (cur[: sep + 3] + rname) if sep > 0 else cur)
 
     # ── Spotlight (Tagesausgabe) ──────────────────────────────────────────
     if items and items.get("spotlight"):
