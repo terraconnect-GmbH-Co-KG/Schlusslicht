@@ -395,7 +395,13 @@ Liefere GENAU dieses JSON-Schema:
     {{
       "rubrik_num": "die Nummer aus der Vorgabe",
       "tag": "" + ("Standpoint · short topic" if LANG == "en" else "Standpunkt · Kurzthema") + "",
-      "title": "kreativer, prägnanter Titel (wie eine Schlagzeile, max 40 Zeichen)",
+      "title": "prägnanter Titel wie eine Schlagzeile, max 40 Zeichen. NUR "
+                "vollständige, echte deutsche Wörter — KEINE erfundenen "
+                "Kunstwörter oder abgebrochenen Wortspiele (z.B. NIEMALS "
+                "'Bahnbrech' statt 'bahnbrechend' — entweder das volle, "
+                "korrekte Wort verwenden oder eine andere, unkompliziertere "
+                "Formulierung wählen, notfalls auch nüchtern-sachlich statt "
+                "originell). Im Zweifel lieber sachlich-klar als kreativ-kaputt.",
       "paragraphs": [
         {{"text": "Absatz 1 — NUR: Einstieg mit einer der vorgegebenen Zahlen, nüchtern dargestellt. Keine Bewertung.", "punch": false}},
         {{"text": "Absatz 2 — NUR: der zugespitzte Kernsatz/die Wertung dazu. Die Zahl aus Absatz 1 nicht wiederholen.", "punch": true}},
@@ -444,10 +450,63 @@ def set_text(node, value):
         node.append(str(value))
 
 
-def inject(html: str, columns: list, facts: dict) -> str:
+def inject(html: str, columns: list, facts: dict, intended_rubrik_nums: list = None) -> str:
     soup = BeautifulSoup(html, "html.parser")
+    intended_rubrik_nums = intended_rubrik_nums or [None] * len(columns)
 
     for i, col in enumerate(columns, start=1):
+        # WICHTIG: col kann None sein (Slot ist heute durch die Faktenprüfung
+        # gefallen). Bevor wir den Slot blank auf einen Platzhalter setzen,
+        # prüfen wir: Zeigt der Slot ohnehin schon dieselbe Rubrik wie heute
+        # vorgesehen (Abgleich über die "(Rubrik NN)"-Kennzeichnung am Ende
+        # der bestehenden Quellenangabe)? Falls ja, ist der bestehende Inhalt
+        # weiterhin korrekt zugeordnet (nur die heutige Aktualisierung ist
+        # fehlgeschlagen) und darf unverändert stehen bleiben. Nur wenn sich
+        # die Rubrik-Zuordnung seit der letzten erfolgreichen Aktualisierung
+        # GEÄNDERT hat, wird auf einen neutralen Platzhalter zurückgesetzt —
+        # das verhindert den gemeldeten Doppel-Bahn-Fehler (zwei Slots mit
+        # derselben Rubrik aus unterschiedlichen Tagen/Rotationen).
+        if col is None:
+            intended_num = intended_rubrik_nums[i - 1] if i - 1 < len(intended_rubrik_nums) else None
+            existing_src = soup.select_one(f"#col{i}-src")
+            existing_text = existing_src.get_text() if existing_src else ""
+            m = re.search(r"\((?:Rubrik|Category)\s+(\d+)\)", existing_text)
+            existing_num = m.group(1) if m else None
+
+            if intended_num and existing_num == intended_num:
+                log(f"  Slot {i}: Faktenprüfung heute fehlgeschlagen, aber "
+                    f"Rubrik {intended_num} ist unverändert zu gestern — "
+                    f"bestehender, korrekt zugeordneter Inhalt bleibt stehen.")
+                continue
+
+            log(f"  Slot {i}: Rubrik-Zuordnung hat sich geändert (vorher "
+                f"{existing_num or 'unbekannt'}, heute vorgesehen "
+                f"{intended_num or 'unbekannt'}) UND heutige Aktualisierung "
+                f"fehlgeschlagen — wird auf neutralen Platzhalter "
+                f"zurückgesetzt, um keine rubrik-fremde Dopplung zu riskieren.")
+            placeholder = (
+                "This section will be updated in the next run."
+                if LANG == "en" else
+                "Dieser Abschnitt wird beim nächsten Lauf aktualisiert."
+            )
+            set_text(soup.select_one(f"#col{i}-tag"), "—")
+            set_text(soup.select_one(f"#col{i}-h2"), placeholder)
+            body = soup.select_one(f"#col{i}-body")
+            if body is not None:
+                for old_p in body.select("p.gen-para"):
+                    old_p.decompose()
+                p = soup.new_tag("p", attrs={"class": "gen-para"})
+                p.string = placeholder
+                body.append(p)
+            set_text(soup.select_one(f"#col{i}-bignum-text"), "—")
+            set_text(soup.select_one(f"#col{i}-bigcap"), "")
+            for j in range(1, 4):
+                li = soup.select_one(f"#col{i}-stat{j}")
+                if li is not None:
+                    li.clear()
+            set_text(soup.select_one(f"#col{i}-src"), "")
+            continue
+
         rubrik_num = col.get("rubrik_num")
         fact = facts.get(rubrik_num, {})
 
@@ -534,17 +593,36 @@ def main() -> int:
     for col in columns:
         col["paragraphs"] = dedupe_column_paragraphs(col.get("paragraphs"))
 
-    # Sicherheitsnetz: Spalten mit nicht belegbaren Zahlen aussortieren
-    # (Platz bleibt dann bei den alten Inhalten stehen, statt falsche Zahlen zu zeigen)
-    checked = []
-    for col in columns:
+    # Sicherheitsnetz: Spalten mit nicht belegbaren Zahlen aussortieren.
+    #
+    # WICHTIG (Bugfix Positions-Kompaktierung): Da die 5 Slots (#col1..#col5)
+    # täglich ROTIEREND mit unterschiedlichen Rubriken belegt werden (z.B.
+    # ist "Bahn" heute vielleicht Slot 2, gestern war es Slot 4), darf eine
+    # durchgefallene Spalte NICHT einfach übersprungen werden — das würde
+    # nachfolgende Spalten in frühere Slots verschieben (Kompaktierung) UND
+    # den nicht befüllten Slot mit dem alten Inhalt EINER ANDEREN, evtl.
+    # bereits in einem anderen Slot heute gezeigten Rubrik stehen lassen.
+    # Genau das führte zum gemeldeten Fehler: zwei fast identische
+    # "Bahn"-Karten gleichzeitig sichtbar, weil ein alter Bahn-Slot von
+    # einem früheren Tag nie bereinigt wurde, während "Bahn" heute zusätzlich
+    # in einem ANDEREN, frisch befüllten Slot auftauchte.
+    #
+    # Fix: Positionsstabilität wird erzwungen (kein compacting/append mehr).
+    # Ein durchgefallener Slot wird explizit auf einen neutralen, ehrlich
+    # gekennzeichneten Platzhalter zurückgesetzt statt stillschweigend den
+    # alten (evtl. rubrik-fremden) Stand zu behalten.
+    checked = [None] * len(columns)
+    for idx, col in enumerate(columns):
         fact = facts.get(col.get("rubrik_num"), {})
         if validate_column(col, fact):
-            checked.append(col)
+            checked[idx] = col
         else:
-            log(f"  WARNUNG: Rubrik {col.get('rubrik_num')} enthält nicht belegbare Zahlen — übersprungen.")
+            log(f"  WARNUNG: Rubrik {col.get('rubrik_num')} enthält nicht "
+                f"belegbare Zahlen — Slot {idx + 1} wird auf neutralen "
+                f"Platzhalter zurückgesetzt (kein Stehenlassen einer "
+                f"anderen, evtl. bereits doppelt gezeigten Rubrik).")
 
-    if not checked:
+    if not any(checked):
         log("Keine Spalte hat die Faktenprüfung bestanden — Datei bleibt unverändert.")
         return 0
 
@@ -558,11 +636,14 @@ def main() -> int:
     with open(base_path, encoding="utf-8") as fh:
         html = fh.read()
 
-    html = inject(html, checked, facts)
+    intended_rubrik_nums = [c.get("rubrik_num") if isinstance(c, dict) else None for c in columns]
+    html = inject(html, checked, facts, intended_rubrik_nums)
 
     with open(OUTPUT, "w", encoding="utf-8") as fh:
         fh.write(html)
-    log(f"{OUTPUT} geschrieben ({len(html):,} Zeichen), {len(checked)}/{N_COLS} Spalten aktualisiert.")
+    log(f"{OUTPUT} geschrieben ({len(html):,} Zeichen), "
+        f"{sum(1 for c in checked if c)}/{N_COLS} Spalten aktualisiert, "
+        f"{sum(1 for c in checked if not c)} auf Platzhalter zurückgesetzt.")
     return 0
 
 

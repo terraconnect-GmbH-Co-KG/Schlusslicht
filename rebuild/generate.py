@@ -509,14 +509,26 @@ def get_daily_items(date_label: str):
             log(f"  Gruppe {i}: keine verwertbare Antwort erhalten, wird übersprungen.")
             continue
         for num, item in batch_result.items():
-            if num in batch and isinstance(item, dict) and item.get("headline"):
+            if num not in batch or not isinstance(item, dict):
+                continue
+            headline = (item.get("headline") or "").strip()
+            kommentar = (item.get("kommentar") or "").strip()
+            # WICHTIG (Atomaritäts-Fix): headline UND kommentar müssen BEIDE
+            # vorhanden sein, sonst wird der Eintrag komplett verworfen.
+            # Andernfalls würde inject() nur das vorhandene Feld aktualisieren
+            # und das fehlende Feld vom alten (evtl. thematisch völlig
+            # anderen) Stand stehen lassen — genau das führte zum Fehler
+            # "Pressefreiheit-Schlagzeile + Sport-Metapher-Kommentar".
+            if headline and kommentar:
                 all_items[num] = item
                 thema = (item.get("thema") or "").strip()
                 if thema:
                     vergebene_themen.append(thema)
-            elif num in batch:
-                log(f"  Rubrik {num}: leerer oder ungültiger Eintrag von der "
-                    f"KI geliefert — übersprungen, bestehender Stand bleibt.")
+            else:
+                fehlt = "kommentar" if headline else ("headline" if kommentar else "headline+kommentar")
+                log(f"  Rubrik {num}: unvollständiger Eintrag ({fehlt} fehlt) "
+                    f"— komplett übersprungen, bestehender (in sich konsistenter) "
+                    f"Stand bleibt. Kein Teil-Update einzelner Felder.")
 
     all_items = dedupe_rubrik_topics(all_items)
     all_items = strip_repeated_boilerplate(all_items)
@@ -905,8 +917,21 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
             if not card:
                 continue
             kommentar = (it.get("kommentar") or "").strip()
-            if kommentar:
-                set_text(card.select_one(".realsatire"), f"„{kommentar}“")
+            headline = (it.get("headline") or "").strip()
+            # ATOMARITÄTS-ABSICHERUNG (Defense-in-Depth, zusätzlich zur
+            # Prüfung in get_daily_items): headline UND kommentar werden
+            # NUR gemeinsam aktualisiert, nie einzeln. Ein Update nur eines
+            # der beiden Felder würde sonst zwei Textteile aus evtl. ganz
+            # unterschiedlichen Tagen/Themen kombinieren (z.B. eine neue
+            # Pressefreiheit-Schlagzeile neben einem alten Sport-Kommentar
+            # stehen lassen).
+            if not (kommentar and headline and len(headline) > 4):
+                log(f"  Rubrik {num}: unvollständiges Item bei Injektion "
+                    f"(headline oder kommentar fehlt) — übersprungen, "
+                    f"Karte bleibt vollständig unverändert.")
+                continue
+
+            set_text(card.select_one(".realsatire"), f"„{kommentar}“")
             tag = card.select_one(".ai-tag")
             if tag is not None:
                 quelle = (it.get("quelle") or "").strip()
@@ -926,9 +951,8 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
             # Das verhindert genau den Fehler, bei dem eine Rubrik-Überschrift
             # ("Klimaschutz-Index") mit inhaltlich fachfremdem Text (z.B. über
             # Korruption) kombiniert wurde.
-            headline = (it.get("headline") or "").strip()
             rtit = card.select_one(".rtit")
-            if rtit and headline and len(headline) > 4:
+            if rtit:
                 cur = rtit.get_text()
                 dash = cur.find(" — ")
                 set_text(rtit, (cur[: dash + 3] + headline) if dash > 0 else headline)
