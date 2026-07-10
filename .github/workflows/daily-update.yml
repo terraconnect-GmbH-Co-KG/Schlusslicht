@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
 
       - uses: actions/setup-python@v5
         with:
@@ -35,17 +37,33 @@ jobs:
           SL_LANG=en python rebuild/generate_ncf.py 2>&1 || true
         continue-on-error: true
 
-      # FALLBACK: Wenn API-Fehler → aktualisiere mindestens Datum
-      - name: Fallback — Aktualisiere Datum (bei API-Fehler)
+      # FALLBACK: Nur für Dateien, die die Hauptgenerierung NICHT bereits
+      # aktualisiert hat (git diff leer = unverändert). Ohne diese Prüfung
+      # würde fallback_update.py auch frisch generierte Seiten nochmal
+      # anfassen und das #update-time-Feld redundant/inkonsistent
+      # überschreiben (gleiche Stelle wird von generate.py UND
+      # fallback_update.py beschrieben).
+      - name: Fallback — Aktualisiere Datum (nur für unveränderte Dateien)
+        shell: bash
         run: |
-          python rebuild/fallback_update.py index.html de || true
-          python rebuild/fallback_update.py index.en.html en || true
-          python rebuild/fallback_update.py brightside.html de || true
-          python rebuild/fallback_update.py brightside.en.html en || true
-          python rebuild/fallback_update.py insights.html de || true
-          python rebuild/fallback_update.py insights.en.html en || true
-          python rebuild/fallback_update.py nonconformist.html de || true
-          python rebuild/fallback_update.py nonconformist.en.html en || true
+          declare -A LANG_FOR
+          LANG_FOR[index.html]=de
+          LANG_FOR[index.en.html]=en
+          LANG_FOR[brightside.html]=de
+          LANG_FOR[brightside.en.html]=en
+          LANG_FOR[insights.html]=de
+          LANG_FOR[insights.en.html]=en
+          LANG_FOR[nonconformist.html]=de
+          LANG_FOR[nonconformist.en.html]=en
+
+          for file in "${!LANG_FOR[@]}"; do
+            if git diff --quiet -- "$file"; then
+              echo "$file: unveraendert durch Hauptgenerierung -> Fallback-Datum"
+              python rebuild/fallback_update.py "$file" "${LANG_FOR[$file]}" || true
+            else
+              echo "$file: bereits von Hauptgenerierung aktualisiert -> Fallback wird NICHT angewendet"
+            fi
+          done
         continue-on-error: true
 
       # Commit und Push — HTML-Seiten UND die Story-Historie

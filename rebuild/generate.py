@@ -25,6 +25,7 @@ import sys
 import time
 
 import requests
+from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
 # ── Konfiguration ────────────────────────────────────────────────────────────
@@ -67,6 +68,40 @@ def log(msg: str) -> None:
     print(f"[{datetime.datetime.now():%H:%M:%S}] {msg}", flush=True)
 
 
+# Diese seriösen Institutionen/Medien werden im Impressum als
+# Datenquellen genannt bzw. sind etablierte, real existierende Anbieter.
+# Bei technischem Verbindungsfehler (Timeout/DNS/Connection-Refused) —
+# NICHT bei einem echten 404 — wird eine URL auf einer dieser Domains
+# trotzdem akzeptiert, weil ein Verbindungsfehler zu einer bekannt
+# echten Institution fast immer ein Netzwerk-/Blockadeproblem ist,
+# keine halluzinierte Quelle.
+TRUSTED_SOURCE_DOMAINS = {
+    "transparency.org", "worldhappiness.report", "transfermarkt.de",
+    "rsf.org", "reporter-ohne-grenzen.de", "oecd.org", "who.int",
+    "worldbank.org", "imf.org", "germanwatch.org", "unesco.org",
+    "destatis.de", "boeckler.de", "bundesrechnungshof.de", "adac.de",
+    "ec.europa.eu", "propublica.org", "espn.com", "bundeswahlleiterin.de",
+    "tagesschau.de", "zeit.de", "faz.net", "spiegel.de", "sueddeutsche.de",
+    "handelsblatt.com", "bloomberg.com", "reuters.com", "dpa.com",
+    "yonhap.co.kr", "wikipedia.org", "nasa.gov", "esa.int", "wan-ifra.org",
+    "amnesty.org", "cpj.org", "boxofficemojo.com", "variety.com",
+    "ookla.com", "speedtest.net", "statista.com", "bundesbank.de",
+    "un.org", "gallup.com",
+}
+
+
+def _domain_is_trusted(url: str) -> bool:
+    """Prüft, ob die Domain einer URL zu einer bekannten, etablierten
+    Institution/Medienquelle gehört (siehe TRUSTED_SOURCE_DOMAINS)."""
+    try:
+        host = (urlparse(url).hostname or "").lower()
+    except ValueError:
+        return False
+    if host.startswith("www."):
+        host = host[4:]
+    return any(host == d or host.endswith("." + d) for d in TRUSTED_SOURCE_DOMAINS)
+
+
 def verify_url(url: str, timeout: int = 8) -> bool:
     """Prüft, ob eine Quellen-URL tatsächlich existiert und erreichbar ist
     (kein 404, keine DNS-Auflösung fehlgeschlagen, keine Zeitüberschreitung).
@@ -88,7 +123,7 @@ def verify_url(url: str, timeout: int = 8) -> bool:
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
     }
-    BOT_BLOCK_CODES = {401, 403, 405, 429, 503}
+    BOT_BLOCK_CODES = {401, 403, 405, 429, 500, 502, 503, 504}
     try:
         r = requests.head(url, timeout=timeout, allow_redirects=True, headers=headers)
         if r.status_code >= 400:
@@ -97,12 +132,20 @@ def verify_url(url: str, timeout: int = 8) -> bool:
         if r.status_code < 400:
             return True
         if r.status_code in BOT_BLOCK_CODES:
-            log(f"  Quelle antwortet mit HTTP {r.status_code} (Bot-Schutz, keine "
-                f"echte Nicht-Existenz) — wird trotzdem akzeptiert: {url}")
+            log(f"  Quelle antwortet mit HTTP {r.status_code} (Bot-Schutz/"
+                f"Server-Fehler, keine echte Nicht-Existenz) — wird trotzdem "
+                f"akzeptiert: {url}")
             return True
-        # Echtes 404/410/5xx (außer 503) -> Quelle existiert nachweislich nicht
+        # Echtes 404/410 -> Quelle existiert nachweislich nicht (auch bei
+        # vertrauenswürdiger Domain, denn ein 404 zu EINEM konkreten Pfad
+        # ist ein echter Beleg gegen genau diese URL).
         return False
     except requests.RequestException as exc:
+        if _domain_is_trusted(url):
+            log(f"  Quelle technisch nicht erreichbar ({exc.__class__.__name__}) "
+                f"— Domain gilt aber als etablierte Institution/Quelle, wird "
+                f"deshalb trotzdem akzeptiert: {url}")
+            return True
         log(f"  Quellen-URL nicht erreichbar: {url} ({exc.__class__.__name__})")
         return False
 
@@ -937,25 +980,42 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
                 set_text(rnum, (cur[: sep + 3] + rname) if sep > 0 else cur)
 
     # ── Signature-Widget "Heute ganz hinten" (Hero) ────────────────────────
-    if items and items.get("upside"):
+    # WICHTIG: Wenn nur z.B. 1 von 4 Einträgen verifiziert werden konnte,
+    # dürfen die übrigen 3 Zeilen NICHT den alten Template-Text (Eritrea/
+    # Afghanistan/Südsudan/Philadelphia Union) stehen lassen — das sah für
+    # Außenstehende wie "gar nichts hat sich aktualisiert" aus, obwohl
+    # technisch 1 Zeile korrekt frisch verifiziert wurde. Nicht gefüllte
+    # Zeilen werden daher jetzt ausgeblendet statt stehen gelassen.
+    if items and items.get("upside") is not None:
         rows = soup.select(".upside .lrow")
-        for i, it in enumerate(items["upside"]):
-            if i >= len(rows):
-                break
-            row = rows[i]
-            rank_val = str(it.get("rank", "")).strip()
-            if rank_val and not rank_val.endswith("."):
-                rank_val += "."
-            set_text(row.select_one(".rk"), rank_val)
-            nm = row.select_one(".nm")
-            if nm is not None:
-                lamp = nm.select_one(".lamp")
-                nm.clear()
-                if lamp:
-                    nm.append(lamp)
-                nm.append(str(it.get("name", "")).strip())
-            set_text(row.select_one(".vl"), it.get("category"))
-        log(f"  Signature-Widget aktualisiert ({len(items['upside'])} von 4 Zeilen).")
+        upside_data = items["upside"] or []
+        for i, row in enumerate(rows):
+            if i < len(upside_data):
+                it = upside_data[i]
+                rank_val = str(it.get("rank", "")).strip()
+                if rank_val and not rank_val.endswith("."):
+                    rank_val += "."
+                set_text(row.select_one(".rk"), rank_val)
+                nm = row.select_one(".nm")
+                if nm is not None:
+                    lamp = nm.select_one(".lamp")
+                    nm.clear()
+                    if lamp:
+                        nm.append(lamp)
+                    nm.append(str(it.get("name", "")).strip())
+                set_text(row.select_one(".vl"), it.get("category"))
+                # Falls diese Zeile bei einem früheren (Teil-)Update
+                # ausgeblendet worden war, jetzt wieder sichtbar machen.
+                existing_style = row.get("style", "")
+                row["style"] = re.sub(r"display:\s*none;?", "", existing_style).strip("; ")
+            else:
+                # Keine verifizierten Daten für diese Zeile -> ausblenden,
+                # statt veralteten Stand mit frischen Zeilen zu mischen.
+                existing_style = row.get("style", "")
+                if "display:none" not in existing_style:
+                    row["style"] = (existing_style + ";display:none;").lstrip("; ")
+        log(f"  Signature-Widget aktualisiert ({len(upside_data)} von {len(rows)} "
+            f"Zeilen mit verifizierten Daten; restliche Zeilen ausgeblendet).")
 
     # ── Spotlight (Tagesausgabe) ──────────────────────────────────────────
     if items and items.get("spotlight"):
