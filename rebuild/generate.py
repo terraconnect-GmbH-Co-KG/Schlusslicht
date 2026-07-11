@@ -50,16 +50,22 @@ MONATE = (
      "August", "September", "Oktober", "November", "Dezember"]
 )
 
-# Die 8 Rubriken der Seite (nur eine Sport-Rubrik)
+# Die 8 Rubriken der Seite (nur eine Sport-Rubrik). Die genannten Indizes
+# (RSF, CPI, CCPI) sind Beispiele für mögliche, aber nicht die einzigen
+# Quellen — jede relevante, echte Meldung zum Thema aus aller Welt zählt,
+# nicht nur eine formale Ranking-Tabelle.
 RUBRIKEN = {
     "01": "Sport / MLS — schlechtestes Team im Tabellenende (die einzige Sport-Rubrik)",
-    "02": "Niedriglohn — Branche, Tarifabschluss, Studie",
-    "03": "Bahn & ÖPNV — Pünktlichkeit, Ausfall, Streik, Investitionsstau",
-    "04": "Pressefreiheit — RSF-Index, Journalist inhaftiert/bedroht, Zensur",
-    "05": "Korruption — CPI, aktueller Fall mit Urteil/Anklage (nur belegt!)",
-    "06": "Klimaschutz — CCPI, verfehltes Ziel, Rückschritt eines Landes",
-    "07": "Steuervermeidung — Konzern-Konstrukt, Urteil, Nachzahlung (nur belegt!)",
-    "08": "Medien — Zeitungssterben, Auflagenkollaps, Redaktionsschließung",
+    "02": "Niedriglohn — Branche, Tarifabschluss, Studie, konkreter Fall weltweit",
+    "03": "Bahn & ÖPNV — Pünktlichkeit, Ausfall, Streik, Investitionsstau, jedes Land",
+    "04": "Pressefreiheit — inhaftierte/bedrohte Journalisten, Zensurfälle, Angriffe auf "
+          "Medien weltweit (RSF-Index ist eine mögliche Quelle, nicht die einzige)",
+    "05": "Korruption — aktueller Fall mit Urteil/Anklage/Ermittlung, beliebiges Land "
+          "(nur belegt!, CPI ist eine mögliche Quelle unter mehreren)",
+    "06": "Klimaschutz — verfehltes Ziel, Rückschritt, Fehlentscheidung eines Landes "
+          "oder Konzerns (CCPI ist eine mögliche Quelle unter mehreren)",
+    "07": "Steuervermeidung — Konzern-Konstrukt, Urteil, Nachzahlung, weltweit (nur belegt!)",
+    "08": "Medien — Zeitungssterben, Auflagenkollaps, Redaktionsschließung, jedes Land",
 }
 
 
@@ -416,7 +422,7 @@ RUBRIK_BATCHES = [
 
 
 def _fetch_items_batch(batch: dict, date_label: str, bereits_vergebene_themen: list):
-    """Holt Meldungen für EINE kleine Gruppe von Rubriken (statt für alle 24
+    """Holt Meldungen für EINE kleine Gruppe von Rubriken (statt für alle 8
     auf einmal). Kleinere Aufgaben pro Aufruf verhindern, dass das Modell in
     eine Wiederholungsschleife rutscht und generische Platzhaltersätze statt
     echter Recherche liefert."""
@@ -424,7 +430,13 @@ def _fetch_items_batch(batch: dict, date_label: str, bereits_vergebene_themen: l
         f"Du bist Chefredakteur von schlusslicht.de, einem deutschen "
         f"linkssatirischen Magazin. Heute ist {date_label}.\n\n"
         "Finde zu JEDER der folgenden Rubriken eine ECHTE, tagesaktuelle oder "
-        "höchstens 14 Tage alte Meldung via Websuche.\n\n"
+        "höchstens 14 Tage alte Meldung via Websuche. Die Quelle muss NICHT "
+        "zwingend eine formale Ranking-Tabelle oder ein offizieller Index "
+        "sein (RSF-Index, CPI, CCPI o.ä. sind Beispiele, keine Pflicht) — "
+        "jede echte, relevante Meldung zum jeweiligen Thema aus JEDEM Land "
+        "der Welt zählt, z.B. auch ein einzelner Gerichtsfall, ein "
+        "Zeitungsartikel über einen konkreten Vorfall, eine Studie oder ein "
+        "parlamentarischer Bericht.\n\n"
         "STRIKTE KATEGORIETREUE — NICHT VERHANDELBAR: Die Meldung MUSS "
         "inhaltlich zur jeweiligen Rubrik passen. Eine Meldung über "
         "Korruption gehört AUSSCHLIESSLICH in die Korruptions-Rubrik, eine "
@@ -468,10 +480,15 @@ def _fetch_items_batch(batch: dict, date_label: str, bereits_vergebene_themen: l
         )
         + "Stil: schwarze Satire mit menschlicher Wärme — nicht kalt-nüchtern, "
         "sondern erkennbar mit Empathie für die Betroffenen geschrieben. Eine "
-        "leichte, erkennbare Haltung darf mitschwingen (Mitgefühl, "
-        "Kopfschütteln, Fassungslosigkeit), aber immer auf Basis der Fakten "
-        "— nie ins Unsachliche oder Übertriebene abgleiten. Fakten plus ein "
-        "pointierter, menschlicher Satz, höchstens 130 Zeichen pro Kommentar. "
+        "klar erkennbare linke, gesellschaftskritische Haltung darf und soll "
+        "mitschwingen (Mitgefühl mit den Betroffenen, Kritik an denen, die "
+        "die Verantwortung tragen — Machtstrukturen, Konzerne, verfehlte "
+        "Politik) — pointierter formuliert als eine rein neutrale "
+        "Nachrichtenmeldung, aber NICHT radikal, nicht plakativ, nie ins "
+        "Unsachliche oder Übertriebene abgleitend: die Haltung muss sich "
+        "immer aus den berichteten Fakten ergeben, nicht aus bloßer "
+        "Empörungsrhetorik. Fakten plus ein pointierter, menschlicher Satz, "
+        "höchstens 130 Zeichen pro Kommentar. "
         "Antworte AUSSCHLIESSLICH auf " + ("Englisch (US)" if LANG == "en" else "Deutsch") + " — keine chinesischen, "
         "kyrillischen, arabischen oder anderen nicht-lateinischen "
         "Schriftzeichen, auch nicht einzelne Wörter oder Zeichen davon."
@@ -576,7 +593,7 @@ def strip_repeated_boilerplate(items: dict, max_erlaubt: int = 2) -> dict:
 
 def get_spotlight_and_ticker(date_label: str, items: dict):
     """Holt Spotlight und Ticker in einem eigenen, kleinen Aufruf (statt als
-    Teil des großen 24-Rubriken-Aufrufs), damit auch diese nicht unter einer
+    Teil des großen 8-Rubriken-Aufrufs), damit auch diese nicht unter einer
     überladenen Gesamtaufgabe leiden."""
     log("  Hole Spotlight und Ticker …")
     kontext = "; ".join(
@@ -590,7 +607,7 @@ def get_spotlight_and_ticker(date_label: str, items: dict):
     prompt = (
         "Wähle aus den folgenden heutigen Rubrik-Meldungen die stärkste als "
         f"Spotlight aus, und liefere zusätzlich 8 kurze Ticker-Meldungen zu "
-        f"weiteren aktuellen Schlusslicht-Themen (unabhängig von den 24 "
+        f"weiteren aktuellen Schlusslicht-Themen (unabhängig von den 8 "
         f"Rubriken).\n\nHeutige Meldungen:\n{kontext}\n\n"
         "Antworte als JSON:\n"
         "{\n"
@@ -781,9 +798,12 @@ def get_daily_stories(date_label: str):
         "Schreibe 3 tiefe Hintergrundstorys über aktuelle (max. 30 Tage alte) "
         "Schlusslichter aus verschiedenen Bereichen. Nutze die Websuche für echte "
         "Fälle. Stil: investigativ, aber menschlich — zeige erkennbares "
-        "Mitgefühl mit den Betroffenen und eine klare, aber sachlich "
-        "begründete Haltung zum Systemversagen. Keine kalte Distanz, aber "
-        "auch keine Larmoyanz oder Übertreibung — jede Emotion muss sich aus "
+        "Mitgefühl mit den Betroffenen und eine klar erkennbare linke, "
+        "gesellschaftskritische Haltung zum Systemversagen dahinter — "
+        "pointierter benannt als eine rein neutrale Nachrichtenmeldung "
+        "(wer profitiert von diesem Versagen, wer trägt die Verantwortung), "
+        "aber NICHT radikal. Keine kalte Distanz, aber auch keine Larmoyanz "
+        "oder Übertreibung — jede Emotion und jede Wertung muss sich aus "
         "den geschilderten Fakten ergeben, nicht aus Adjektiven allein. "
         "Zeige das Systemversagen hinter dem Einzelfall. 400-700 Wörter je Story. "
         "Antworte AUSSCHLIESSLICH auf " + ("Englisch (US)" if LANG == "en" else "Deutsch") + " — keine chinesischen, "
@@ -1063,63 +1083,21 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
 
 
 # ── Hauptprogramm ────────────────────────────────────────────────────────────
-def fallback_update():
-    """FALLBACK: Aktualisiert nur das Datum, nicht Inhalte"""
-    output_file = OUTPUT if not LANG else OUTPUT.replace(".html", f".{LANG}.html")
-    
-    if not os.path.exists(output_file):
-        log(f"✗ FALLBACK fehlgeschlagen: {output_file} nicht gefunden")
-        return False
-    
-    try:
-        with open(output_file, "r", encoding="utf-8") as f:
-            html = f.read()
-        
-        # Ersetze Datum im HTML
-        today = datetime.date.today()
-        date_label = (
-            f"{WOCHENTAGE[today.weekday()]}, {MONATE[today.month - 1]} {today.day}, {today.year}"
-            if LANG == "en" else
-            f"{WOCHENTAGE[today.weekday()]}, {today.day}. {MONATE[today.month - 1]} {today.year}"
-        )
-        
-        # Ersetze <time> Tag
-        html = re.sub(
-            r"<time[^>]*>.*?</time>",
-            f"<time>{date_label}</time>",
-            html,
-            count=1
-        )
-        
-        # Aktualisiere Updated-Feld
-        build_time = datetime.datetime.now(datetime.timezone.utc).strftime("%d.%m.%Y %H:%M UTC")
-        html = re.sub(
-            r'"updated"\s*:\s*"[^"]*"',
-            f'"updated": "{build_time}"',
-            html
-        )
-        
-        with open(output_file, "w", encoding="utf-8") as f:
-            f.write(html)
-        
-        log(f"✓ FALLBACK erfolgreich: {output_file} — Datum aktualisiert")
-        return True
-    except Exception as e:
-        log(f"✗ FALLBACK Fehler: {e}")
-        return False
-
-
 def main() -> int:
-    # Prüfe API-Key
+    # Fehlt der API-Key, wird HIER bewusst NICHTS geschrieben (kein Datum-
+    # Patch, keine Platzhalter-Logik). Der Workflow (.github/workflows/
+    # daily-update.yml) erkennt über 'git diff' automatisch, dass diese
+    # Datei in diesem Lauf unverändert blieb, und ruft danach gezielt das
+    # externe, korrekt funktionierende rebuild/fallback_update.py auf, um
+    # wenigstens das Datum zu aktualisieren. (Eine frühere interne
+    # fallback_update()-Funktion hier im Skript war fehlerhaft — sie
+    # suchte nach <time>-Tags, die im aktuellen Template gar nicht mehr
+    # existieren, meldete aber trotzdem fälschlich Erfolg. Entfernt.)
     if not API_KEY:
-        log("⚠️  OPENROUTER_API_KEY fehlt — nutze FALLBACK-Modus")
-        result = fallback_update()
-        if result:
-            log("✓ Fallback-Update abgeschlossen")
-            return 0
-        else:
-            log("✗ Fallback-Update fehlgeschlagen")
-            return 1
+        log("⚠️  OPENROUTER_API_KEY fehlt — überspringe echte Generierung. "
+            "Der Workflow ruft im Anschluss automatisch das externe "
+            "Fallback-Skript für die Datumsaktualisierung auf.")
+        return 0
 
     today = datetime.date.today()
     date_label = (

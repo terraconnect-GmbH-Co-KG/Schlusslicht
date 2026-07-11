@@ -265,9 +265,17 @@ def inject(html: str, essays: list, date_label: str) -> str:
 
 
 def main() -> int:
+    # Fehlt der API-Key, wird bewusst NICHTS geschrieben. Der Workflow
+    # erkennt über 'git diff', dass diese Datei unverändert blieb, und
+    # ruft danach das externe rebuild/fallback_update.py auf, um
+    # wenigstens das Datum zu aktualisieren (siehe generate.py für die
+    # ausführliche Begründung). Rückgabe 0 statt 1: ein fehlender Key ist
+    # ein erwarteter, sauber behandelter Zustand, kein Fehlerfall.
     if not API_KEY:
-        log("FEHLER: OPENROUTER_API_KEY fehlt.")
-        return 1
+        log("⚠️  OPENROUTER_API_KEY fehlt — überspringe echte Generierung. "
+            "Der Workflow ruft im Anschluss automatisch das externe "
+            "Fallback-Skript für die Datumsaktualisierung auf.")
+        return 0
     if not os.path.exists(TEMPLATE):
         log(f"FEHLER: {TEMPLATE} nicht gefunden.")
         return 1
@@ -277,7 +285,6 @@ def main() -> int:
                   if LANG == "en" else
                   f"{today.day}. {MONATE[today.month - 1]} {today.year}")
     log(f"Nonconformist-Ausgabe ({LANG}): {date_label}")
-    log(f"Verwende Vorlage: {TEMPLATE}")
 
     # Themenrotation: 5 Themen je Tag, deterministisch
     start = today.toordinal() * 5

@@ -49,7 +49,6 @@ TODAY_SOURCE = "index.en.html" if LANG == "en" else "index.html"
 OUTPUT = "insights.en.html" if LANG == "en" else "insights.html"
 TIMEOUT = 240
 N_COLS = 5
-N_RUBRIKEN = 24
 
 MONATE = (
     ["January", "February", "March", "April", "May", "June", "July",
@@ -327,9 +326,10 @@ def extract_today_headlines(path: str) -> dict:
 
 
 # Nur Rubriken mit klarem Politik-/Weltgeschehen-Bezug für die Meinungsstrecke.
-# Ausgeschlossen: Sport (01,02), Raumfahrt (03), App-Bewertungen (19),
-# Kino/Eurovision/Film (20,21,22) — passen thematisch nicht zu einer
-# politischen Kolumne für ein Gen-X-/Boomer-Publikum.
+# Ausgeschlossen: nur "01" (Sport/MLS) — passt thematisch nicht zu einer
+# politischen Kolumne für ein Gen-X-/Boomer-Publikum. Alle anderen 7
+# Rubriken (Niedriglohn, Bahn & ÖPNV, Pressefreiheit, Korruption,
+# Klimaschutz, Steuervermeidung, Medien) sind explizit politisch relevant.
 POLITISCHE_RUBRIKEN = ["02", "03", "04", "05", "06", "07", "08"]
 
 
@@ -365,10 +365,17 @@ def get_commentary(facts_package: list, date_label: str):
         "Verhältnisse, die nicht explizit vorgegeben sind. Wahrheitsgehalt "
         "geht immer vor Zuspitzung.\n\n"
         "STIL (hier darfst und sollst du zuspitzen): pointiert, bissig, "
-        "mit trockenem schwarzem Humor und klarer politischer Haltung für "
-        "die Benachteiligten — Satire durch Sprachwitz, Ironie und "
-        "überraschende Bilder, nicht durch Ausrufezeichen oder reißerische "
-        "Effekthascherei. Kurze, klare Sätze wechseln mit einem gelegentlich "
+        "mit trockenem schwarzem Humor und klarer, DEUTLICH benannter "
+        "politischer Haltung für die Benachteiligten — Satire durch "
+        "Sprachwitz, Ironie und überraschende Bilder, nicht durch "
+        "Ausrufezeichen oder reißerische Effekthascherei. Benenne Ursache "
+        "und Verantwortung direkt und ohne übermäßige Zurückhaltung "
+        "(strukturell: wer profitiert, wer trägt die politische "
+        "Verantwortung, welche Verteilungslogik steckt dahinter) — deutlich "
+        "direkter als eine vorsichtig-relativierende Zeitungsmeldung, aber "
+        "weiterhin NICHT radikal und niemals plump: jede Zuspitzung bleibt "
+        "an die vorgegebenen Fakten gebunden, keine Übertreibung ins "
+        "Unbelegbare. Kurze, klare Sätze wechseln mit einem gelegentlich "
         "längeren, kunstvoll gebauten Satz. Der 'punch'-Absatz soll die "
         "pointierteste, bissigste Formulierung der Kolumne enthalten. Der "
         "Titel darf originell und wortspielerisch sein, aber nicht "
@@ -550,14 +557,16 @@ def inject(html: str, columns: list, facts: dict, intended_rubrik_nums: list = N
 
 # ── Hauptprogramm ─────────────────────────────────────────────────────────────
 def main() -> int:
+    # Fehlt der API-Key, wird bewusst NICHTS geschrieben. Der Workflow
+    # erkennt über 'git diff', dass diese Datei unverändert blieb, und
+    # ruft danach das externe rebuild/fallback_update.py auf, um
+    # wenigstens das Datum zu aktualisieren (siehe generate.py für die
+    # ausführliche Begründung).
     if not API_KEY:
-        log("⚠ WARNUNG: OPENROUTER_API_KEY nicht gesetzt.")
-        log("✓ Nutze FALLBACK-Modus (aktualisiere nur Datum).")
-        # Fallback: Aktualisiere nur das Datum, nicht die Inhalte
-        # (Verhindert, dass Seite "einfriert")
-        FALLBACK_MODE = True
-    else:
-        FALLBACK_MODE = False
+        log("⚠️  OPENROUTER_API_KEY fehlt — überspringe echte Generierung. "
+            "Der Workflow ruft im Anschluss automatisch das externe "
+            "Fallback-Skript für die Datumsaktualisierung auf.")
+        return 0
 
     today = datetime.date.today()
     date_label = (f"{MONATE[today.month - 1]} {today.day}, {today.year}"

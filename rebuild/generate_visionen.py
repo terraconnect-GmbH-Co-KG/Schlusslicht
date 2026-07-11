@@ -497,15 +497,26 @@ def inject(html: str, data, date_label: str, build_time: str) -> str:
     set_text(soup.select_one("#spotStand"), ("As of: " if LANG == "en" else "Stand: ") + date_label)
 
     # ── Good-News-Grid ───────────────────────────────────────────────────────
+    # ATOMARITÄTS-ABSICHERUNG (dieselbe Fehlerklasse wie in generate.py
+    # gefunden und behoben): Eine Kachel wird nur aktualisiert, wenn die
+    # zentralen Felder (Titel + Text) BEIDE vorhanden sind — sonst bleibt
+    # die GESAMTE Kachel unverändert, statt z.B. einen neuen Titel neben
+    # einem alten, thematisch nicht mehr passenden Text stehen zu lassen.
     for i, item in enumerate(data.get("good_news", [])[:7], start=1):
+        title = (item.get("title") or "").strip()
+        body_html = (item.get("body_html") or "").strip()
+        if not (title and body_html):
+            log(f"  Good-News-Kachel {i}: Titel oder Text fehlt — "
+                f"komplett übersprungen, Kachel bleibt unverändert.")
+            continue
         set_text(soup.select_one(f"#gn{i}-dom"), item.get("domain"))
         set_text(soup.select_one(f"#gn{i}-badge"), item.get("badge"))
         icon = soup.select_one(f"#gn{i}-icon")
         if icon is not None and item.get("icon"):
             icon.clear()
             icon.append(str(item["icon"]))
-        set_text(soup.select_one(f"#gn{i}-title"), item.get("title"))
-        set_html(soup.select_one(f"#gn{i}-text"), item.get("body_html"))
+        set_text(soup.select_one(f"#gn{i}-title"), title)
+        set_html(soup.select_one(f"#gn{i}-text"), body_html)
         set_html(
             soup.select_one(f"#gn{i}-src"),
             make_source_html(item.get("source_name"), item.get("source_url"), item.get("source_date")),
@@ -513,13 +524,32 @@ def inject(html: str, data, date_label: str, build_time: str) -> str:
 
     # ── Hintergrundgeschichten ───────────────────────────────────────────────
     for i, st in enumerate(data.get("stories", [])[:3], start=1):
-        set_text(soup.select_one(f"#vs{i}-cat"), st.get("teaser_cat"))
-        set_text(soup.select_one(f"#vs{i}-title"), st.get("teaser_title"))
-        set_text(soup.select_one(f"#vs{i}-teaser"), st.get("teaser_text"))
+        # ATOMARITÄTS-ABSICHERUNG: Vorschau-Kachel (Kategorie/Titel/Teaser)
+        # und Modal-Kopf (Kategorie/Titel/Lead) werden je als zusammen-
+        # gehöriges Trio behandelt — nur wenn alle drei vorhanden sind,
+        # wird aktualisiert, sonst bleibt der jeweilige Block unverändert.
+        teaser_title = (st.get("teaser_title") or "").strip()
+        teaser_text = (st.get("teaser_text") or "").strip()
+        teaser_cat = (st.get("teaser_cat") or "").strip()
+        if teaser_title and teaser_text and teaser_cat:
+            set_text(soup.select_one(f"#vs{i}-cat"), teaser_cat)
+            set_text(soup.select_one(f"#vs{i}-title"), teaser_title)
+            set_text(soup.select_one(f"#vs{i}-teaser"), teaser_text)
+        else:
+            log(f"  Story {i}: Vorschau-Kachel unvollständig (Kategorie/"
+                f"Titel/Teaser) — Kachel bleibt unverändert.")
 
-        set_text(soup.select_one(f"#vs{i}-modal-cat"), st.get("modal_cat"))
-        set_text(soup.select_one(f"#vs{i}-modal-title"), st.get("modal_title"))
-        set_text(soup.select_one(f"#vs{i}-lead"), st.get("lead"))
+        modal_title = (st.get("modal_title") or "").strip()
+        lead = (st.get("lead") or "").strip()
+        modal_cat = (st.get("modal_cat") or "").strip()
+        if modal_title and lead and modal_cat:
+            set_text(soup.select_one(f"#vs{i}-modal-cat"), modal_cat)
+            set_text(soup.select_one(f"#vs{i}-modal-title"), modal_title)
+            set_text(soup.select_one(f"#vs{i}-lead"), lead)
+        else:
+            log(f"  Story {i}: Modal-Kopf unvollständig (Kategorie/Titel/"
+                f"Lead) — Modal-Kopf bleibt unverändert.")
+
         set_html(soup.select_one(f"#vs{i}-intro"), st.get("intro_html"))
 
         facts = st.get("facts") or []
@@ -598,14 +628,16 @@ def inject(html: str, data, date_label: str, build_time: str) -> str:
 
 # ── Hauptprogramm ─────────────────────────────────────────────────────────────
 def main() -> int:
+    # Fehlt der API-Key, wird bewusst NICHTS geschrieben. Der Workflow
+    # erkennt über 'git diff', dass diese Datei unverändert blieb, und
+    # ruft danach das externe rebuild/fallback_update.py auf, um
+    # wenigstens das Datum zu aktualisieren (siehe generate.py für die
+    # ausführliche Begründung).
     if not API_KEY:
-        log("⚠ WARNUNG: OPENROUTER_API_KEY nicht gesetzt.")
-        log("✓ Nutze FALLBACK-Modus (aktualisiere nur Datum).")
-        # Fallback: Aktualisiere nur das Datum, nicht die Inhalte
-        # (Verhindert, dass Seite "einfriert")
-        FALLBACK_MODE = True
-    else:
-        FALLBACK_MODE = False
+        log("⚠️  OPENROUTER_API_KEY fehlt — überspringe echte Generierung. "
+            "Der Workflow ruft im Anschluss automatisch das externe "
+            "Fallback-Skript für die Datumsaktualisierung auf.")
+        return 0
 
     today = datetime.date.today()
     date_label = (f"{MONATE[today.month - 1]} {today.day}, {today.year}"
