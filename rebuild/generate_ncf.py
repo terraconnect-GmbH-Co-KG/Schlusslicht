@@ -158,6 +158,48 @@ def extract_json(raw):
     return data
 
 
+def call_api_json(system: str, prompt: str, max_tokens: int, repair_retries: int = 2):
+    """Wie call_api() + extract_json(), aber mit Selbstkorrektur: Wenn die
+    Modellantwort kein gültiges JSON ergibt, wird dem Modell der exakte
+    Parse-Fehler zurückgemeldet und es bekommt bis zu `repair_retries`
+    weitere Versuche. Identisches Muster wie in generate.py/generate_mfb.py/
+    generate_visionen.py — behebt dieselbe Fehlerklasse, die bei Insights
+    zu tagelangen, stillschweigenden Totalausfällen führte. Hier besonders
+    relevant, da get_essays() ALLE 5 Essays in einer einzigen, langen
+    JSON-Antwort anfordert."""
+    raw = call_api(system, prompt, max_tokens=max_tokens)
+    data = extract_json(raw)
+    attempt = 0
+    while data is None and raw and attempt < repair_retries:
+        attempt += 1
+        m = re.search(r"\{.*\}", raw, re.DOTALL)
+        parse_error = "unbekannt"
+        if m:
+            try:
+                json.loads(m.group(0))
+            except json.JSONDecodeError as exc:
+                parse_error = str(exc)
+        log(f"  JSON war ungültig ({parse_error}) — bitte Modell um Korrektur "
+            f"(Versuch {attempt}/{repair_retries}) …")
+        repair_prompt = (
+            "Deine letzte Antwort war KEIN gültiges JSON — Fehler beim Parsen: "
+            f"\"{parse_error}\". Häufige Ursachen: abgeschnittene Antwort (zu "
+            "lang für das Token-Limit) oder nicht escapte Anführungszeichen "
+            "in Fließtext. Antworte JETZT ERNEUT auf dieselbe Aufgabe, aber "
+            "diesmal: (1) kürzer und prägnanter formulieren, falls die "
+            "Antwort zu lang wurde, (2) alle doppelten Anführungszeichen "
+            "innerhalb von Textwerten mit \\\" escapen, (3) AUSSCHLIESSLICH "
+            "das vollständige, gültige JSON-Objekt ausgeben, keine Markdown-"
+            "Codeblöcke, kein einleitender oder abschließender Text.\n\n"
+            f"Ursprüngliche Aufgabe:\n{prompt}"
+        )
+        raw = call_api(system, repair_prompt, max_tokens=max_tokens)
+        data = extract_json(raw)
+    if data is None:
+        log(f"  JSON-Selbstkorrektur nach {attempt} Versuch(en) gescheitert — gebe auf.")
+    return data
+
+
 def get_essays(date_label: str, themen: list):
     log(f"Erzeuge {N_ESSAYS} Nonconformist-Essays ({LANG}) …")
     system = (
@@ -208,7 +250,7 @@ def get_essays(date_label: str, themen: list):
         "  ]\n"
         "}"
     )
-    data = extract_json(call_api(system, prompt, max_tokens=5000))
+    data = call_api_json(system, prompt, max_tokens=7000)
     if not data or not isinstance(data.get("essays"), list):
         log("  Keine verwertbaren Essays erhalten.")
         return None

@@ -215,6 +215,47 @@ def extract_json(text):
     return data
 
 
+def call_api_json(system: str, prompt: str, max_tokens: int, repair_retries: int = 2):
+    """Wie call_api() + extract_json(), aber mit Selbstkorrektur: Wenn die
+    Modellantwort kein gültiges JSON ergibt, wird dem Modell der exakte
+    Parse-Fehler zurückgemeldet und es bekommt bis zu `repair_retries`
+    weitere Versuche. Identisches Muster wie in generate.py/generate_mfb.py
+    — behebt dieselbe Fehlerklasse, die dort bereits zu stillschweigenden
+    Totalausfällen (Insights aktualisierte sich tagelang gar nicht) führte."""
+    raw = call_api(system, prompt, max_tokens=max_tokens)
+    data = extract_json(raw)
+    attempt = 0
+    while data is None and raw and attempt < repair_retries:
+        attempt += 1
+        text = raw.replace("```json", "").replace("```", "").strip()
+        start, end = text.find("{"), text.rfind("}") + 1
+        parse_error = "unbekannt"
+        if start >= 0 and end > start:
+            try:
+                json.loads(text[start:end])
+            except json.JSONDecodeError as exc:
+                parse_error = str(exc)
+        log(f"  JSON war ungültig ({parse_error}) — bitte Modell um Korrektur "
+            f"(Versuch {attempt}/{repair_retries}) …")
+        repair_prompt = (
+            "Deine letzte Antwort war KEIN gültiges JSON — Fehler beim Parsen: "
+            f"\"{parse_error}\". Häufige Ursachen: abgeschnittene Antwort (zu "
+            "lang für das Token-Limit) oder nicht escapte Anführungszeichen "
+            "in Fließtext. Antworte JETZT ERNEUT auf dieselbe Aufgabe, aber "
+            "diesmal: (1) kürzer und prägnanter formulieren, falls die "
+            "Antwort zu lang wurde, (2) alle doppelten Anführungszeichen "
+            "innerhalb von Textwerten mit \\\" escapen, (3) AUSSCHLIESSLICH "
+            "das vollständige, gültige JSON-Objekt ausgeben, keine Markdown-"
+            "Codeblöcke, kein einleitender oder abschließender Text.\n\n"
+            f"Ursprüngliche Aufgabe:\n{prompt}"
+        )
+        raw = call_api(system, repair_prompt, max_tokens=max_tokens)
+        data = extract_json(raw)
+    if data is None:
+        log(f"  JSON-Selbstkorrektur nach {attempt} Versuch(en) gescheitert — gebe auf.")
+    return data
+
+
 _FREMDSCHRIFT_PATTERN = re.compile(
     "["
     "\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7a3"  # CJK, Hiragana/Katakana, Hangul
@@ -282,7 +323,7 @@ Liefere GENAU dieses JSON-Schema:
   "bignum": "kurze Kennzahl, z. B. '1 von 8' oder '+40%'",
   "bigcap": "1 Satz Erklärung der Kennzahl"
 }}"""
-    return extract_json(call_api(system, prompt, max_tokens=1200))
+    return call_api_json(system, prompt, max_tokens=1200)
 
 
 def get_good_news_batch(date_label: str, anzahl: int, bereiche: str, ausgeschlossene_urls: list):
@@ -312,7 +353,7 @@ Liefere GENAU dieses JSON-Schema:
     // genau {anzahl} Einträge
   ]
 }}"""
-    result = extract_json(call_api(system, prompt, max_tokens=2200))
+    result = call_api_json(system, prompt, max_tokens=2200)
     return (result or {}).get("good_news", [])
 
 
@@ -341,7 +382,7 @@ Liefere GENAU dieses JSON-Schema:
     // genau 3 Einträge, thematisch unterschiedlich
   ]
 }}"""
-    result = extract_json(call_api(system, prompt, max_tokens=3000))
+    result = call_api_json(system, prompt, max_tokens=3000)
     return (result or {}).get("stories", [])
 
 

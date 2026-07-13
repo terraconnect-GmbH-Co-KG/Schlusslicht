@@ -519,7 +519,7 @@ def _fetch_items_batch(batch: dict, date_label: str, bereits_vergebene_themen: l
         "}"
     )
 
-    return extract_json(call_api(system, prompt, max_tokens=2200))
+    return call_api_json(system, prompt, max_tokens=2200)
 
 
 def get_daily_items(date_label: str):
@@ -624,7 +624,7 @@ def get_spotlight_and_ticker(date_label: str, items: dict):
         '  "ticker": ["8 kurze Ticker-Meldungen, je max 95 Zeichen, jede zu einem anderen Thema"]\n'
         "}"
     )
-    data = extract_json(call_api(system, prompt, max_tokens=1500)) or {}
+    data = call_api_json(system, prompt, max_tokens=1500) or {}
     return {"spotlight": data.get("spotlight"), "ticker": data.get("ticker")}
 
 
@@ -673,7 +673,7 @@ def review_and_fix_items(items: dict, date_label: str) -> dict:
         "Antworte als JSON:\n"
         '{"01": {"ok": true}, "02": {"ok": false, "grund": "generischer Platzhalter"}, ...}'
     )
-    urteil = extract_json(call_api(system, prompt, max_tokens=2000)) or {}
+    urteil = call_api_json(system, prompt, max_tokens=2000) or {}
 
     for num in list(echte_items.keys()):
         bewertung = urteil.get(num, {})
