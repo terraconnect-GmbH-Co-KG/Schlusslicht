@@ -176,6 +176,50 @@ def sanitize(obj):
     return obj
 
 
+def call_api_json(system: str, prompt: str, max_tokens: int, repair_retries: int = 2):
+    """Wie call_api() + extract_json(), aber mit Selbstkorrektur: Wenn die
+    Modellantwort kein gültiges JSON ergibt (z.B. durch Abschneiden bei zu
+    knappem max_tokens oder nicht escapte Anführungszeichen im Fließtext),
+    wird dem Modell der exakte Parse-Fehler zurückgemeldet und es bekommt
+    bis zu `repair_retries` weitere Versuche, gültiges JSON zu liefern.
+    (Identisches Muster wie in generate.py — behebt dieselbe Fehlerklasse,
+    die dort zum 'Bahnbrech'-Vorfall führte: bei 5 Spalten mit vielen
+    Textfeldern ist das Risiko für abgeschnittenes/kaputtes JSON mindestens
+    genauso hoch wie bei den Hintergrundstorys.)"""
+    raw = call_api(system, prompt, max_tokens=max_tokens)
+    data = extract_json(raw)
+    attempt = 0
+    while data is None and raw and attempt < repair_retries:
+        attempt += 1
+        text = raw.replace("```json", "").replace("```", "").strip()
+        start, end = text.find("{"), text.rfind("}") + 1
+        parse_error = "unbekannt"
+        if start >= 0 and end > start:
+            try:
+                json.loads(text[start:end])
+            except json.JSONDecodeError as exc:
+                parse_error = str(exc)
+        log(f"  JSON war ungültig ({parse_error}) — bitte Modell um Korrektur "
+            f"(Versuch {attempt}/{repair_retries}) …")
+        repair_prompt = (
+            "Deine letzte Antwort war KEIN gültiges JSON — Fehler beim Parsen: "
+            f"\"{parse_error}\". Häufige Ursachen: abgeschnittene Antwort (zu "
+            "lang für das Token-Limit) oder nicht escapte Anführungszeichen "
+            "in Fließtext. Antworte JETZT ERNEUT auf dieselbe Aufgabe, aber "
+            "diesmal: (1) kürzer und prägnanter formulieren, falls die "
+            "Antwort zu lang wurde, (2) alle doppelten Anführungszeichen "
+            "innerhalb von Textwerten mit \\\" escapen, (3) AUSSCHLIESSLICH "
+            "das vollständige, gültige JSON-Objekt ausgeben, keine Markdown-"
+            "Codeblöcke, kein einleitender oder abschließender Text.\n\n"
+            f"Ursprüngliche Aufgabe:\n{prompt}"
+        )
+        raw = call_api(system, repair_prompt, max_tokens=max_tokens)
+        data = extract_json(raw)
+    if data is None:
+        log(f"  JSON-Selbstkorrektur nach {attempt} Versuch(en) gescheitert — gebe auf.")
+    return data
+
+
 def _is_duplicate_sentence(s_norm: str, seen_norm: list, threshold: float) -> bool:
     """Siehe generate.py: Duplikat bei hoher Ähnlichkeit ODER wenn der
     kürzere Satzkern komplett im längeren enthalten ist."""
@@ -285,7 +329,15 @@ def extract_rubrik_facts(path: str) -> dict:
                 tbl_tag = tg.get_text(strip=True) if tg else ""
             for row in tbl.select(".row"):
                 nm = row.select_one(".nm")
-                v = row.select_one(".v")
+                # WICHTIG (Bugfix): 2 von 8 Rubriken (Klimaschutz, Medien)
+                # nutzen im Template eine abweichende Tabellen-Variante mit
+                # <span class="n"> statt <span class="v"> für den Wert.
+                # Ohne diesen Fallback lieferte extract_rubrik_facts für
+                # genau diese beiden Rubriken 0 Tabellenzeilen — was
+                # validate_column() später für JEDE Spalte mit Zahlen
+                # scheitern liess, sobald die Tagesrotation eine dieser
+                # beiden Rubriken auswählte.
+                v = row.select_one(".v") or row.select_one(".n")
                 if nm and v:
                     rows.append({
                         "name": nm.get_text(" ", strip=True),
@@ -427,8 +479,7 @@ Liefere GENAU dieses JSON-Schema:
   ]
 }}"""
 
-    raw = call_api(system, prompt, max_tokens=6000)
-    data = extract_json(raw)
+    data = call_api_json(system, prompt, max_tokens=9000)
     if not data or "columns" not in data:
         log("  Keine verwertbaren Kommentar-Daten erhalten.")
         return None
