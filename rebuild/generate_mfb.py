@@ -7,25 +7,21 @@ Wird vom GitHub-Actions-Workflow .github/workflows/daily-update.yml gestartet,
 nach generate.py und generate_visionen.py.
 
 WICHTIGES DESIGNPRINZIP (Sorgfaltspflicht bei Meinungsinhalten):
-Die Zahlen in dieser Meinungsstrecke ("204 zu 1", "Sieben Prozent" usw.)
-stammen NICHT aus einer neuen KI-Recherche, sondern werden deterministisch aus
-den bereits verifizierten, festen Tabellen in index.template.html ausgelesen
-(dieselben Daten, die auch auf der Startseite stehen). Die KI bekommt diese
-Fakten als Vorgabe und schreibt NUR den Kommentartext dazu — sie recherchiert
-und erfindet keine neuen Zahlen. Das minimiert Halluzinationsrisiko bei einer
-Seite, die explizit als "pointiert und parteiisch, aber überprüfbar" beworben
-wird.
+Diese Meinungsstrecke recherchiert ihre 3 Themen und Zahlen jeden Tag FRISCH
+per Websuche — kein fester Themen-Pool, keine Rotation, komplett unabhängig
+von der Startseite. Die Absicherung gegen Halluzination läuft über dieselbe
+technische Quellen-URL-Verifikation (HTTP-Check mit DNS-Fehler-Unterscheidung),
+die auch generate.py verwendet: eine Zahl ohne echte, erreichbare Quelle wird
+verworfen, nicht veröffentlicht.
 
 Ablauf:
-  1. Liest die Rubrik-Tabellen aus index.template.html (feste Fakten).
-  2. Liest die heutigen Schlagzeilen/Kommentare aus dem frisch gebauten
-     index.html (aktueller Anlass des Tages je Rubrik).
-  3. Wählt per Datum rotierend 5 politische Rubriken aus (volle Abdeckung alle
-     ~5 Tage, deterministisch, kein Zufall).
-  4. Lässt die KI für jede der 5 Rubriken einen Meinungskommentar auf Basis
-     der vorgegebenen Fakten schreiben.
-  5. Baut Text in insights.template.html ein, schreibt
-     insights.html.
+  1. Recherchiert 3 eigenständige politische/gesellschaftliche Themen samt
+     Zahlen und Quelle (kein Bezug zur Startseite oder zu anderen Seiten).
+  2. Verifiziert jede angegebene Quellen-URL technisch.
+  3. Baut Text in insights.template.html ein, schreibt insights.html.
+  4. Merkt sich die heutigen Themen in einer kleinen Historie-Datei
+     (insights_history.json), damit sich Themen nicht postwendend
+     wiederholen (kein Pool/Rotation, nur ein Wiederholungs-Schutz).
 """
 
 import datetime
@@ -37,6 +33,7 @@ import sys
 import time
 
 import requests
+from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
 API_KEY = os.environ.get("OPENROUTER_API_KEY", "").strip()
@@ -44,11 +41,12 @@ API_URL = "https://openrouter.ai/api/v1/chat/completions"
 MODEL = "perplexity/sonar"
 LANG = os.environ.get("SL_LANG", "de").strip().lower()
 TEMPLATE = "insights.en.template.html" if LANG == "en" else "insights.template.html"
-FACTS_SOURCE = "index.en.template.html" if LANG == "en" else "index.template.html"
-TODAY_SOURCE = "index.en.html" if LANG == "en" else "index.html"
 OUTPUT = "insights.en.html" if LANG == "en" else "insights.html"
+HISTORY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "insights_history_en.json" if LANG == "en" else "insights_history.json")
+HISTORY_KEEP_DAYS = 60
 TIMEOUT = 240
-N_COLS = 5
+N_COLS = 3
 
 MONATE = (
     ["January", "February", "March", "April", "May", "June", "July",
@@ -61,6 +59,109 @@ MONATE = (
 
 def log(msg: str) -> None:
     print(f"[{datetime.datetime.now():%H:%M:%S}] {msg}", flush=True)
+
+
+# Dieselbe kuratierte Vertrauensliste + DNS-bewusste Verifikationslogik wie
+# in generate.py — siehe dortige Kommentare für die volle Begründung.
+TRUSTED_SOURCE_DOMAINS = {
+    "transparency.org", "worldhappiness.report", "transfermarkt.de",
+    "rsf.org", "reporter-ohne-grenzen.de", "oecd.org", "who.int",
+    "worldbank.org", "imf.org", "germanwatch.org", "unesco.org",
+    "destatis.de", "boeckler.de", "bundesrechnungshof.de", "adac.de",
+    "ec.europa.eu", "propublica.org", "espn.com", "bundeswahlleiterin.de",
+    "tagesschau.de", "zeit.de", "faz.net", "spiegel.de", "sueddeutsche.de",
+    "handelsblatt.com", "bloomberg.com", "reuters.com", "dpa.com",
+    "yonhap.co.kr", "wikipedia.org", "nasa.gov", "esa.int", "wan-ifra.org",
+    "amnesty.org", "cpj.org", "boxofficemojo.com", "variety.com",
+    "ookla.com", "speedtest.net", "statista.com", "bundesbank.de",
+    "un.org", "gallup.com",
+}
+
+
+def _domain_is_trusted(url: str) -> bool:
+    try:
+        host = (urlparse(url).hostname or "").lower()
+    except ValueError:
+        return False
+    if host.startswith("www."):
+        host = host[4:]
+    return any(host == d or host.endswith("." + d) for d in TRUSTED_SOURCE_DOMAINS)
+
+
+def verify_url(url: str, timeout: int = 8) -> bool:
+    """Identische Verifikationslogik wie in generate.py: nur ein echter
+    DNS-Fehler (Domain existiert nicht) gilt als Beleg gegen die Existenz
+    einer Quelle. Bot-Schutz-Statuscodes und Verbindungsfehler zu real
+    existierenden Domains werden akzeptiert."""
+    if not url or not isinstance(url, str) or not url.strip().lower().startswith("http"):
+        return False
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                      "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
+    }
+    BOT_BLOCK_CODES = {401, 403, 405, 429, 500, 502, 503, 504}
+    DNS_FAILURE_MARKERS = (
+        "nameresolutionerror", "failed to resolve", "getaddrinfo failed",
+        "name or service not known", "temporary failure in name resolution",
+        "no address associated with hostname", "dns lookup failed",
+    )
+    try:
+        r = requests.head(url, timeout=timeout, allow_redirects=True, headers=headers)
+        if r.status_code >= 400:
+            r = requests.get(url, timeout=timeout, allow_redirects=True, headers=headers, stream=True)
+        if r.status_code < 400:
+            return True
+        if r.status_code in BOT_BLOCK_CODES:
+            log(f"  Quelle antwortet mit HTTP {r.status_code} (Bot-Schutz/"
+                f"Server-Fehler, keine echte Nicht-Existenz) — wird trotzdem "
+                f"akzeptiert: {url}")
+            return True
+        return False
+    except requests.RequestException as exc:
+        msg = str(exc).lower()
+        ist_dns_fehler = any(marker in msg for marker in DNS_FAILURE_MARKERS)
+        if not ist_dns_fehler:
+            log(f"  Quelle technisch nicht erreichbar ({exc.__class__.__name__}, "
+                f"kein DNS-Fehler) — wird akzeptiert: {url}")
+            return True
+        if _domain_is_trusted(url):
+            log(f"  Quelle mit DNS-Fehler, aber etablierte Institution — "
+                f"wird trotzdem akzeptiert: {url}")
+            return True
+        log(f"  Quellen-URL nicht erreichbar: {url} ({exc.__class__.__name__})")
+        return False
+
+
+# ── Themen-Historie (Wiederholungsschutz, KEIN Pool/Rotation) ───────────────
+def load_history() -> list:
+    if not os.path.exists(HISTORY_PATH):
+        return []
+    try:
+        with open(HISTORY_PATH, encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, list) else []
+    except Exception as exc:
+        log(f"  Themen-Historie konnte nicht gelesen werden: {exc}")
+        return []
+
+
+def save_history(history: list) -> None:
+    cutoff = datetime.date.today() - datetime.timedelta(days=HISTORY_KEEP_DAYS)
+    pruned = []
+    for entry in history:
+        try:
+            d = datetime.date.fromisoformat(entry.get("date", ""))
+        except (ValueError, TypeError, AttributeError):
+            continue
+        if d >= cutoff:
+            pruned.append(entry)
+    try:
+        with open(HISTORY_PATH, "w", encoding="utf-8") as fh:
+            json.dump(pruned, fh, ensure_ascii=False, indent=2)
+    except Exception as exc:
+        log(f"  Themen-Historie konnte nicht gespeichert werden: {exc}")
 
 
 def call_api(system: str, prompt: str, max_tokens: int, retries: int = 3):
@@ -304,98 +405,102 @@ def dedupe_column_paragraphs(paragraphs, threshold=0.75):
     return result
 
 
-# ── Deterministische Fakten-Extraktion aus den Rubrik-Tabellen ───────────────
-def extract_rubrik_facts(path: str) -> dict:
-    """Liest alle Rubrik-Tabellen aus und liefert strukturierte Fakten
-    (Name, Tabellentitel, Zeilen, Fußzeile) — ohne jede KI-Beteiligung."""
-    with open(path, encoding="utf-8") as fh:
-        soup = BeautifulSoup(fh, "html.parser")
+# ── KI-Aufruf: eigenständige Recherche + Meinungskommentar ──────────────────
+def get_fresh_columns(date_label: str, avoid_themes: list):
+    log(f"Recherchiere {N_COLS} frische politische/gesellschaftliche Themen "
+        "samt Zahlen und Quelle …")
 
-    facts = {}
-    for art in soup.select("article.rub"):
-        num = art.get("data-rubrik")
-        if not num:
-            continue
-        rnum_el = art.select_one(".rnum")
-        name = rnum_el.get_text(strip=True) if rnum_el else ""
-        tbl = art.select_one(".tbl")
-        rows, tbl_title, tbl_tag, foot = [], "", "", ""
-        if tbl:
-            head = tbl.select_one(".tbl-head")
-            if head:
-                tt = head.select_one(".tt")
-                tg = head.select_one(".tag")
-                tbl_title = tt.get_text(strip=True) if tt else ""
-                tbl_tag = tg.get_text(strip=True) if tg else ""
-            for row in tbl.select(".row"):
-                nm = row.select_one(".nm")
-                # WICHTIG (Bugfix): 2 von 8 Rubriken (Klimaschutz, Medien)
-                # nutzen im Template eine abweichende Tabellen-Variante mit
-                # <span class="n"> statt <span class="v"> für den Wert.
-                # Ohne diesen Fallback lieferte extract_rubrik_facts für
-                # genau diese beiden Rubriken 0 Tabellenzeilen — was
-                # validate_column() später für JEDE Spalte mit Zahlen
-                # scheitern liess, sobald die Tagesrotation eine dieser
-                # beiden Rubriken auswählte.
-                v = row.select_one(".v") or row.select_one(".n")
-                if nm and v:
-                    rows.append({
-                        "name": nm.get_text(" ", strip=True),
-                        "value": v.get_text(strip=True),
-                    })
-            foot_el = tbl.select_one(".tbl-foot")
-            if foot_el:
-                foot = foot_el.get_text(" ", strip=True)
-        facts[num] = {
-            "name": name,
-            "table_title": tbl_title,
-            "table_period": tbl_tag,
-            "rows": rows,
-            "foot": foot,
-        }
-    return facts
+    system = (
+        "Du bist Kolumnist der Meinungsstrecke 'more from behind' auf "
+        "schlusslicht.de, einem deutschen linkssatirischen Magazin. "
+        "Zielpublikum: belesene Erwachsene zwischen Mitte 40 und 70 (Generation "
+        "X bis Babyboomer) — kein Jugend- oder Social-Media-Slang, keine "
+        "Meme-Sprache, keine Anglizismen-Mischwörter (z. B. NIEMALS "
+        "Konstruktionen wie 'irgendwas-treue' oder deutsch-englische "
+        "Bastelwörter). Schreibe in klarer, druckreifer Sprache, wie es in "
+        "einem gedruckten Satiremagazin (Stil: Titanic, Eulenspiegel, "
+        "klassische Feuilleton-Polemik) stehen könnte — nicht wie eine "
+        "Boulevard-Schlagzeile oder ein Tweet.\n\n"
+        "Recherchiere zu JEDEM Thema per Websuche ECHTE, aktuelle Zahlen und "
+        "Fakten. ABSOLUTE REGEL (nicht verhandelbar): Erfinde KEINE "
+        "Statistiken, Studien, Prozentsätze oder Vergleichszahlen. Jede Zahl "
+        "MUSS von einer echten, mit Websuche auffindbaren Quelle stammen, "
+        "UND du musst die tatsächliche, funktionierende URL dieser Quelle "
+        "angeben. Findest du zu einem Thema keine echte Zahl mit einer "
+        "echten, existierenden Quelle, wähle ein anderes Thema, aber "
+        "erfinde nichts. Wahrheitsgehalt geht immer vor Zuspitzung.\n\n"
+        "STIL (hier darfst und sollst du zuspitzen): pointiert, bissig, "
+        "mit trockenem schwarzem Humor und klarer, DEUTLICH benannter "
+        "linker, ökologisch-grüner politischer Haltung für die "
+        "Benachteiligten — Satire durch Sprachwitz, Ironie und "
+        "überraschende Bilder, nicht durch Ausrufezeichen oder reißerische "
+        "Effekthascherei. Benenne Ursache und Verantwortung direkt und ohne "
+        "übermäßige Zurückhaltung (strukturell: wer profitiert, wer trägt "
+        "die politische Verantwortung, welche Verteilungslogik steckt "
+        "dahinter) — deutlich direkter als eine vorsichtig-relativierende "
+        "Zeitungsmeldung, aber weiterhin NICHT radikal und niemals plump: "
+        "jede Zuspitzung bleibt an die recherchierten Fakten gebunden, keine "
+        "Übertreibung ins Unbelegbare. Kurze, klare Sätze wechseln mit "
+        "einem gelegentlich längeren, kunstvoll gebauten Satz. Der "
+        "'punch'-Absatz soll die pointierteste, bissigste Formulierung der "
+        "Kolumne enthalten. Der Titel darf originell und wortspielerisch "
+        "sein, aber nicht reißerisch wie eine Boulevardzeile klingen. NUR "
+        "vollständige, echte Wörter — KEINE erfundenen Kunstwörter oder "
+        "abgebrochenen Wortspiele (z.B. NIEMALS 'Bahnbrech' statt "
+        "'bahnbrechend'). Im Zweifel lieber sachlich-klar als "
+        "kreativ-kaputt. Antworte AUSSCHLIESSLICH auf "
+        + ("Englisch (US)" if LANG == "en" else "Deutsch") + " — keine "
+        "chinesischen, kyrillischen, arabischen oder anderen "
+        "nicht-lateinischen Schriftzeichen, auch nicht einzelne Wörter oder "
+        "Zeichen davon.\n\n"
+        "SPRACHLICHE KLARHEIT: Jeder der 4 Absätze hat eine feste, eigene "
+        "Aufgabe (siehe Schema unten) und darf NICHTS aus einem anderen "
+        "Absatz wiederholen — auch nicht sinngemäß oder mit anderen Worten. "
+        "Prüfe vor der Ausgabe jeden Absatz gegen die vorherigen: Steht der "
+        "Gedanke schon da? Falls ja, streiche ihn. Antworte NUR mit einem "
+        "validen JSON-Objekt, keine Erklärung davor oder danach."
+    )
 
+    avoid_hinweis = (
+        f"\n\nDiese Themen wurden in den letzten Tagen bereits verwendet — "
+        f"wähle KEINES davon erneut: {', '.join(avoid_themes)}."
+        if avoid_themes else ""
+    )
+    prompt = f"""Ausgabe vom {date_label}. Recherchiere und schreibe {N_COLS} eigenständige,
+thematisch unterschiedliche politische/gesellschaftliche Meinungskolumnen.{avoid_hinweis}
 
-def extract_today_headlines(path: str) -> dict:
-    """Liest die heutigen (bereits generierten) Schlagzeilen/Kommentare aus
-    index.html — gibt dem Kommentar einen aktuellen Anlass."""
-    if not os.path.exists(path):
-        return {}
-    with open(path, encoding="utf-8") as fh:
-        soup = BeautifulSoup(fh, "html.parser")
-    out = {}
-    for art in soup.select("article.rub"):
-        num = art.get("data-rubrik")
-        if not num:
-            continue
-        title = art.select_one(".rtit")
-        quip = art.select_one(".realsatire")
-        out[num] = {
-            "headline": title.get_text(strip=True) if title else "",
-            "quip": quip.get_text(strip=True) if quip else "",
-        }
-    return out
+Liefere GENAU dieses JSON-Schema:
+{{
+  "columns": [
+    {{
+      "thema": "1-2 Wörter Themen-Schlagwort, für Wiederholungsschutz",
+      "tag": "" + ("Standpoint · short topic" if LANG == "en" else "Standpunkt · Kurzthema") + "",
+      "title": "prägnanter Titel wie eine Schlagzeile, max 40 Zeichen",
+      "paragraphs": [
+        {{"text": "Absatz 1 — NUR: Einstieg mit einer recherchierten Zahl, nüchtern dargestellt. Keine Bewertung.", "punch": false}},
+        {{"text": "Absatz 2 — NUR: der zugespitzte Kernsatz/die Wertung dazu. Die Zahl aus Absatz 1 nicht wiederholen.", "punch": true}},
+        {{"text": "Absatz 3 — NUR: zusätzlicher Kontext oder Gegenargument, das in Absatz 1+2 noch nicht vorkam.", "punch": false}},
+        {{"text": "Absatz 4 — NUR: eine konkrete Schlussfolgerung/Forderung, die nirgends vorher stand.", "punch": false}}
+      ],
+      "bignum_text": "die recherchierte Kernzahl, wortwörtlich, z.B. '204×' oder '~7 %'",
+      "bignum_caption": "1 kurzer Satz, was die Zahl bedeutet",
+      "stat_bullets": [
+        {{"label": "Bezeichnung", "value": "Wert, wortwörtlich recherchiert"}}
+        // 2-3 Einträge
+      ],
+      "source_name": "Name der echten Quelle, z.B. 'Destatis' oder 'OECD'",
+      "source_url": "https://echte-existierende-url, die exakt zu source_name passt",
+      "source_date": "Datum/Zeitraum der Quelle, z.B. '2025'"
+    }}
+    // genau {N_COLS} Einträge, thematisch unterschiedlich
+  ]
+}}"""
 
-
-# Nur Rubriken mit klarem Politik-/Weltgeschehen-Bezug für die Meinungsstrecke.
-# Ausgeschlossen: nur "01" (Sport/MLS) — passt thematisch nicht zu einer
-# politischen Kolumne für ein Gen-X-/Boomer-Publikum. Alle anderen 7
-# Rubriken (Niedriglohn, Bahn & ÖPNV, Pressefreiheit, Korruption,
-# Klimaschutz, Steuervermeidung, Medien) sind explizit politisch relevant.
-POLITISCHE_RUBRIKEN = ["02", "03", "04", "05", "06", "07", "08"]
-
-
-def pick_rubriken(today: datetime.date) -> list:
-    """Deterministische, rotierende Auswahl von 5 aus den politisch
-    relevanten Rubriken — kein Zufall, volle Abdeckung alle paar Tage."""
-    pool = POLITISCHE_RUBRIKEN
-    n = len(pool)
-    start = (today.toordinal() * N_COLS) % n
-    return [pool[(start + i) % n] for i in range(N_COLS)]
-
-
-# ── KI-Aufruf: nur Formulierung, keine neuen Zahlen ──────────────────────────
-def get_commentary(facts_package: list, date_label: str):
+    data = call_api_json(system, prompt, max_tokens=9000)
+    if not data or "columns" not in data or not isinstance(data["columns"], list):
+        log("  Keine verwertbaren Kommentar-Daten erhalten.")
+        return None
+    return data
     log("Erstelle Meinungskommentare zu vorgegebenen, festen Fakten …")
 
     system = (
@@ -490,7 +595,7 @@ def review_and_rewrite_columns(columns: list, date_label: str) -> list:
     """NEUER Zwischenschritt vor der Veröffentlichung: Prüft Sinnhaftigkeit
     von Titel und Fliesstext-Absätzen und formuliert bei Bedarf sprachlich
     um. WICHTIG: Rührt NIEMALS bignum_text, bignum_caption oder
-    stat_bullets an — diese Zahlen werden separat (validate_column) gegen
+    stat_bullets an — diese werden separat per Quellen-URL-Verifikation gegen
     echte, extrahierte Fakten geprüft und dürfen durch diesen Schritt
     nicht verändert werden. Auch bei Titel/Absätzen wird geprüft, dass
     keine neuen, im Original nicht vorhandenen Zahlen hinzukommen."""
@@ -570,20 +675,9 @@ def review_and_rewrite_columns(columns: list, date_label: str) -> list:
     return columns
 
 
-# ── Validierung: Zahlen müssen wirklich aus den Fakten stammen ───────────────
+# ── Validierung: Zahlen-Vergleich für review_and_rewrite_columns ───────────
 def _numbers_in(text: str) -> set:
     return set(re.findall(r"\d+[.,]?\d*", text or ""))
-
-
-def validate_column(col: dict, fact: dict) -> bool:
-    """Grobe Sicherheitsnetz-Prüfung: alle Zahlen im bignum/Bullets müssen
-    auch irgendwo in den vorgegebenen Fakten auftauchen."""
-    allowed = _numbers_in(json.dumps(fact, ensure_ascii=False))
-    for field in [col.get("bignum_text", "")] + [b.get("value", "") for b in col.get("stat_bullets", [])]:
-        nums = _numbers_in(field)
-        if nums and not nums.issubset(allowed):
-            return False
-    return True
 
 
 # ── HTML-Injektion ────────────────────────────────────────────────────────────
@@ -593,66 +687,10 @@ def set_text(node, value):
         node.append(str(value))
 
 
-def inject(html: str, columns: list, facts: dict, intended_rubrik_nums: list = None) -> str:
+def inject(html: str, columns: list) -> str:
     soup = BeautifulSoup(html, "html.parser")
-    intended_rubrik_nums = intended_rubrik_nums or [None] * len(columns)
 
     for i, col in enumerate(columns, start=1):
-        # WICHTIG: col kann None sein (Slot ist heute durch die Faktenprüfung
-        # gefallen). Bevor wir den Slot blank auf einen Platzhalter setzen,
-        # prüfen wir: Zeigt der Slot ohnehin schon dieselbe Rubrik wie heute
-        # vorgesehen (Abgleich über die "(Rubrik NN)"-Kennzeichnung am Ende
-        # der bestehenden Quellenangabe)? Falls ja, ist der bestehende Inhalt
-        # weiterhin korrekt zugeordnet (nur die heutige Aktualisierung ist
-        # fehlgeschlagen) und darf unverändert stehen bleiben. Nur wenn sich
-        # die Rubrik-Zuordnung seit der letzten erfolgreichen Aktualisierung
-        # GEÄNDERT hat, wird auf einen neutralen Platzhalter zurückgesetzt —
-        # das verhindert den gemeldeten Doppel-Bahn-Fehler (zwei Slots mit
-        # derselben Rubrik aus unterschiedlichen Tagen/Rotationen).
-        if col is None:
-            intended_num = intended_rubrik_nums[i - 1] if i - 1 < len(intended_rubrik_nums) else None
-            existing_src = soup.select_one(f"#col{i}-src")
-            existing_text = existing_src.get_text() if existing_src else ""
-            m = re.search(r"\((?:Rubrik|Category)\s+(\d+)\)", existing_text)
-            existing_num = m.group(1) if m else None
-
-            if intended_num and existing_num == intended_num:
-                log(f"  Slot {i}: Faktenprüfung heute fehlgeschlagen, aber "
-                    f"Rubrik {intended_num} ist unverändert zu gestern — "
-                    f"bestehender, korrekt zugeordneter Inhalt bleibt stehen.")
-                continue
-
-            log(f"  Slot {i}: Rubrik-Zuordnung hat sich geändert (vorher "
-                f"{existing_num or 'unbekannt'}, heute vorgesehen "
-                f"{intended_num or 'unbekannt'}) UND heutige Aktualisierung "
-                f"fehlgeschlagen — wird auf neutralen Platzhalter "
-                f"zurückgesetzt, um keine rubrik-fremde Dopplung zu riskieren.")
-            placeholder = (
-                "This section will be updated in the next run."
-                if LANG == "en" else
-                "Dieser Abschnitt wird beim nächsten Lauf aktualisiert."
-            )
-            set_text(soup.select_one(f"#col{i}-tag"), "—")
-            set_text(soup.select_one(f"#col{i}-h2"), placeholder)
-            body = soup.select_one(f"#col{i}-body")
-            if body is not None:
-                for old_p in body.select("p.gen-para"):
-                    old_p.decompose()
-                p = soup.new_tag("p", attrs={"class": "gen-para"})
-                p.string = placeholder
-                body.append(p)
-            set_text(soup.select_one(f"#col{i}-bignum-text"), "—")
-            set_text(soup.select_one(f"#col{i}-bigcap"), "")
-            for j in range(1, 4):
-                li = soup.select_one(f"#col{i}-stat{j}")
-                if li is not None:
-                    li.clear()
-            set_text(soup.select_one(f"#col{i}-src"), "")
-            continue
-
-        rubrik_num = col.get("rubrik_num")
-        fact = facts.get(rubrik_num, {})
-
         set_text(soup.select_one(f"#col{i}-tag"), col.get("tag"))
         set_text(soup.select_one(f"#col{i}-h2"), col.get("title"))
 
@@ -682,10 +720,12 @@ def inject(html: str, columns: list, facts: dict, intended_rubrik_nums: list = N
                 strong.string = str(b.get("value", ""))
                 li.append(strong)
 
-        # Quelle: aus den deterministisch extrahierten Fakten, nicht von der KI
-        src_text = (f"Source: {fact.get('table_title', '')} · {fact.get('table_period', '')} (Category {rubrik_num})"
-                    if LANG == "en" else
-                    f"Quelle: {fact.get('table_title', '')} · {fact.get('table_period', '')} (Rubrik {rubrik_num})")
+        # Quelle: direkt aus der heute recherchierten und verifizierten
+        # Angabe der KI (kein fester Datenpool mehr).
+        name = (col.get("source_name") or "").strip()
+        date = (col.get("source_date") or "").strip()
+        prefix = "Source" if LANG == "en" else "Quelle"
+        src_text = f"{prefix}: {name}" + (f" · {date}" if date else "") if name else f"{prefix}: —"
         set_text(soup.select_one(f"#col{i}-src"), src_text)
 
     return str(soup)
@@ -710,26 +750,21 @@ def main() -> int:
                   f"{today.day}. {MONATE[today.month - 1]} {today.year}")
     log(f"more_from_behind-Ausgabe: {date_label}")
 
-    if not os.path.exists(FACTS_SOURCE):
-        log(f"FEHLER: {FACTS_SOURCE} nicht gefunden.")
-        return 1
     if not os.path.exists(TEMPLATE):
         log(f"FEHLER: {TEMPLATE} nicht gefunden.")
         return 1
 
-    facts = extract_rubrik_facts(FACTS_SOURCE)
-    today_headlines = extract_today_headlines(TODAY_SOURCE)
-    selected = pick_rubriken(today)
-    log(f"  Ausgewählte Rubriken heute: {', '.join(selected)}")
+    history = load_history()
+    avoid_themes = sorted({
+        (entry.get("thema") or "").strip()
+        for entry in history
+        if (entry.get("thema") or "").strip()
+    })
+    if avoid_themes:
+        log(f"  {len(avoid_themes)} Themen aus den letzten {HISTORY_KEEP_DAYS} "
+            f"Tagen bereits verwendet — werden vermieden.")
 
-    facts_package = []
-    for num in selected:
-        f = dict(facts.get(num, {}))
-        f["rubrik_num"] = num
-        f["heutiger_anlass"] = today_headlines.get(num, {})
-        facts_package.append(f)
-
-    data = get_commentary(facts_package, date_label)
+    data = get_fresh_columns(date_label, avoid_themes)
     if not data:
         log("Keine Inhalte erzeugt — insights.html bleibt unverändert.")
         return 0
@@ -740,57 +775,43 @@ def main() -> int:
 
     columns = review_and_rewrite_columns(columns, date_label)
 
-    # Sicherheitsnetz: Spalten mit nicht belegbaren Zahlen aussortieren.
-    #
-    # WICHTIG (Bugfix Positions-Kompaktierung): Da die 5 Slots (#col1..#col5)
-    # täglich ROTIEREND mit unterschiedlichen Rubriken belegt werden (z.B.
-    # ist "Bahn" heute vielleicht Slot 2, gestern war es Slot 4), darf eine
-    # durchgefallene Spalte NICHT einfach übersprungen werden — das würde
-    # nachfolgende Spalten in frühere Slots verschieben (Kompaktierung) UND
-    # den nicht befüllten Slot mit dem alten Inhalt EINER ANDEREN, evtl.
-    # bereits in einem anderen Slot heute gezeigten Rubrik stehen lassen.
-    # Genau das führte zum gemeldeten Fehler: zwei fast identische
-    # "Bahn"-Karten gleichzeitig sichtbar, weil ein alter Bahn-Slot von
-    # einem früheren Tag nie bereinigt wurde, während "Bahn" heute zusätzlich
-    # in einem ANDEREN, frisch befüllten Slot auftauchte.
-    #
-    # Fix: Positionsstabilität wird erzwungen (kein compacting/append mehr).
-    # Ein durchgefallener Slot wird explizit auf einen neutralen, ehrlich
-    # gekennzeichneten Platzhalter zurückgesetzt statt stillschweigend den
-    # alten (evtl. rubrik-fremden) Stand zu behalten.
-    checked = [None] * len(columns)
-    for idx, col in enumerate(columns):
-        fact = facts.get(col.get("rubrik_num"), {})
-        if validate_column(col, fact):
-            checked[idx] = col
-        else:
-            log(f"  WARNUNG: Rubrik {col.get('rubrik_num')} enthält nicht "
-                f"belegbare Zahlen — Slot {idx + 1} wird auf neutralen "
-                f"Platzhalter zurückgesetzt (kein Stehenlassen einer "
-                f"anderen, evtl. bereits doppelt gezeigten Rubrik).")
+    # Sicherheitsnetz: Spalten mit nicht verifizierbarer Quelle aussortieren
+    # (technischer HTTP-Check, dieselbe Logik wie in generate.py).
+    log("  Verifiziere Quellen-URLs technisch (HTTP-Check) …")
+    verified = []
+    for col in columns:
+        url = (col.get("source_url") or "").strip()
+        if not verify_url(url):
+            log(f"  Kolumne {col.get('title', '(ohne Titel)')!r}: Quellen-URL "
+                f"fehlt oder nicht erreichbar ({url or 'keine URL angegeben'}) "
+                f"— komplett verworfen, keine Halluzinationen ohne Beleg.")
+            continue
+        log(f"  Kolumne {col.get('title', '')!r}: Quelle verifiziert ({url})")
+        verified.append(col)
 
-    if not any(checked):
-        log("Keine Spalte hat die Faktenprüfung bestanden — Datei bleibt unverändert.")
+    if not verified:
+        log("Keine Kolumne hat die Quellen-Verifikation bestanden — Datei bleibt unverändert.")
         return 0
 
     # WICHTIG: OUTPUT (gestriges, echtes Ergebnis) wird bevorzugt geladen,
-    # NICHT das statische TEMPLATE. Andernfalls würde bei jedem Fehlschlag
-    # einzelner Spalten (z.B. nicht verifizierbare Fakten) auf den
-    # ursprünglichen Tag-0-Platzhaltertext zurückgefallen statt auf den
-    # zuletzt erfolgreich generierten, echten Stand von gestern.
+    # NICHT das statische TEMPLATE (siehe generate.py für die volle
+    # Begründung des Root-Cause-Fixes).
     base_path = OUTPUT if os.path.exists(OUTPUT) else TEMPLATE
     log(f"Verwende als Basis: {base_path}")
     with open(base_path, encoding="utf-8") as fh:
         html = fh.read()
 
-    intended_rubrik_nums = [c.get("rubrik_num") if isinstance(c, dict) else None for c in columns]
-    html = inject(html, checked, facts, intended_rubrik_nums)
+    html = inject(html, verified)
+
+    new_themes = [c.get("thema", "").strip() for c in verified if c.get("thema")]
+    today_iso = datetime.date.today().isoformat()
+    if new_themes:
+        save_history(history + [{"date": today_iso, "thema": t} for t in new_themes])
+        log(f"Themen-Historie aktualisiert: {', '.join(new_themes)}")
 
     with open(OUTPUT, "w", encoding="utf-8") as fh:
         fh.write(html)
-    log(f"{OUTPUT} geschrieben ({len(html):,} Zeichen), "
-        f"{sum(1 for c in checked if c)}/{N_COLS} Spalten aktualisiert, "
-        f"{sum(1 for c in checked if not c)} auf Platzhalter zurückgesetzt.")
+    log(f"{OUTPUT} geschrieben ({len(html):,} Zeichen), {len(verified)}/{N_COLS} Spalten aktualisiert.")
     return 0
 
 

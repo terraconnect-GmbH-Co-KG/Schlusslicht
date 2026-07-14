@@ -6,11 +6,13 @@ generate.py — Tagesaktualisierung für schlusslicht.de
 Wird vom GitHub-Actions-Workflow .github/workflows/daily-update.yml gestartet.
 
 Ablauf:
-  1. Liest die Vorlage  index.template.html  (Fallback: index.html).
-  2. Recherchiert per OpenRouter-API mit Web-Search-Server-Tool
-       a) tagesaktuelle Meldungen für alle 8 Rubriken,
-       b) 3 frische Hintergrundstorys.
-  3. Baut die Inhalte fest in das HTML ein und schreibt  index.html.
+  1. Liest die letzte echte Ausgabe  index.html  (Fallback: Template).
+  2. Recherchiert per OpenRouter-API mit Web-Search-Server-Tool 3 frische,
+     frei gewählte Schlusslicht-Meldungen (kein Themen-Pool, keine Rotation)
+     samt je einer EINGEBETTETEN Hintergrundstory zum selben Fall.
+  3. Baut die Inhalte fest in das HTML ein (3 feste Slots) und schreibt
+     index.html. Eine kleine Historie-Datei (story_history.json) verhindert
+     Wiederholungen an den Folgetagen.
 
 Die fertige index.html ist damit eine vollständig statische Seite —
 ohne API-Schlüssel im Browser, lauffähig auf jedem Hoster bzw. GitHub Pages.
@@ -50,26 +52,10 @@ MONATE = (
      "August", "September", "Oktober", "November", "Dezember"]
 )
 
-# Die 8 Rubriken der Seite (nur eine Sport-Rubrik). Die genannten Indizes
-# (RSF, CPI, CCPI) sind Beispiele für mögliche, aber nicht die einzigen
-# Quellen — jede relevante, echte Meldung zum Thema aus aller Welt zählt,
-# nicht nur eine formale Ranking-Tabelle.
-RUBRIKEN = {
-    "01": "Sport / MLS — schlechtestes Team im Tabellenende (die einzige Sport-Rubrik)",
-    "02": "Niedriglohn — Branche, Tarifabschluss, Studie, konkreter Fall weltweit",
-    "03": "Bahn & ÖPNV — Pünktlichkeit, Ausfall, Streik, Investitionsstau, jedes Land",
-    "04": "Pressefreiheit — inhaftierte/bedrohte/getötete Journalisten, "
-          "Zensurfälle, Angriffe auf Medien weltweit (RSF-Index ist eine "
-          "mögliche Quelle, nicht die einzige — auch z.B. von CPJ/RSF "
-          "dokumentierte getötete Journalisten in Gaza/Nahost zählen "
-          "genauso wie jede andere Weltregion, sofern echt belegt)",
-    "05": "Korruption — aktueller Fall mit Urteil/Anklage/Ermittlung, beliebiges Land "
-          "(nur belegt!, CPI ist eine mögliche Quelle unter mehreren)",
-    "06": "Klimaschutz — verfehltes Ziel, Rückschritt, Fehlentscheidung eines Landes "
-          "oder Konzerns (CCPI ist eine mögliche Quelle unter mehreren)",
-    "07": "Steuervermeidung — Konzern-Konstrukt, Urteil, Nachzahlung, weltweit (nur belegt!)",
-    "08": "Medien — Zeitungssterben, Auflagenkollaps, Redaktionsschließung, jedes Land",
-}
+# Keine feste Rubriken-Liste mehr — die KI wählt jeden Tag frei 3
+# thematisch unterschiedliche Bereiche (Sport, Niedriglohn, Verkehr,
+# Pressefreiheit, Korruption, Klimaschutz, Steuervermeidung, Medien, oder
+# jeden anderen Bereich, in dem jemand/etwas nachweislich Schlusslicht ist).
 
 
 # ── Hilfsfunktionen ──────────────────────────────────────────────────────────
@@ -438,72 +424,60 @@ def dedupe_paragraphs(paragraphs, threshold=0.75):
     return result
 
 
-# ── Recherche: 8 Rubriken ───────────────────────────────────────────────────
-RUBRIK_BATCHES = [
-    {k: RUBRIKEN[k] for k in ["01", "02", "03", "04"]},
-    {k: RUBRIKEN[k] for k in ["05", "06", "07", "08"]},
-]
+# ── Recherche: 3 frische Meldungen (kein Pool, keine Rotation) ─────────────
+N_ITEMS = 3
 
 
-def _fetch_items_batch(batch: dict, date_label: str, bereits_vergebene_themen: list):
-    """Holt Meldungen für EINE kleine Gruppe von Rubriken (statt für alle 8
-    auf einmal). Kleinere Aufgaben pro Aufruf verhindern, dass das Modell in
-    eine Wiederholungsschleife rutscht und generische Platzhaltersätze statt
-    echter Recherche liefert."""
+def _fetch_fresh_items(date_label: str, avoid_entities: list):
+    """Recherchiert 3 frische 'Schlusslicht'-Meldungen aus BELIEBIGEN
+    Bereichen in einem Aufruf — inkl. der kompletten Anzeige-Daten (Icon,
+    Kategorie-Label, kleine Rangliste), die früher aus 8 fest zugeteilten
+    Rubriken kamen. Kein fester Themen-Pool, keine Rotation: die KI wählt
+    jeden Tag frei, welche 3 Bereiche heute die stärksten Fälle liefern."""
     system = (
         f"Du bist Chefredakteur von schlusslicht.de, einem deutschen "
         f"linkssatirischen Magazin. Heute ist {date_label}.\n\n"
-        "Finde zu JEDER der folgenden Rubriken eine ECHTE, tagesaktuelle oder "
-        "höchstens 14 Tage alte Meldung via Websuche. Die Quelle muss NICHT "
-        "zwingend eine formale Ranking-Tabelle oder ein offizieller Index "
-        "sein (RSF-Index, CPI, CCPI o.ä. sind Beispiele, keine Pflicht) — "
-        "jede echte, relevante Meldung zum jeweiligen Thema aus JEDEM Land "
-        "der Welt zählt, z.B. auch ein einzelner Gerichtsfall, ein "
-        "Zeitungsartikel über einen konkreten Vorfall, eine Studie oder ein "
-        "parlamentarischer Bericht. Meide KEINE Weltregion aus vermeintlicher "
-        "Vorsicht — auch Nahost/Gaza, Ukraine/Russland oder andere politisch "
-        "sensible Weltgegenden sind ganz normale, gleichberechtigte "
-        "Themenquellen wie jede andere Region, solange die Meldung echt "
-        "und belegt ist.\n\n"
-        "STRIKTE KATEGORIETREUE — NICHT VERHANDELBAR: Die Meldung MUSS "
-        "inhaltlich zur jeweiligen Rubrik passen. Eine Meldung über "
-        "Korruption gehört AUSSCHLIESSLICH in die Korruptions-Rubrik, eine "
-        "Meldung über Klimaschutz AUSSCHLIESSLICH in die Klimaschutz-"
-        "Rubrik, usw. — niemals vermischen, niemals eine Meldung aus einem "
-        "fachfremden Bereich in eine andere Rubrik einsetzen, auch nicht "
-        "als 'überraschende Ausnahme'. Findest du für eine Rubrik heute "
-        "keine passende, aktuelle UND belegte Meldung, dann liefere für "
-        "diese Rubrik GAR KEINEN Eintrag (lass sie im JSON komplett weg) "
-        "— eine fehlende Meldung ist immer besser als eine thematisch "
-        "falsch zugeordnete.\n\n"
+        f"Finde {N_ITEMS} ECHTE, tagesaktuelle oder höchstens 14 Tage alte "
+        "'Schlusslicht'-Meldungen via Websuche — jeweils aus einem ANDEREN "
+        "Bereich (z.B. Sport, Niedriglohn, Verkehr, Pressefreiheit, "
+        "Korruption, Klimaschutz, Steuervermeidung, Medien, oder jeder "
+        "andere Bereich, in dem jemand/etwas nachweislich Schlusslicht bzw. "
+        "Tabellenletzter ist). Die Quelle muss NICHT zwingend eine formale "
+        "Ranking-Tabelle oder ein offizieller Index sein (RSF-Index, CPI, "
+        "CCPI o.ä. sind Beispiele, keine Pflicht) — jede echte, relevante "
+        "Meldung aus JEDEM Land der Welt zählt, z.B. auch ein einzelner "
+        "Gerichtsfall, ein Zeitungsartikel über einen konkreten Vorfall, "
+        "eine Studie oder ein parlamentarischer Bericht. Meide KEINE "
+        "Weltregion aus vermeintlicher Vorsicht — auch Nahost/Gaza, "
+        "Ukraine/Russland oder andere politisch sensible Weltgegenden sind "
+        "ganz normale, gleichberechtigte Themenquellen wie jede andere "
+        "Region, solange die Meldung echt und belegt ist. Die 3 Meldungen "
+        "müssen sich thematisch klar unterscheiden.\n\n"
         "ABSOLUTES VERBOT VON PLATZHALTERN: Jede Schlagzeile und jeder "
         "Kommentar muss eine ECHTE, konkrete, recherchierte Meldung mit "
         "echten Eigennamen, Orten und Zahlen sein. Schreibe NIEMALS "
         "generische Platzhaltersätze wie 'Land mit niedrigstem Etat: "
         "2026-Bericht' oder 'Team X: 2026-Ergebnis' — das ist kein "
-        "Stilmittel, sondern ein Fehler. Wenn du keine echte Meldung findest, "
-        "recherchiere weiter oder liefere gar keinen Eintrag für diese "
-        "Rubrik, aber erfinde keine Schema-Lückentext-Sätze und wechsle "
-        "niemals das Thema der Rubrik.\n\n"
+        "Stilmittel, sondern ein Fehler.\n\n"
         "KEINE WIEDERKEHRENDEN STANDARDSÄTZE: Verwende niemals denselben "
         "Schlusssatz (z. B. 'Stabilität fehlt, um die Saison zu retten') in "
-        "mehreren Rubriken — jeder Kommentar muss individuell zum jeweiligen "
-        "Fall passen.\n\n"
+        "mehreren Meldungen — jeder Kommentar muss individuell zum "
+        "jeweiligen Fall passen.\n\n"
         "ABSOLUTES VERBOT VON ERFUNDENEN QUELLEN — HÖCHSTE PRIORITÄT: "
         "Erfinde NIEMALS Firmennamen, Ereignisse, Zahlen oder Studien. Jede "
         "Meldung MUSS von einer echten, mit Websuche auffindbaren Quelle "
         "stammen, UND du musst die tatsächliche, funktionierende URL dieser "
         "Quelle angeben (die Seite, die du bei der Websuche gefunden hast — "
-        "keine geratene oder aus dem Gedächtnis rekonstruierte URL). Findest "
-        "du zu einer Rubrik keine echte Meldung mit einer echten, "
-        "existierenden URL, dann liefere für diese Rubrik GAR KEINEN "
-        "Eintrag (lass sie im JSON weg), statt etwas zu erfinden. Eine "
-        "fehlende Meldung ist immer besser als eine erfundene.\n\n"
+        "keine geratene oder aus dem Gedächtnis rekonstruierte URL). Auch "
+        "die kleine Rangliste (rows) muss aus derselben echten Quelle "
+        "stammen, nicht erfunden sein. Findest du keine echte Meldung mit "
+        "einer echten, existierenden URL, dann liefere GAR KEINEN Eintrag "
+        "für diesen Platz (lass ihn im JSON weg), statt etwas zu erfinden.\n\n"
         + (
-            f"Diese Themen sind in anderen Rubriken heute bereits vergeben — "
-            f"wähle KEIN Ausweichthema, das damit überschneidet: "
-            f"{', '.join(bereits_vergebene_themen)}.\n\n"
-            if bereits_vergebene_themen
+            f"Diese Fälle/Entitäten wurden in den letzten Tagen bereits "
+            f"verwendet — wähle KEINEN davon erneut: "
+            f"{', '.join(avoid_entities)}.\n\n"
+            if avoid_entities
             else ""
         )
         + "Stil: schwarze Satire mit menschlicher Wärme — nicht kalt-nüchtern, "
@@ -523,58 +497,60 @@ def _fetch_items_batch(batch: dict, date_label: str, bereits_vergebene_themen: l
         "Schriftzeichen, auch nicht einzelne Wörter oder Zeichen davon."
     )
 
-    zeilen = "\n".join(f"{num} {beschr}" for num, beschr in batch.items())
     prompt = (
-        f"Suche für JEDE dieser {len(batch)} Rubriken eine aktuelle echte "
-        "Meldung. Nutze die Websuche mehrfach, auf Deutsch und Englisch.\n\n"
-        f"Rubriken:\n{zeilen}\n\n"
+        f"Recherchiere {N_ITEMS} eigenständige, thematisch unterschiedliche "
+        "Schlusslicht-Meldungen für die heutige Ausgabe. Nutze die Websuche "
+        "mehrfach, auf Deutsch und Englisch.\n\n"
         "Antworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown:\n"
         "{\n"
-        f'  "{list(batch.keys())[0]}": {{'
-        '"thema": "1-2 Wörter Themen-Schlagwort, z.B. \'Fußball\' oder \'Steuerpolitik\'", '
-        '"headline": "kurze, konkrete Schlagzeile mit echten Namen/Zahlen", '
-        '"kommentar": "individueller Kommentar, max 130 Zeichen", '
-        '"quelle": "Quellenname und Datum, z.B. Reuters 22.06.2026 — KEINE Zitationsnummern wie [1]", '
-        '"quelle_url": "die ECHTE, vollständige URL der Quelle (https://...) — PFLICHTFELD, ohne echte funktionierende URL keine Veröffentlichung"},\n'
-        f'  ... für jede der {len(batch)} Rubriken ein Eintrag ...\n'
+        '  "1": {\n'
+        '    "entity": "Kurzname des Falls/der Haupt-Entität zur eindeutigen '
+        'Wiedererkennung, z.B. \'Philadelphia Union\' oder \'Eritrea Pressefreiheit\' — PFLICHTFELD",\n'
+        '    "thema": "1-2 Wörter Themen-Schlagwort, z.B. \'Fußball\' oder \'Steuerpolitik\'",\n'
+        '    "kicker": "Kategorie-Label, z.B. \'Sport · MLS\' oder \'Pressefreiheit\'",\n'
+        '    "icon": "ein passendes Emoji",\n'
+        '    "headline": "kurze, konkrete Schlagzeile mit echten Namen/Zahlen",\n'
+        '    "kommentar": "individueller Kommentar, max 130 Zeichen",\n'
+        '    "table_title": "Kurztitel der Rangliste, z.B. \'MLS — Tabellenende\'",\n'
+        '    "table_tag": "Zeitraum, z.B. \'Saison 2026\'",\n'
+        '    "rows": [{"rank": "28", "name": "Fall/Ort A", "value": "Zahl"}, {"rank": "29", "name": "Fall/Ort B", "value": "Zahl"}, {"rank": "30", "name": "das eigentliche Schlusslicht", "value": "Zahl"}],\n'
+        '    "foot": "1 Satz Einordnung/Vergleichswert für die Fußzeile",\n'
+        '    "quelle": "Quellenname und Datum, z.B. Reuters 22.06.2026 — KEINE Zitationsnummern wie [1]",\n'
+        '    "quelle_url": "die ECHTE, vollständige URL der Quelle (https://...) — PFLICHTFELD"\n'
+        "  },\n"
+        f'  ... insgesamt {N_ITEMS} Einträge mit den Schlüsseln "1".."{N_ITEMS}" ...\n'
         "}"
     )
 
-    return call_api_json(system, prompt, max_tokens=2200)
+    return call_api_json(system, prompt, max_tokens=3000)
 
 
-def get_daily_items(date_label: str):
-    log(f"Recherchiere Tagesmeldungen für {len(RUBRIKEN)} Rubriken (in {len(RUBRIK_BATCHES)} Gruppen) …")
+def get_daily_items(date_label: str, avoid_entities: list):
+    """Holt die 3 frei recherchierten Tagesmeldungen (kein Themen-Pool,
+    keine Rotation — siehe _fetch_fresh_items)."""
+    log(f"Recherchiere {N_ITEMS} frische Schlusslicht-Meldungen …")
 
+    batch_result = _fetch_fresh_items(date_label, avoid_entities) or {}
     all_items = {}
-    vergebene_themen = []
-    for i, batch in enumerate(RUBRIK_BATCHES, start=1):
-        log(f"  Gruppe {i}/{len(RUBRIK_BATCHES)}: Rubriken {', '.join(batch.keys())}")
-        batch_result = _fetch_items_batch(batch, date_label, vergebene_themen)
-        if not batch_result:
-            log(f"  Gruppe {i}: keine verwertbare Antwort erhalten, wird übersprungen.")
+    for i in range(1, N_ITEMS + 1):
+        key = str(i)
+        item = batch_result.get(key)
+        if not isinstance(item, dict):
+            log(f"  Meldung {key}: keine verwertbare Antwort erhalten — übersprungen.")
             continue
-        for num, item in batch_result.items():
-            if num not in batch or not isinstance(item, dict):
-                continue
-            headline = (item.get("headline") or "").strip()
-            kommentar = (item.get("kommentar") or "").strip()
-            # WICHTIG (Atomaritäts-Fix): headline UND kommentar müssen BEIDE
-            # vorhanden sein, sonst wird der Eintrag komplett verworfen.
-            # Andernfalls würde inject() nur das vorhandene Feld aktualisieren
-            # und das fehlende Feld vom alten (evtl. thematisch völlig
-            # anderen) Stand stehen lassen — genau das führte zum Fehler
-            # "Pressefreiheit-Schlagzeile + Sport-Metapher-Kommentar".
-            if headline and kommentar:
-                all_items[num] = item
-                thema = (item.get("thema") or "").strip()
-                if thema:
-                    vergebene_themen.append(thema)
-            else:
-                fehlt = "kommentar" if headline else ("headline" if kommentar else "headline+kommentar")
-                log(f"  Rubrik {num}: unvollständiger Eintrag ({fehlt} fehlt) "
-                    f"— komplett übersprungen, bestehender (in sich konsistenter) "
-                    f"Stand bleibt. Kein Teil-Update einzelner Felder.")
+        headline = (item.get("headline") or "").strip()
+        kommentar = (item.get("kommentar") or "").strip()
+        # WICHTIG (Atomaritäts-Fix, siehe main-Historie): headline UND
+        # kommentar müssen BEIDE vorhanden sein, sonst wird der Eintrag
+        # komplett verworfen. Ein Teil-Update würde sonst zwei Textteile
+        # aus evtl. ganz unterschiedlichen Tagen/Themen kombinieren.
+        if headline and kommentar:
+            all_items[key] = item
+        else:
+            fehlt = "kommentar" if headline else ("headline" if kommentar else "headline+kommentar")
+            log(f"  Meldung {key}: unvollständiger Eintrag ({fehlt} fehlt) "
+                f"— komplett übersprungen, bestehender (in sich konsistenter) "
+                f"Stand bleibt. Kein Teil-Update einzelner Felder.")
 
     all_items = dedupe_rubrik_topics(all_items)
     all_items = strip_repeated_boilerplate(all_items)
@@ -583,9 +559,9 @@ def get_daily_items(date_label: str):
     spotlight_ticker = get_spotlight_and_ticker(date_label, all_items)
 
     if all_items:
-        log(f"  {len(all_items)} Rubrik-Meldungen final erhalten.")
+        log(f"  {len(all_items)} Meldungen final erhalten.")
     else:
-        log("  Keine verwertbaren Rubrik-Daten erhalten.")
+        log("  Keine verwertbaren Meldungsdaten erhalten.")
 
     if not all_items and not spotlight_ticker.get("spotlight") and not spotlight_ticker.get("ticker"):
         return None
@@ -701,7 +677,7 @@ def review_and_fix_items(items: dict, date_label: str) -> dict:
         "Platzhalter, Widerspruch zwischen Schlagzeile und Kommentar, "
         "unrettbar unsinnig): gib 'ok': false mit kurzer 'grund'-Angabe "
         "zurück — das kann NICHT durch Umformulieren behoben werden.\n\n"
-        f"Einträge:\n{json.dumps({num: {**it, 'rubrik_soll': RUBRIKEN.get(num, '')} for num, it in echte_items.items()}, ensure_ascii=False, indent=2)}\n\n"
+        f"Einträge:\n{json.dumps({num: {**it, 'rubrik_soll': it.get('kicker', '')} for num, it in echte_items.items()}, ensure_ascii=False, indent=2)}\n\n"
         "Antworte als JSON:\n"
         '{"01": {"ok": true}, '
         '"02": {"ok": true, "headline_neu": "verbesserte Schlagzeile", "kommentar_neu": "verbesserter Kommentar"}, '
@@ -846,8 +822,18 @@ def is_recently_used(entity: str, title: str, history: list) -> bool:
     return False
 
 
-def get_daily_stories(date_label: str):
-    log("Recherchiere 3 Hintergrundstorys …")
+def get_embedded_stories(date_label: str, items: dict):
+    """Schreibt für JEDE der 3 heutigen Meldungen eine EINGEBETTETE
+    Hintergrundstory zum selben Fall (statt 3 unabhängig recherchierter
+    Storys zu beliebigen anderen Themen). Nutzt dieselbe Wiederholungssperre
+    (story_history.json) wie zuvor, jetzt aber verknüpft mit derselben
+    Entität, die auch die Tageskarte zeigt."""
+    anchors = {num: it for num, it in (items or {}).items() if it and it.get("headline")}
+    if not anchors:
+        log("  Keine Meldungen vorhanden — keine Hintergrundstorys möglich.")
+        return None
+
+    log(f"Recherchiere {len(anchors)} eingebettete Hintergrundstorys (je Meldung) …")
 
     history = load_story_history()
     verbotene_themen = sorted({
@@ -856,22 +842,22 @@ def get_daily_stories(date_label: str):
         if (entry.get("entity") or "").strip()
     })
     if verbotene_themen:
-        log(f"  {len(verbotene_themen)} Themen aus den letzten "
+        log(f"  {len(verbotene_themen)} Fälle aus den letzten "
             f"{STORY_HISTORY_KEEP_DAYS} Tagen bereits behandelt — werden ausgeschlossen.")
+
     system = (
         f"Du bist Hintergrundredakteur von schlusslicht.de. Heute ist {date_label}.\n\n"
-        "Schreibe 3 tiefe Hintergrundstorys über aktuelle (max. 30 Tage alte) "
-        "Schlusslichter aus verschiedenen Bereichen. Nutze die Websuche für echte "
-        "Fälle. Stil: investigativ, aber menschlich — zeige erkennbares "
-        "Mitgefühl mit den Betroffenen und eine klar erkennbare linke, "
-        "ökologisch-grüne und gesellschaftskritische Haltung zum "
-        "Systemversagen dahinter — "
-        "pointierter benannt als eine rein neutrale Nachrichtenmeldung "
-        "(wer profitiert von diesem Versagen, wer trägt die Verantwortung), "
-        "aber NICHT radikal. Keine kalte Distanz, aber auch keine Larmoyanz "
-        "oder Übertreibung — jede Emotion und jede Wertung muss sich aus "
-        "den geschilderten Fakten ergeben, nicht aus Adjektiven allein. "
-        "Zeige das Systemversagen hinter dem Einzelfall. 400-700 Wörter je Story. "
+        "Schreibe für JEDEN der folgenden Fälle eine tiefe Hintergrundstory ZUM "
+        "SELBEN THEMA (nicht zu einem anderen Bereich). Nutze die Websuche, um "
+        "über die kurze Tagesmeldung hinaus mehr zu recherchieren. Stil: "
+        "investigativ, aber menschlich — zeige erkennbares Mitgefühl mit den "
+        "Betroffenen und eine klar erkennbare linke, ökologisch-grüne und "
+        "gesellschaftskritische Haltung zum Systemversagen dahinter (wer "
+        "profitiert davon, wer trägt die Verantwortung), aber NICHT radikal. "
+        "Keine kalte Distanz, aber auch keine Larmoyanz oder Übertreibung — "
+        "jede Emotion und jede Wertung muss sich aus den geschilderten "
+        "Fakten ergeben, nicht aus Adjektiven allein. Zeige das "
+        "Systemversagen hinter dem Einzelfall. 400-700 Wörter je Story. "
         "Antworte AUSSCHLIESSLICH auf " + ("Englisch (US)" if LANG == "en" else "Deutsch") + " — keine chinesischen, "
         "kyrillischen, arabischen oder anderen nicht-lateinischen "
         "Schriftzeichen, auch nicht einzelne Wörter oder Zeichen davon.\n\n"
@@ -886,25 +872,32 @@ def get_daily_stories(date_label: str):
         "jede Story braucht ihre eigene, konkrete Schlussfolgerung.\n\n"
         "ABSOLUTES VERBOT VON ERFUNDENEN QUELLEN — HÖCHSTE PRIORITÄT: "
         "Erfinde NIEMALS Firmennamen, Personen, Ereignisse oder Zahlen. Jede "
-        "Story MUSS auf einem echten, mit Websuche gefundenen Fall beruhen, "
-        "UND du musst die tatsächliche, funktionierende URL dieser Quelle "
-        "angeben. Findest du keinen echten Fall mit einer echten, "
-        "existierenden URL für einen Bereich, wähle einen anderen Bereich, "
-        "zu dem du eine echte Quelle hast — aber erfinde niemals einen Fall."
+        "Story MUSS auf dem echten, unten angegebenen Fall beruhen, UND du "
+        "musst die tatsächliche, funktionierende URL einer Quelle angeben. "
+        "Findest du keine echte, existierende URL, liefere für diesen Fall "
+        "GAR KEINE Story (lass den Schlüssel im JSON weg), statt etwas zu "
+        "erfinden."
         + (
             "\n\nABSOLUTE WIEDERHOLUNGSSPERRE — HÖCHSTE PRIORITÄT: Diese Fälle "
             "wurden in den letzten " + str(STORY_HISTORY_KEEP_DAYS) + " Tagen "
             "auf schlusslicht.de bereits als Hintergrundstory veröffentlicht — "
-            "wähle für KEINEN davon erneut denselben Fall oder dieselbe Entität, "
-            "auch nicht mit neuen Formulierungen: " + ", ".join(verbotene_themen) + ". "
-            "Wähle ausschließlich neue, bisher nicht behandelte Fälle."
+            "keiner der unten genannten Fälle darf mit einem dieser Fälle "
+            "identisch sein: " + ", ".join(verbotene_themen) + "."
             if verbotene_themen else ""
         )
     )
+
+    zeilen = "\n".join(
+        f'{num}: Entität: "{it.get("entity", "")}" · Schlagzeile: "{it.get("headline", "")}" '
+        f'· Kommentar: "{it.get("kommentar", "")}" · Quelle: {it.get("quelle", "")}'
+        for num, it in anchors.items()
+    )
     prompt = (
-        "Recherchiere zunächst aktuelle Schlusslicht-Fälle aus verschiedenen "
-        "Bereichen (Sport, Wirtschaft, Politik, Kultur, Wissenschaft, Umwelt, "
-        "Medien, Technik). Wähle die 3 stärksten aus.\n\n"
+        f"Vertiefe JEDEN der folgenden {len(anchors)} Tagesfälle zu einer "
+        f"eigenen Hintergrundstory ZUM SELBEN THEMA (nicht zu einem anderen "
+        f"Bereich), Ausgabe {date_label}. Nutze die Websuche, um über die "
+        f"kurze Meldung hinaus mehr Kontext, Zahlen und Einordnung zu finden.\n\n"
+        f"Heutige Fälle:\n{zeilen}\n\n"
         "WICHTIG zur Struktur von 'body': Die 4 Absätze haben JEWEILS EINE "
         "FESTE, EIGENE AUFGABE und dürfen sich inhaltlich NICHT überschneiden "
         "— auch nicht mit anderen Worten. Bevor du einen Absatz schreibst, "
@@ -920,69 +913,57 @@ def get_daily_stories(date_label: str):
         "  Absatz 4 — NUR die Einordnung als Systemversagen: die "
         "Schlussfolgerung, warum das mehr als ein Einzelfall ist. Dieser "
         "Gedanke darf NUR hier stehen, nirgends vorher angedeutet werden.\n\n"
-        "Antworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown:\n"
+        "Antworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown, mit genau "
+        "den Nummern oben als Schlüssel:\n"
         "{\n"
-        '  "stories": [\n'
-        "    {\n"
-        '      "cat": "// Kategorie · Zeitraum",\n'
-        '      "entity": "Kurzname des Falls/der Haupt-Entität zur eindeutigen '
-        'Wiedererkennung, z.B. \'Philadelphia Union\' oder \'Eritrea Pressefreiheit\' — PFLICHTFELD",\n'
-        '      "title": "packender Titel, max 80 Zeichen",\n'
-        '      "teaser": "Einleitung, 2-3 Sätze",\n'
-        '      "body": ["<p>Absatz 1: nur das Ereignis</p>", "<p>Absatz 2: nur Hintergrund/Ursache</p>", "<p>Absatz 3: nur konkrete Auswirkung</p>", "<p>Absatz 4: nur die Einordnung als Systemversagen</p>"],\n'
-        '      "factbox": ["Fakt 1", "Fakt 2", "Fakt 3"],\n'
-        '      "conclusion": "Schlusssatz zum Systemversagen",\n'
-        '      "source": "Quellenname und Datum, z.B. Spiegel 22.06.2026 — KEINE Zitationsnummern wie [1]",\n'
-        '      "source_url": "die ECHTE, vollständige URL der Quelle (https://...) — PFLICHTFELD, ohne echte funktionierende URL keine Veröffentlichung"\n'
-        "    }\n"
-        "    ... 3 Storys ...\n"
-        "  ]\n"
+        f'  "{list(anchors.keys())[0]}": {{\n'
+        '    "cat": "// Kategorie · Zeitraum",\n'
+        '    "title": "packender Titel, max 80 Zeichen",\n'
+        '    "teaser": "Einleitung, 2-3 Sätze",\n'
+        '    "body": ["<p>Absatz 1: nur das Ereignis</p>", "<p>Absatz 2: nur Hintergrund/Ursache</p>", "<p>Absatz 3: nur konkrete Auswirkung</p>", "<p>Absatz 4: nur die Einordnung als Systemversagen</p>"],\n'
+        '    "factbox": ["Fakt 1", "Fakt 2", "Fakt 3"],\n'
+        '    "conclusion": "Schlusssatz zum Systemversagen",\n'
+        '    "source": "Quellenname und Datum, z.B. Spiegel 22.06.2026 — KEINE Zitationsnummern wie [1]",\n'
+        '    "source_url": "die ECHTE, vollständige URL der Quelle (https://...) — PFLICHTFELD"\n'
+        "  },\n"
+        f"  ... für jede der {len(anchors)} Meldungen ein Eintrag ...\n"
         "}"
     )
 
-    data = call_api_json(system, prompt, max_tokens=8000)
-    if data and data.get("stories"):
-        log("  Verifiziere Quellen-URLs der Hintergrundstorys …")
-        verifizierte_storys = []
-        for story in data["stories"]:
-            if not isinstance(story, dict):
-                log("  Ungültiger Story-Eintrag (kein Objekt) — übersprungen.")
-                continue
-            entity = (story.get("entity") or "").strip()
-            title = (story.get("title") or "").strip()
-            if is_recently_used(entity, title, history):
-                log(f"  Story {title or entity!r}: bereits in den letzten "
-                    f"{STORY_HISTORY_KEEP_DAYS} Tagen veröffentlicht — "
-                    f"WIEDERHOLUNG verworfen (Wiederholungssperre).")
-                continue
-            url = (story.get("source_url") or "").strip()
-            if not verify_url(url):
-                log(f"  Story {story.get('title', '(ohne Titel)')!r}: Quellen-URL "
-                    f"fehlt oder nicht erreichbar ({url or 'keine URL angegeben'}) "
-                    f"— komplett verworfen, keine Halluzinationen ohne Beleg.")
-                continue
-            log(f"  Story {story.get('title', '')!r}: Quelle verifiziert ({url})")
-            story["body"] = dedupe_paragraphs(story.get("body"))
-            verifizierte_storys.append(story)
-        data["stories"] = verifizierte_storys
-        log(f"  {len(data['stories'])} von 3 Hintergrundstorys verifiziert und übernommen.")
-        if not data["stories"]:
-            data = None
-        else:
-            today_iso = datetime.date.today().isoformat()
-            for story in data["stories"]:
-                history.append({
-                    "date": today_iso,
-                    "entity": (story.get("entity") or "").strip(),
-                    "title": (story.get("title") or "").strip(),
-                })
-            save_story_history(history)
-            log(f"  Story-Historie aktualisiert ({len(history)} Einträge, "
-                f"Wiederholungssperre für {STORY_HISTORY_KEEP_DAYS} Tage).")
-    else:
-        log("  Keine verwertbaren Story-Daten erhalten.")
-        data = None
-    return data
+    data = call_api_json(system, prompt, max_tokens=8000) or {}
+    stories = {}
+    today_iso = datetime.date.today().isoformat()
+    new_history_entries = []
+    for num, anchor in anchors.items():
+        story = data.get(num)
+        if not isinstance(story, dict):
+            log(f"  Meldung {num}: keine verwertbare Story-Antwort erhalten — übersprungen.")
+            continue
+        entity = (anchor.get("entity") or "").strip()
+        title = (story.get("title") or "").strip()
+        if is_recently_used(entity, title, history):
+            log(f"  Meldung {num} ({title or entity!r}): bereits in den letzten "
+                f"{STORY_HISTORY_KEEP_DAYS} Tagen veröffentlicht — "
+                f"WIEDERHOLUNG verworfen (Wiederholungssperre).")
+            continue
+        url = (story.get("source_url") or "").strip()
+        if not verify_url(url):
+            log(f"  Meldung {num}: Story-Quellen-URL fehlt oder nicht erreichbar "
+                f"({url or 'keine URL angegeben'}) — Story verworfen, keine "
+                f"Halluzinationen ohne Beleg.")
+            continue
+        log(f"  Meldung {num}: Hintergrundstory-Quelle verifiziert ({url})")
+        story["body"] = dedupe_paragraphs(story.get("body"))
+        stories[num] = story
+        new_history_entries.append({"date": today_iso, "entity": entity, "title": title})
+
+    if new_history_entries:
+        save_story_history(history + new_history_entries)
+        log(f"  Story-Historie aktualisiert (+{len(new_history_entries)} Einträge, "
+            f"Wiederholungssperre für {STORY_HISTORY_KEEP_DAYS} Tage).")
+
+    log(f"  {len(stories)} von {len(anchors)} eingebetteten Hintergrundstorys verifiziert.")
+    return stories or None
 
 
 # ── Einbau ins HTML ──────────────────────────────────────────────────────────
@@ -996,52 +977,86 @@ def set_text(node, value):
 def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
 
-    # ── Rubrik-Meldungen ───────────────────────────────────────────────
+def _build_table_html(item: dict) -> str:
+    """Baut das .tbl-HTML-Fragment aus den frisch recherchierten Zeilen der
+    KI (immer 3-spaltig: Rang/Name/Wert — einheitliches Format, damit die KI
+    nicht auch noch unterschiedliche Spaltenzahlen gestalten muss)."""
+    title = (item.get("table_title") or "").strip()
+    tag = (item.get("table_tag") or "").strip()
+    foot = (item.get("foot") or "").strip()
+    rows = item.get("rows") or []
+
+    rows_html = []
+    n = min(len(rows), 3)
+    for i, row in enumerate(rows[:3]):
+        is_last = " is-last" if i == n - 1 else ""
+        lamp = '<span class="lamp"></span>' if i == n - 1 else ""
+        rank = (row.get("rank") or "—")
+        name = (row.get("name") or "").strip()
+        value = (row.get("value") or "").strip()
+        rows_html.append(
+            f'<div class="row c3{is_last}"><span class="rk">{rank}</span>'
+            f'<span class="nm">{lamp}{name}</span><span class="v">{value}</span></div>'
+        )
+
+    col2_label = "Value" if LANG == "en" else "Wert"
+    return (
+        f'<div class="tbl-head"><span class="tt">{title}</span><span class="tag">{tag}</span></div>'
+        f'<div class="cols c3"><span>#</span><span class="l">Name</span><span>{col2_label}</span></div>'
+        + "".join(rows_html)
+        + f'<div class="tbl-foot">{foot}</div>'
+    )
+
+
+def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+
+    # ── Die 3 festen Slots im Template bekommen ihren kompletten Inhalt
+    #    direkt aus der heutigen, frisch recherchierten KI-Meldung (kein
+    #    Pool, keine Rotation mehr — siehe get_daily_items). Fehlt eine
+    #    Meldung, bleibt der Slot beim zuletzt veröffentlichten Stand.
     if items and items.get("items"):
-        for num, it in items["items"].items():
-            card = soup.select_one(f'[data-rubrik="{num}"]')
-            if not card:
+        for slot_i in range(1, N_ITEMS + 1):
+            key = str(slot_i)
+            it = items["items"].get(key)
+            card = soup.select_one(f'article.rub[data-slot="{slot_i}"]')
+            if card is None or not it:
                 continue
+
             kommentar = (it.get("kommentar") or "").strip()
             headline = (it.get("headline") or "").strip()
             # ATOMARITÄTS-ABSICHERUNG (Defense-in-Depth, zusätzlich zur
             # Prüfung in get_daily_items): headline UND kommentar werden
-            # NUR gemeinsam aktualisiert, nie einzeln. Ein Update nur eines
-            # der beiden Felder würde sonst zwei Textteile aus evtl. ganz
-            # unterschiedlichen Tagen/Themen kombinieren (z.B. eine neue
-            # Pressefreiheit-Schlagzeile neben einem alten Sport-Kommentar
-            # stehen lassen).
+            # NUR gemeinsam aktualisiert, nie einzeln.
             if not (kommentar and headline and len(headline) > 4):
-                log(f"  Rubrik {num}: unvollständiges Item bei Injektion "
+                log(f"  Slot {slot_i}: unvollständiges Item bei Injektion "
                     f"(headline oder kommentar fehlt) — übersprungen, "
                     f"Karte bleibt vollständig unverändert.")
                 continue
 
+            card["data-rubrik"] = key
+            rub_no = card.select_one(".rub-no")
+            if rub_no is not None:
+                rub_no.string = str(slot_i)
+            set_text(card.select_one(".rub-ico"), it.get("icon"))
+            set_text(card.select_one(".rnum"), it.get("kicker"))
+            set_text(card.select_one(".rtit"), headline)
             set_text(card.select_one(".realsatire"), f"„{kommentar}“")
+            quelle = (it.get("quelle") or "").strip()
+            stand = card.select_one(".rub-stand")
+            if stand is not None and quelle:
+                set_text(stand, (f"As of: {date_label} · {quelle}" if LANG == "en"
+                                  else f"Stand: {date_label} · {quelle}"))
             tag = card.select_one(".ai-tag")
             if tag is not None:
-                quelle = (it.get("quelle") or "").strip()
-                set_text(
-                    tag,
-                    (
-                        f"✦ Tagesaktuell · {quelle}"
-                        if quelle
-                        else "✦ Tagesaktuell"
-                    ),
-                )
-            # Schlagzeile (Text nach „ — "). Der Präfix vor dem Gedankenstrich
-            # (die Rubrik-Bezeichnung, z.B. "Klimaschutz-Index") bleibt IMMER
-            # fest — Themenwechsel sind nicht mehr erlaubt (siehe System-
-            # Prompt: strikte Kategorietreue), daher gibt es auch kein
-            # rubrik_name-Feld mehr, das dieses Präfix überschreiben könnte.
-            # Das verhindert genau den Fehler, bei dem eine Rubrik-Überschrift
-            # ("Klimaschutz-Index") mit inhaltlich fachfremdem Text (z.B. über
-            # Korruption) kombiniert wurde.
-            rtit = card.select_one(".rtit")
-            if rtit:
-                cur = rtit.get_text()
-                dash = cur.find(" — ")
-                set_text(rtit, (cur[: dash + 3] + headline) if dash > 0 else headline)
+                set_text(tag, f"✦ Tagesaktuell · {quelle}" if quelle else "✦ Tagesaktuell")
+            tbl = card.select_one(".tbl")
+            if tbl is not None and it.get("rows"):
+                tbl.clear()
+                tbl.append(BeautifulSoup(_build_table_html(it), "html.parser"))
+            story_btn = card.select_one(".story-more")
+            if story_btn is not None:
+                story_btn["onclick"] = f"openModal('story-slot{slot_i}')"
 
     # ── Spotlight (Tagesausgabe) ──────────────────────────────────────────
     if items and items.get("spotlight"):
@@ -1068,22 +1083,10 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
                 item.append(sep)
                 inner.append(item)
 
-    # ── Hintergrundstorys ─────────────────────────────────────────────────
-    if stories and stories.get("stories"):
-        liste = stories["stories"][:3]
-
-        # Vorschau-Karten
-        cards = soup.select(".story-card")
-        for i, st in enumerate(liste):
-            if i >= len(cards):
-                break
-            set_text(cards[i].select_one(".story-cat"), st.get("cat"))
-            set_text(cards[i].select_one(".story-title"), st.get("title"))
-            set_text(cards[i].select_one(".story-teaser"), st.get("teaser"))
-
-        # Modal-Inhalte
-        for i, st in enumerate(liste):
-            modal = soup.select_one(f"#story{i + 1}")
+    # ── Eingebettete Hintergrundstorys (je Slot ihre eigene) ────────────────
+    if stories:
+        for key, st in stories.items():
+            modal = soup.select_one(f"#story-slot{key}")
             if not modal:
                 continue
             set_text(modal.select_one(".story-modal-cat"), st.get("cat"))
@@ -1128,7 +1131,7 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
         hl = (sp.get("hl") or "").strip()
         txt = (sp.get("text") or "").strip()
         og_title = f"SCHLUSSLICHT — {hl}" if hl else "SCHLUSSLICHT — Das Magazin der Letzten"
-        og_desc = txt[:155] if txt else "Das Magazin der Letzten. 8 Rubriken täglich aktuell."
+        og_desc = txt[:155] if txt else "Das Magazin der Letzten. 3 Rubriken täglich aktuell."
 
         title_tag = soup.find("title")
         if title_tag:
@@ -1193,8 +1196,18 @@ def main() -> int:
     with open(template_path, encoding="utf-8") as fh:
         html = fh.read()
 
-    items = get_daily_items(date_label)
-    stories = get_daily_stories(date_label)
+    history = load_story_history()
+    avoid_entities = sorted({
+        (entry.get("entity") or "").strip()
+        for entry in history
+        if (entry.get("entity") or "").strip()
+    })
+    if avoid_entities:
+        log(f"  {len(avoid_entities)} Fälle/Entitäten aus den letzten "
+            f"{STORY_HISTORY_KEEP_DAYS} Tagen bereits verwendet — werden vermieden.")
+
+    items = get_daily_items(date_label, avoid_entities)
+    stories = get_embedded_stories(date_label, (items or {}).get("items", {}))
 
     if not items and not stories:
         log("Keine Inhalte erzeugt — index.html bleibt unverändert.")

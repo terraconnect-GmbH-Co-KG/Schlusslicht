@@ -3,7 +3,11 @@
 """
 generate_ncf.py — Tägliche Aktualisierung der Nonconformist-Seite.
 
-Erzeugt 5 philosophisch-linke Meinungsessays (DE oder EN via SL_LANG=en).
+Erzeugt 3 philosophisch-linke Meinungsessays (DE oder EN via SL_LANG=en).
+Die KI wählt die 3 Themen jeden Tag selbst frei (kein fester Themen-Pool,
+keine Rotation) — die bestehende Blickwinkel-Historie (essay_history.json)
+sorgt weiterhin dafür, dass ein wiederkehrendes Thema einen neuen Aspekt
+bekommt statt denselben Gedanken nur umzuformulieren.
 Enthält dieselben Schutzebenen wie die anderen Generatoren:
   - Vierstufige Sprach-Durchsetzung inkl. Sprach-Schranke im EN-Modus
   - Juristische Leitplanken im Prompt (keine Personen/Firmen, keine Aufrufe)
@@ -37,39 +41,16 @@ MONATE = (
      "August", "September", "Oktober", "November", "Dezember"]
 )
 
-N_ESSAYS = 5
+N_ESSAYS = 3
 
-# Themenpool: rein philosophisch/strukturell, rotiert nach Kalendertag.
-# WICHTIG (Bugfix): Pool bewusst auf 40 erweitert — mit vorher nur 20
-# Themen UND einer Schrittweite von 5 (= N_ESSAYS) ergab die Rotation
-# eine Periodenlänge von nur 4 Tagen (20/5), d.h. exakt dieselben 5
-# Themen kehrten alle 4 Tage identisch wieder. Mit 40 Themen und der
-# unten angepassten Auswahlformel liegt die Wiederkehr eines einzelnen
-# Themas jetzt bei ca. 8 Tagen — kombiniert mit der Blickwinkel-Historie
-# (siehe ESSAY_HISTORY_PATH) wird trotzdem sichergestellt, dass ein
-# wiederkehrendes Thema einen NEUEN Aspekt bekommt statt denselben
-# Inhalt nur umformuliert zu wiederholen.
-THEMENPOOL = [
-    "Gehorsam und Autorität", "Eigentum und Macht", "Normalität als Konstruktion",
-    "Wachstumskritik", "Utopie und Hoffnung", "Arbeit und Entfremdung",
-    "Zeit und Beschleunigung", "Konsum und Bedürfnis", "Solidarität statt Konkurrenz",
-    "Öffentliches Gut und Gemeineigentum", "Leistungsbegriff und Erbe",
-    "Technik und Herrschaft", "Bildung als Anpassung oder Befreiung",
-    "Angst als Herrschaftsinstrument", "Demokratie jenseits der Wahl",
-    "Care-Arbeit und Unsichtbarkeit", "Fortschritt, der keiner ist",
-    "Freiheit: von etwas oder zu etwas", "Der Wert des Nutzlosen",
-    "Schweigen und Komplizenschaft",
-    "Grenzen und Zugehörigkeit", "Schulden als Machtverhältnis",
-    "Natur als Ware oder Mitwelt", "Verantwortung ohne Schuld",
-    "Sprache als Herrschaftsmittel", "Müdigkeit und Erschöpfungsgesellschaft",
-    "Das Private ist politisch", "Sicherheit gegen Freiheit",
-    "Wettbewerb als Naturgesetz-Mythos", "Erinnerung und Vergessen als Politik",
-    "Empathie und ihre Grenzen", "Wohnen als Grundrecht oder Ware",
-    "Generationengerechtigkeit", "Die Fiktion der Meritokratie",
-    "Öffentlichkeit und Aufmerksamkeitsökonomie", "Widerstand im Alltag",
-    "Kollektive Verantwortung vs. individuelle Schuld", "Wachsamkeit ohne Paranoia",
-    "Trauer als politischer Akt", "Die Grenzen des Wachstumsversprechens",
-]
+# Keine feste Themenliste mehr — die KI wählt jeden Tag frei 3 unterschied-
+# liche philosophische/strukturelle Themen (kein Pool, keine Rotation).
+# Beispielhafte Denkrichtungen für den Prompt (keine abschließende Liste):
+BEISPIEL_THEMEN = (
+    "Macht, Eigentum, Zeit, Arbeit, Freiheit, Technik, Demokratie, Wachstum, "
+    "Solidarität, Angst als Herrschaftsinstrument, Normalität als Konstruktion, "
+    "Konsum, Care-Arbeit, Schulden als Machtverhältnis, Meritokratie"
+)
 
 
 def log(msg: str) -> None:
@@ -259,18 +240,15 @@ def call_api_json(system: str, prompt: str, max_tokens: int, repair_retries: int
     return data
 
 
-def get_essays(date_label: str, themen: list, history: list):
+def get_essays(date_label: str, history: list):
     log(f"Erzeuge {N_ESSAYS} Nonconformist-Essays ({LANG}) …")
 
-    # Für jedes heutige Thema: bereits verwendete Kernthesen aus der
-    # Historie sammeln, damit die KI explizit einen ANDEREN Blickwinkel
-    # wählen muss statt denselben Gedanken nur umzuformulieren.
-    bisherige_blickwinkel = {}
-    for t in themen:
-        theses = [e.get("kernthese", "") for e in history
-                  if e.get("theme") == t and e.get("kernthese")]
-        if theses:
-            bisherige_blickwinkel[t] = theses[-ESSAY_HISTORY_MAX_PER_THEME:]
+    # Statt Kernthesen NUR für vorab feststehende Themen nachzuschlagen
+    # (ging vorher, weil die Themen schon feststanden), geben wir der KI
+    # jetzt eine Zusammenfassung ALLER kürzlich behandelten Themen+Kernthesen
+    # mit — sie wählt ihre 3 Themen selbst und muss dabei selbst prüfen, ob
+    # eines davon kürzlich (mit welcher These) behandelt wurde.
+    recent = [e for e in history if e.get("theme") and e.get("kernthese")]
 
     system = (
         "Du bist Essayist der Seite 'Nonconformist' auf schlusslicht.de — einer "
@@ -294,29 +272,29 @@ def get_essays(date_label: str, themen: list, history: list):
         " — keine nicht-lateinischen Schriftzeichen. Antworte NUR mit einem "
         "einzigen validen JSON-Objekt, keine Erklärungen."
         + (
-            "\n\nABSOLUTE WIEDERHOLUNGSSPERRE — HÖCHSTE PRIORITÄT: Einige der "
-            "heutigen Themen wurden in den letzten " + str(ESSAY_HISTORY_KEEP_DAYS) +
-            " Tagen bereits behandelt. Die dabei vertretene(n) Kernthese(n) "
-            "sind unten je Thema aufgeführt. Du MUSST für diese Themen einen "
-            "GRUNDLEGEND ANDEREN Aspekt, ein anderes Argument oder eine "
-            "andere Perspektive wählen — NICHT denselben Gedanken nur in "
-            "anderen Worten wiederholen. Ein Essay, der inhaltlich derselben "
-            "Kernthese wie eine der aufgeführten folgt (auch umformuliert), "
-            "gilt als Fehler."
-            if bisherige_blickwinkel else ""
+            "\n\nABSOLUTE WIEDERHOLUNGSSPERRE — HÖCHSTE PRIORITÄT: Die unten "
+            "aufgeführten Themen+Kernthesen wurden in den letzten " +
+            str(ESSAY_HISTORY_KEEP_DAYS) + " Tagen bereits behandelt. Wählst "
+            "du eines dieser Themen erneut, MUSST du einen GRUNDLEGEND "
+            "ANDEREN Aspekt, ein anderes Argument oder eine andere "
+            "Perspektive wählen — NICHT denselben Gedanken nur in anderen "
+            "Worten wiederholen. Bevorzuge aber ohnehin ein Thema, das noch "
+            "gar nicht in der Liste steht, wenn eines gut passt."
+            if recent else ""
         )
     )
     blickwinkel_block = ""
-    if bisherige_blickwinkel:
-        blickwinkel_block = "\n\nBEREITS VERWENDETE KERNTHESEN JE THEMA (nicht wiederholen!):\n"
-        for t, theses in bisherige_blickwinkel.items():
-            blickwinkel_block += f"- {t}: " + " | ".join(theses) + "\n"
+    if recent:
+        blickwinkel_block = "\n\nKÜRZLICH BEHANDELTE THEMEN+KERNTHESEN (nicht wiederholen!):\n"
+        for e in recent[-30:]:
+            blickwinkel_block += f"- {e['theme']}: {e['kernthese']}\n"
 
     prompt = (
-        f"Schreibe {N_ESSAYS} eigenständige philosophische Kurzessays für die "
-        f"Ausgabe vom {date_label}.\n\n"
-        f"Die Themen für heute (je Essay eines, in dieser Reihenfolge):\n"
-        + "\n".join(f"{i+1}. {t}" for i, t in enumerate(themen))
+        f"Wähle selbst {N_ESSAYS} eigenständige, thematisch klar unterschiedliche "
+        f"philosophische/strukturkritische Themen (Beispiele: {BEISPIEL_THEMEN} — "
+        f"oder ein anderes Thema aus derselben Denkrichtung) und schreibe zu "
+        f"jedem einen eigenständigen philosophischen Kurzessay für die Ausgabe "
+        f"vom {date_label}."
         + blickwinkel_block +
         "\n\nJeder Essay: 4 Absätze à 2-4 Sätze. Genau EINER der Absätze "
         "(Position 2 oder 3) ist der Zuspitzungs-Absatz: maximal 2 Sätze, "
@@ -325,6 +303,7 @@ def get_essays(date_label: str, themen: list, history: list):
         "{\n"
         '  "essays": [\n'
         "    {\n"
+        '      "theme": "1-3 Wörter Themen-Schlagwort, für Wiederholungsschutz",\n'
         '      "title": "prägnanter Essay-Titel, kein Doppelpunkt-Klischee",\n'
         '      "kernthese": "1 knapper Satz: welches Argument/welcher Blickwinkel wird '
         'HEUTE vertreten? (dient nur der internen Wiederholungs-Erkennung, wird nicht angezeigt)",\n'
@@ -337,7 +316,7 @@ def get_essays(date_label: str, themen: list, history: list):
         '      "aside": "' + ("Lines of thought: " if LANG == "en" else "Denkrichtung: ")
         + '2-3 Denker/Konzepte, kommagetrennt"\n'
         "    }\n"
-        f"    // genau {N_ESSAYS} Essays\n"
+        f"    // genau {N_ESSAYS} Essays, thematisch unterschiedlich\n"
         "  ]\n"
         "}"
     )
@@ -349,12 +328,11 @@ def get_essays(date_label: str, themen: list, history: list):
     essays = [e for e in data["essays"] if isinstance(e, dict) and e.get("title")
               and isinstance(e.get("paragraphs"), list) and len(e["paragraphs"]) >= 3]
 
-    # Thema pro Essay merken (per Original-Reihenfolge), damit die
-    # Blickwinkel-Historie auch nach der juristischen Filterung unten noch
-    # korrekt zugeordnet werden kann.
-    for idx, e in enumerate(data["essays"]):
-        if isinstance(e, dict) and idx < len(themen):
-            e["_theme"] = themen[idx]
+    # Thema pro Essay kommt jetzt direkt aus der KI-Antwort selbst (kein
+    # Pool/keine Rotation mehr, also keine positionsbasierte Zuordnung nötig).
+    for e in data["essays"]:
+        if isinstance(e, dict) and e.get("theme"):
+            e["_theme"] = e["theme"]
 
     # Juristische Nachkontrolle: verdächtige Aufruf-Formulierungen aussortieren
     verboten = re.compile(
@@ -510,26 +488,10 @@ def main() -> int:
                   f"{today.day}. {MONATE[today.month - 1]} {today.year}")
     log(f"Nonconformist-Ausgabe ({LANG}): {date_label}")
 
-    # Themenrotation: 5 Themen je Tag, deterministisch.
-    #
-    # BUGFIX: Die alte Formel `start = today.toordinal() * N_ESSAYS` erzeugte
-    # bei einer Pool-Größe, die ein Vielfaches von N_ESSAYS war, eine
-    # Periodenlänge von nur wenigen Tagen (bei Pool=20 exakt 4 Tage) — die
-    # IDENTISCHEN 5 Themen kehrten immer wieder, was zu 'umformuliert statt
-    # neu geschrieben' führte. Jetzt: nicht-zusammenhängende, gleichmäßig
-    # über den ganzen Pool verteilte Auswahl mit einer zur Pool-Größe
-    # teilerfremden Schrittweite — verifiziert per Simulation: 0
-    # Überlappung zwischen aufeinanderfolgenden Tagen, jedes einzelne
-    # Thema kehrt im Schnitt erst nach Pool/N_ESSAYS Tagen wieder (bei
-    # 40 Themen: ca. alle 8 Tage) statt exakt alle 4 Tage.
-    pool_n = len(THEMENPOOL)
-    spacing = pool_n // N_ESSAYS
-    start = (today.toordinal() * 7) % pool_n
-    themen = [THEMENPOOL[(start + i * spacing) % pool_n] for i in range(N_ESSAYS)]
-    log("Themen heute: " + " · ".join(themen))
-
     history = load_essay_history()
-    essays = get_essays(date_label, themen, history)
+    log(f"  {len({e.get('theme') for e in history if e.get('theme')})} unterschiedliche "
+        f"Themen in der Blickwinkel-Historie der letzten {ESSAY_HISTORY_KEEP_DAYS} Tage.")
+    essays = get_essays(date_label, history)
     if not essays:
         log("Keine Essays erzeugt — Seite bleibt unverändert (bestehender Stand).")
         return 0
