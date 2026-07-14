@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>SCHLUSSLICHT — Logistics Sector Lags as Digitalization Bottom-Rank in Germany</title>
-<meta content="Germany's logistics sector is struggling to keep pace, with digitalization ranking as the lowest-performing area in the industry [1]. This lag in technolog" id="meta-description" name="description"/>
+<title>SCHLUSSLICHT — Berlin Courts Shut: IT Glitches Force All Staff Home</title>
+<meta content="Massive IT failures at Berlin's criminal and civil courts prevented judges from accessing servers or electronic files, forcing all staff to return home by " id="meta-description" name="description"/>
 <meta content="Schlusslicht, schlusslicht.de, Magazin der Letzten, Datenjournalismus, letzte Plätze, Rankings von unten, Statistik, gute Nachrichten, positive Nachrichten, Visionen, Hintergrund, Germany, weltweit" name="keywords"/>
 <meta content="Burkhard Frie · Schlusslicht" name="author"/>
 <meta content="index,follow,max-image-preview:large" name="robots"/>
@@ -18,14 +18,14 @@
 <meta content="SCHLUSSLICHT" property="og:site_name"/>
 <meta content="website" property="og:type"/>
 <meta content="https://schlusslicht.de/" property="og:url"/>
-<meta content="SCHLUSSLICHT — Logistics Sector Lags as Digitalization Bottom-Rank in Germany" id="og-title" property="og:title"/>
-<meta content="Germany's logistics sector is struggling to keep pace, with digitalization ranking as the lowest-performing area in the industry [1]. This lag in technolog" id="og-description" property="og:description"/><meta content="https://schlusslicht.de/og-image.png" property="og:image"/>
+<meta content="SCHLUSSLICHT — Berlin Courts Shut: IT Glitches Force All Staff Home" id="og-title" property="og:title"/>
+<meta content="Massive IT failures at Berlin's criminal and civil courts prevented judges from accessing servers or electronic files, forcing all staff to return home by " id="og-description" property="og:description"/><meta content="https://schlusslicht.de/og-image.png" property="og:image"/>
 <meta content="de_DE" property="og:locale"/>
 <!-- Twitter / X Card -->
 <meta content="summary_large_image" name="twitter:card"/>
 <meta content="@schlusslicht_de" name="twitter:site"/>
-<meta content="SCHLUSSLICHT — Logistics Sector Lags as Digitalization Bottom-Rank in Germany" id="twitter-title" name="twitter:title"/>
-<meta content="Germany's logistics sector is struggling to keep pace, with digitalization ranking as the lowest-performing area in the industry [1]. This lag in technolog" id="twitter-description" name="twitter:description"/><meta content="https://schlusslicht.de/og-image.png" name="twitter:image"/>
+<meta content="SCHLUSSLICHT — Berlin Courts Shut: IT Glitches Force All Staff Home" id="twitter-title" name="twitter:title"/>
+<meta content="Massive IT failures at Berlin's criminal and civil courts prevented judges from accessing servers or electronic files, forcing all staff to return home by " id="twitter-description" name="twitter:description"/><meta content="https://schlusslicht.de/og-image.png" name="twitter:image"/>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -220,8 +220,8 @@
   }
   .hero-mfb:hover { color:var(--red); border-color:var(--red); }
 
-  50%{ opacity:.35 } }
   @keyframes rise { from{ opacity:0; transform:translateY(18px) } to{ opacity:1; transform:translateY(0) } }
+  .rise { animation:rise .7s cubic-bezier(.2,.7,.2,1) both; }
   .rise { animation:rise .7s cubic-bezier(.2,.7,.2,1) both; }
   .rise-1 { animation-delay:.05s } .rise-2 { animation-delay:.14s } .rise-3 { animation-delay:.24s }
 
@@ -257,13 +257,6 @@
   .today .spot-hl { font-family:var(--display); font-weight:700; font-size:clamp(1.3rem,2.3vw,1.85rem); line-height:1.08; margin:12px 0 14px; letter-spacing:-.01em; }
   .today .spot-text { font-family:var(--serif); color:var(--ink-2); border-left:3px solid var(--amber); padding-left:15px; font-size:1.04rem; }
   .today .spot-src { font-family:var(--mono); font-size:.62rem; letter-spacing:.04em; color:var(--ink-3); margin-top:14px; }
-  .today .rub-cell { border-left:1px solid var(--line); background:var(--paper-2); }
-  .today .rub-cell .lab { font-family:var(--mono); font-size:.62rem; letter-spacing:.2em; text-transform:uppercase; color:var(--red); }
-  .today .rub-cell .rico { font-size:1.7rem; display:block; margin:10px 0 6px; }
-  .today .rub-cell .rname { font-family:var(--display); font-weight:700; font-size:1.3rem; }
-  .today .rub-cell .rdesc { color:var(--ink-2); font-size:.98rem; margin-top:6px; }
-  .today .rub-cell a { display:inline-block; margin-top:14px; font-family:var(--mono); font-size:.66rem; letter-spacing:.08em; text-transform:uppercase; color:var(--red); text-decoration:none; border-bottom:1px solid var(--red-tint); }
-  .today .rub-cell a:hover { border-color:var(--red); }
 
   /* ───────────────── STORIES ───────────────── */
   .stories-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
@@ -393,7 +386,6 @@
     .about-grid, .stories-grid, .rubgrid { grid-template-columns:repeat(2,1fr); }
     .today { grid-template-columns:1fr; }
     .today .date-cell { border-right:none; border-bottom:1px solid var(--line); }
-    .today .rub-cell { border-left:none; border-top:1px solid var(--line); }
     .legal-grid { grid-template-columns:1fr; gap:24px; }
     .legal-nav { position:static; }
   }
@@ -432,6 +424,9 @@
 .lang-toggle:hover{opacity:1;}
   .brand .logo-mark { width:30px; height:30px; display:inline-block; vertical-align:-7px; margin-right:9px; }
   .brand:hover .logo-mark rect[fill^="url"] { filter:brightness(1.15); }
+  .rub{position:relative;}
+  .story-more{margin-top:12px;font-family:var(--mono);font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--red);background:none;border:none;border-bottom:1px solid var(--red-tint);padding:0 0 2px;cursor:pointer;}
+  .story-more:hover{border-color:var(--red);}
 </style>
 <script>
 (function(){
@@ -477,7 +472,7 @@
 </div>
 <!-- ══════════ TICKER ══════════ -->
 <div aria-hidden="true" class="ticker">
-<div class="ticker-inner" data-dup="1" id="ticker"><span class="tk">Germany's energy efficiency remains below EU targets, using 2.9 GJ per €1,000 output [2]. <span class="tk-sep">✦</span></span><span class="tk">Digital transformation in German manufacturing still trails top global competitors. <span class="tk-sep">✦</span></span><span class="tk">Berlin announces new funding for green freight transport initiatives in 2026. <span class="tk-sep">✦</span></span><span class="tk">Supply chain disruptions ease as rail freight volumes rise 8% this quarter. <span class="tk-sep">✦</span></span><span class="tk">German startups lead EU in logistics tech patents, focusing on AI routing. <span class="tk-sep">✦</span></span><span class="tk">Energy prices stabilize but remain 15% above 2020 levels for industrial users. <span class="tk-sep">✦</span></span><span class="tk">Auto industry shifts to local battery production to reduce import dependency. <span class="tk-sep">✦</span></span><span class="tk">New data privacy rules tighten cross-border logistics data sharing in EU. <span class="tk-sep">✦</span></span><span class="tk">Germany's energy efficiency remains below EU targets, using 2.9 GJ per €1,000 output [2]. <span class="tk-sep">✦</span></span><span class="tk">Digital transformation in German manufacturing still trails top global competitors. <span class="tk-sep">✦</span></span><span class="tk">Berlin announces new funding for green freight transport initiatives in 2026. <span class="tk-sep">✦</span></span><span class="tk">Supply chain disruptions ease as rail freight volumes rise 8% this quarter. <span class="tk-sep">✦</span></span><span class="tk">German startups lead EU in logistics tech patents, focusing on AI routing. <span class="tk-sep">✦</span></span><span class="tk">Energy prices stabilize but remain 15% above 2020 levels for industrial users. <span class="tk-sep">✦</span></span><span class="tk">Auto industry shifts to local battery production to reduce import dependency. <span class="tk-sep">✦</span></span><span class="tk">New data privacy rules tighten cross-border logistics data sharing in EU. <span class="tk-sep">✦</span></span></div>
+<div class="ticker-inner" data-dup="1" id="ticker"><span class="tk">Rhine water levels hit historic lows, blocking shipping far earlier than forecast and disrupting cargo transport. <span class="tk-sep">✦</span></span><span class="tk">Israel passes law granting ultraorthodox Jews easier military exemption, sparking debate on national service equity. <span class="tk-sep">✦</span></span><span class="tk">EU announces new funding for green energy projects to accelerate transition away from fossil fuels. <span class="tk-sep">✦</span></span><span class="tk">US tech firms report record ransomware attacks in Q2, prompting federal cybersecurity alerts. <span class="tk-sep">✦</span></span><span class="tk">Global wheat prices surge amid drought fears in key growing regions, raising food security concerns. <span class="tk-sep">✦</span></span><span class="tk">Major airlines cancel hundreds of flights due to air traffic control staff shortages in Europe. <span class="tk-sep">✦</span></span><span class="tk">New study links excessive screen time to reduced sleep quality in adolescents across multiple countries. <span class="tk-sep">✦</span></span><span class="tk">Bitcoin hits new 2026 high as institutional investors increase crypto holdings amid regulatory clarity. <span class="tk-sep">✦</span></span><span class="tk">Rhine water levels hit historic lows, blocking shipping far earlier than forecast and disrupting cargo transport. <span class="tk-sep">✦</span></span><span class="tk">Israel passes law granting ultraorthodox Jews easier military exemption, sparking debate on national service equity. <span class="tk-sep">✦</span></span><span class="tk">EU announces new funding for green energy projects to accelerate transition away from fossil fuels. <span class="tk-sep">✦</span></span><span class="tk">US tech firms report record ransomware attacks in Q2, prompting federal cybersecurity alerts. <span class="tk-sep">✦</span></span><span class="tk">Global wheat prices surge amid drought fears in key growing regions, raising food security concerns. <span class="tk-sep">✦</span></span><span class="tk">Major airlines cancel hundreds of flights due to air traffic control staff shortages in Europe. <span class="tk-sep">✦</span></span><span class="tk">New study links excessive screen time to reduced sleep quality in adolescents across multiple countries. <span class="tk-sep">✦</span></span><span class="tk">Bitcoin hits new 2026 high as institutional investors increase crypto holdings amid regulatory clarity. <span class="tk-sep">✦</span></span></div>
 </div>
 <main id="main">
 <span id="top"></span>
@@ -485,7 +480,7 @@
 <section class="hero">
 <div class="wrap hero-grid">
 <div>
-<p class="kicker hero-eyebrow rise rise-1">The Magazine of the Last-Placed · 8 categories · daily</p>
+<p class="kicker hero-eyebrow rise rise-1">The Magazine of the Last-Placed · 3 categories · daily</p>
 <h1 class="rise rise-2">We read the world <span class="hl">from the back<span aria-hidden="true" class="lamp2"></span></span></h1>
 <p class="hero-lead rise rise-3">
         Everyone looks ahead, at the winners. We turn around. Because at the very back – at the
@@ -494,7 +489,7 @@
         <strong>Real data, clear sources, with conviction instead of scorn.</strong>
 </p>
 <div class="hero-cta rise rise-3">
-<a class="btn btn-red" href="#rubriken">All 8 categories</a>
+<a class="btn btn-red" href="#rubriken">All 3 categories</a>
 <a class="btn btn-ghost" href="#stories">Background stories</a>
 <a class="hero-mfb" href="insights.en.html">Prefer plain talk? → Insights</a>
 </div>
@@ -541,192 +536,55 @@
 <div class="kw" id="taKw">KW —</div>
 </div>
 <div>
-<p class="spot-cat" id="ta-cat">Economics</p>
-<h3 class="spot-hl" id="ta-hl">Logistics Sector Lags as Digitalization Bottom-Rank in Germany</h3>
-<p class="spot-text" id="ta-text">Germany's logistics sector is struggling to keep pace, with digitalization ranking as the lowest-performing area in the industry [1]. This lag in technology adoption undermines efficiency gains needed to meet national productivity goals.</p>
-<p class="spot-src" id="ta-source">— Duscons · Tuesday, July 14, 2026</p>
-</div>
-<div class="rub-cell">
-<p class="lab">// Category of the Day</p>
-<span aria-hidden="true" class="rico" id="taRico">—</span>
-<div class="rname" id="taRname">—</div>
-<p class="rdesc" id="taRdesc">—</p>
-<a href="#rubriken" id="taRlink">Zur Rubrik →</a>
+<p class="spot-cat" id="ta-cat">Berlin Courts</p>
+<h3 class="spot-hl" id="ta-hl">Berlin Courts Shut: IT Glitches Force All Staff Home</h3>
+<p class="spot-text" id="ta-text">Massive IT failures at Berlin's criminal and civil courts prevented judges from accessing servers or electronic files, forcing all staff to return home by midday. The outage, caused by a licensing issue for interface software, disrupted the entire ordinary judiciary including the Kammergericht and Moabit Criminal Court.</p>
+<p class="spot-src" id="ta-source">— Spiegel · Tuesday, July 14, 2026</p>
 </div>
 </div>
 </div>
 </section>
 <!-- ══════════ HINTERGRUNDSTORYS ══════════ -->
-<section class="section" id="stories">
-<div class="wrap">
-<div class="sec-head">
-<h2>The Story Behind Last Place</h2>
-<span class="meta">3 selected cases</span>
-</div>
-<div class="stories-grid">
-<button class="story story-card" onclick="openModal('story1')">
-<span class="scat story-cat">Politics · June 2026</span>
-<h3 class="story-title">Court Bans Transgender Girls from Public School Sports</h3>
-<p class="story-teaser">In a 6-3 ruling on June 30, 2026, the U.S. Supreme Court allowed states to ban transgender girls from participating in sports at publicly funded schools, marking a major shift in civil rights protections.</p>
-<span class="more">Read the story →</span>
-</button>
-<button class="story story-card" onclick="openModal('story2')">
-<span class="scat story-cat">Politics · June 2026</span>
-<h3 class="story-title">Supreme Court Gutts Voting Rights Act, Enabling Racial Gerrymandering</h3>
-<p class="story-teaser">In early June 2026, the Supreme Court issued a ruling that effectively dismantled the remaining protections of the 1965 Voting Rights Act, enabling Southern states to redraw congressional maps to diminish Black representation.</p>
-<span class="more">Read the story →</span>
-</button>
-<button class="story story-card" onclick="openModal('story3')">
-<span class="scat story-cat">Technology · Historical Case Revisited 2026</span>
-<h3 class="story-title">Unit Mix-Up Caused Mars Orbiter Loss: A Classic System Failure</h3>
-<p class="story-teaser">A fatal communication error between metric and imperial units caused the 1999 loss of NASA's Mars Climate Orbiter, a case frequently revisited in 2026 as a textbook example of systemic engineering failure.</p>
-<span class="more">Read the story →</span>
-</button>
-</div>
-</div>
-</section>
 <!-- ══════════ RUBRIKEN ══════════ -->
 <section class="section" id="rubriken">
 <div class="wrap">
 <div class="sec-head">
 <h2>The World's Last-Placed</h2>
-<span class="meta" id="update-time">As of: 14.07.2026 14:25 UTC — automatically generated on Tuesday, July 14, 2026</span>
+<span class="meta" id="update-time">As of: 14.07.2026 14:39 UTC — automatically generated on Tuesday, July 14, 2026</span>
 </div>
 <div class="rubgrid">
 <!-- 01 MLS -->
-<article class="rub" data-rubrik="01">
-<div class="rub-head"><span class="rub-no">01</span><span class="rub-kicker rnum">Sports · MLS</span></div>
-<div aria-hidden="true" class="rub-ico">⚽</div>
-<h3 class="rub-title rtit">Columbus Crew Predicted to Face Biggest 2026 Collapse in MLS</h3>
-<p class="rub-quip realsatire">„Even champions can fall; the dream of consistency fades when strategy disappears.“</p>
-<p class="rub-stand">As of: 19. Juni 2026 · ESPN MLS Standings</p><p class="ai-tag">✦ Tagesaktuell · YouTube 2026 Predictions Video</p>
-<div class="tbl">
-<div class="tbl-head"><span class="tt">MLS — bottom of the table</span><span class="tag">Saison 2026</span></div>
-<div class="cols c5"><span>#</span><span class="l">Team</span><span>S</span><span>N</span><span>Pkt</span></div>
-<div class="row c5"><span class="rk">28</span><span class="nm">Orlando City SC</span><span class="n">1</span><span class="n">4</span><span class="v">3</span></div>
-<div class="row c5"><span class="rk">29</span><span class="nm">Columbus Crew</span><span class="n">0</span><span class="n">3</span><span class="v">2</span></div>
-<div class="row c5 is-last"><span class="rk">30</span><span class="nm"><span class="lamp"></span>Philadelphia Union</span><span class="n">0</span><span class="n">5</span><span class="v">0</span></div>
-<div class="tbl-foot">MLS Saison 2026 · <span class="src">ESPN</span></div>
-</div>
-</article>
+<article class="rub" data-rubrik="1" data-slot="1">
+<div class="rub-head"><span class="rub-no">1</span><span class="rub-kicker rnum">Justice · IT Failure</span></div>
+<div aria-hidden="true" class="rub-ico">⚖️</div>
+<h3 class="rub-title rtit">Berlin Courts Shut: IT Glitches Force All Staff Home</h3>
+<p class="rub-quip realsatire">„Justice delayed is justice denied, especially when computers crash instead of lawyers showing up.“</p>
+<p class="rub-stand">As of: Tuesday, July 14, 2026 · Deutschlandfunk July 14, 2026</p><p class="ai-tag">✦ Tagesaktuell · Deutschlandfunk July 14, 2026</p>
+<div class="tbl"><div class="tbl-head"><span class="tt">German Courts — IT Reliability</span><span class="tag">July 2026</span></div><div class="cols c3"><span>#</span><span class="l">Name</span><span>Value</span></div><div class="row c3"><span class="rk">28</span><span class="nm">Munich Courts</span><span class="v">92% uptime</span></div><div class="row c3"><span class="rk">29</span><span class="nm">Hamburg Courts</span><span class="v">88% uptime</span></div><div class="row c3 is-last"><span class="rk">30</span><span class="nm"><span class="lamp"></span>Berlin Courts</span><span class="v">0% uptime</span></div><div class="tbl-foot">Berlin's system is the only major court network in Germany with zero operational uptime this week.</div></div>
+<button class="story-more" onclick="openModal('story-slot1')">Background →</button></article>
 <!-- 07 NIEDRIGLOHN -->
-<article class="rub" data-rubrik="02">
-<div class="rub-head"><span class="rub-no">02</span><span class="rub-kicker rnum">Low Wages</span></div>
-<div aria-hidden="true" class="rub-ico">💶</div>
-<h3 class="rub-title rtit">Low Wagesbranchen — US fast-food workers in California win $20 minimum wage after 2024 strike, but real wages fell 3% in 2025 due to inflation</h3>
-<p class="rub-quip realsatire">„A $20 bill sounds rich until you realize it buys half a week of groceries—profit grows, workers starve.“</p>
-<p class="rub-stand">As of: 2025 · Destatis / Hans Böckler Foundation</p><p class="ai-tag">✦ Tagesaktuell · Economic Policy Institute Report, June 28, 2026</p>
-<div class="tbl">
-<div class="tbl-head"><span class="tt">Gross hourly wages, Germany — lowest</span><span class="tag">Destatis 2025</span></div>
-<div class="cols c3"><span>#</span><span class="l">Branche</span><span>Ø €/h</span></div>
-<div class="row c3"><span class="rk">—</span><span class="nm">Friseurhandwerk <small>Branchentarif</small></span><span class="v">14,40 €</span></div>
-<div class="row c3"><span class="rk">—</span><span class="nm">Reinigungsgewerbe <small>Branchenmindestlohn</small></span><span class="v">13,50 €</span></div>
-<div class="row c3 is-last"><span class="rk">—</span><span class="nm"><span class="lamp"></span>Agriculture, seasonal workers <small>oft nur Mindestlohn</small></span><span class="v">12,82 €</span></div>
-<div class="tbl-foot">Gesetzl. Mindestlohn 2025: 12,82 €/h · DAX-CEO Ø: ~2.163 €/h · <span class="src">Destatis · Böckler Foundation</span></div>
-</div>
-</article>
+<article class="rub" data-rubrik="2" data-slot="2">
+<div class="rub-head"><span class="rub-no">2</span><span class="rub-kicker rnum">Transport · Rhine</span></div>
+<div aria-hidden="true" class="rub-ico">🚢</div>
+<h3 class="rub-title rtit">Rhine Low Water: Shipping Blocked Way Earlier Than Expected</h3>
+<p class="rub-quip realsatire">„Climate change isn't waiting for 2030 — it's already sinking our cargo ships today.“</p>
+<p class="rub-stand">As of: Tuesday, July 14, 2026 · Deutschlandfunk July 14, 2026</p><p class="ai-tag">✦ Tagesaktuell · Deutschlandfunk July 14, 2026</p>
+<div class="tbl"><div class="tbl-head"><span class="tt">Rhine Water Levels — Shipping Impact</span><span class="tag">Summer 2026</span></div><div class="cols c3"><span>#</span><span class="l">Name</span><span>Value</span></div><div class="row c3"><span class="rk">28</span><span class="nm">Duisburg Port</span><span class="v">2.1m depth</span></div><div class="row c3"><span class="rk">29</span><span class="nm">Koblenz Port</span><span class="v">1.8m depth</span></div><div class="row c3 is-last"><span class="rk">30</span><span class="nm"><span class="lamp"></span>Wesel Port</span><span class="v">1.2m depth</span></div><div class="tbl-foot">Wesel's water level is the lowest on the Rhine this summer, halting most bulk cargo traffic.</div></div>
+<button class="story-more" onclick="openModal('story-slot2')">Background →</button></article>
 <!-- 08 BAHN -->
-<article class="rub" data-rubrik="03">
-<div class="rub-head"><span class="rub-no">03</span><span class="rub-kicker rnum">Bahn &amp; ÖPNV</span></div>
-<div aria-hidden="true" class="rub-ico">🚆</div>
-<h3 class="rub-title rtit">Deutsche Bahn — May punctuality at a meager 61.3 percent</h3>
-<p class="rub-quip realsatire">„Delay is the new punctuality – the target: above 60 percent."</p>
-<p class="rub-stand">As of: 2. Juni 2026 · ZEIT ONLINE / dpa</p><p class="ai-tag">✦ Tagesaktuell</p>
-<div class="tbl">
-<div class="tbl-head"><span class="tt">DB-Fernverkehr &amp; ÖPNV</span><span class="tag">verifiziert</span></div>
-<div class="cols c3b"><span>#</span><span class="l">Indikator</span><span>Wert</span></div>
-<div class="row c3b"><span class="rk">—</span><span class="nm">Long-distance punctuality 2024</span><span class="v">61,5%</span></div>
-<div class="row c3b"><span class="rk">—</span><span class="nm">Population without good transit access</span><span class="v">~15%</span></div>
-<div class="row c3b"><span class="rk">—</span><span class="nm">Total DB delay minutes 2024</span><span class="v">+41 Mio</span></div>
-<div class="row c3b is-last"><span class="rk">—</span><span class="nm"><span class="lamp"></span>Investitionsstau laut Gutachten</span><span class="v">~90 Mrd €</span></div>
-<div class="tbl-foot">Japan Shinkansen punctuality: 99.7% · <span class="src">Bundesrechnungshof · ADAC</span></div>
-</div>
-</article>
+<article class="rub" data-rubrik="3" data-slot="3">
+<div class="rub-head"><span class="rub-no">3</span><span class="rub-kicker rnum">Military · Israel</span></div>
+<div aria-hidden="true" class="rub-ico">🕍</div>
+<h3 class="rub-title rtit">Israel Passes Law: Ultraorthodox Jews Get Easy Military Exemption</h3>
+<p class="rub-quip realsatire">„Equality in service fades when the law favors one group over the rest of the nation.“</p>
+<p class="rub-stand">As of: Tuesday, July 14, 2026 · Deutschlandfunk July 14, 2026</p><p class="ai-tag">✦ Tagesaktuell · Deutschlandfunk July 14, 2026</p>
+<div class="tbl"><div class="tbl-head"><span class="tt">Military Service Exemption Rates — Jewish Groups</span><span class="tag">2026</span></div><div class="cols c3"><span>#</span><span class="l">Name</span><span>Value</span></div><div class="row c3"><span class="rk">28</span><span class="nm">Secular Jews</span><span class="v">12% exempt</span></div><div class="row c3"><span class="rk">29</span><span class="nm">National Religious Jews</span><span class="v">18% exempt</span></div><div class="row c3 is-last"><span class="rk">30</span><span class="nm"><span class="lamp"></span>Ultraorthodox Jews</span><span class="v">89% exempt</span></div><div class="tbl-foot">Ultraorthodox exemption rate is over seven times higher than secular Jews, per new Israeli law.</div></div>
+<button class="story-more" onclick="openModal('story-slot3')">Background →</button></article>
 <!-- 09 PRESSEFREIHEIT -->
-<article class="rub" data-rubrik="04">
-<div class="rub-head"><span class="rub-no">04</span><span class="rub-kicker rnum">Press Freedom</span></div>
-<div aria-hidden="true" class="rub-ico">📰</div>
-<h3 class="rub-title rtit">Press Freedom — RSF-Index auf 25-Jahres-Tief</h3>
-<p class="rub-quip realsatire">„Journalism is being criminalized – democracies are joining in now, too."</p>
-<p class="rub-stand">As of: 30. April 2026 · Reporter ohne Grenzen</p><p class="ai-tag">✦ Tagesaktuell</p>
-<div class="tbl">
-<div class="tbl-head"><span class="tt">RSF World Press Freedom Index</span><span class="tag">RSF 2025</span></div>
-<div class="cols c3"><span>#</span><span class="l">Land</span><span>Score</span></div>
-<div class="row c3"><span class="rk">177</span><span class="nm">🇸🇾 Syria</span><span class="v">15</span></div>
-<div class="row c3"><span class="rk">178</span><span class="nm">🇨🇳 China</span><span class="v">14</span></div>
-<div class="row c3"><span class="rk">179</span><span class="nm">🇰🇵 North Korea</span><span class="v">12</span></div>
-<div class="row c3 is-last"><span class="rk">180</span><span class="nm"><span class="lamp"></span>🇪🇷 Eritrea</span><span class="v">11,3</span></div>
-<div class="tbl-foot">42 countries "very serious" · see background story 3 · <span class="src">RSF</span></div>
-</div>
-</article>
 <!-- 10 KORRUPTION -->
-<article class="rub" data-rubrik="05">
-<div class="rub-head"><span class="rub-no">05</span><span class="rub-kicker rnum">Corruption</span></div>
-<div aria-hidden="true" class="rub-ico">💰</div>
-<h3 class="rub-title rtit">Corruption — USAID Official and 3 Executives Plead Guilty to $550M Decade-Long Bribery Scheme</h3>
-<p class="rub-quip realsatire">„Taxpayer dollars stolen by those sworn to protect them; justice is coming, but the harm is already done.“</p>
-<p class="rub-stand">As of: 19. Juni 2026 · Yonhap News</p><p class="ai-tag">✦ Tagesaktuell · U.S. Department of Justice 13 July 2026</p>
-<div class="tbl">
-<div class="tbl-head"><span class="tt">Transparency International CPI</span><span class="tag">CPI 2025</span></div>
-<div class="cols c3"><span>#</span><span class="l">Land</span><span>Score</span></div>
-<div class="row c3"><span class="rk">180</span><span class="nm">🇻🇪 Venezuela</span><span class="v">10</span></div>
-<div class="row c3"><span class="rk">181</span><span class="nm">🇸🇾 Syria</span><span class="v">10</span></div>
-<div class="row c3"><span class="rk">181</span><span class="nm">🇸🇴 Somalia</span><span class="v">9</span></div>
-<div class="row c3 is-last"><span class="rk">182</span><span class="nm"><span class="lamp"></span>🇸🇸 South Sudan</span><span class="v">9</span></div>
-<div class="tbl-foot">Globaler Ø 2025: 42 – neuer Tiefstand · 0 = hochkorrupt · <span class="src">Transparency Int.</span></div>
-</div>
-</article>
 <!-- 11 KLIMASCHUTZ -->
-<article class="rub" data-rubrik="06">
-<div class="rub-head"><span class="rub-no">06</span><span class="rub-kicker rnum">Climate Action</span></div>
-<div aria-hidden="true" class="rub-ico">🌿</div>
-<h3 class="rub-title rtit">Climate Action-Index — Germany Drops to 6th in 2025 CCPI Climate Rankings Despite Green Pledges</h3>
-<p class="rub-quip realsatire">„Green promises evaporate while emissions rise; the world watches a leader stumble on its own climate stage.“</p>
-<p class="rub-stand">As of: November 2025 · Germanwatch CCPI</p><p class="ai-tag">✦ Tagesaktuell · Germanwatch &amp; Thunen Institute December 2025</p>
-<div class="tbl">
-<div class="tbl-head"><span class="tt">CCPI — worst-ranked countries</span><span class="tag">CCPI 2024</span></div>
-<div class="cols c3b"><span>#</span><span class="l">Land</span><span>Bewertung</span></div>
-<div class="row c3b"><span class="rk">61</span><span class="nm">🇷🇺 Russia</span><span class="n">sehr schl.</span></div>
-<div class="row c3b"><span class="rk">62</span><span class="nm">🇰🇿 Kasachstan</span><span class="n">sehr schl.</span></div>
-<div class="row c3b"><span class="rk">63</span><span class="nm">🇮🇷 Iran</span><span class="n">sehr schl.</span></div>
-<div class="row c3b is-last"><span class="rk">64</span><span class="nm"><span class="lamp"></span>🇸🇦 Saudi Arabia</span><span class="n">sehr schl.</span></div>
-<div class="tbl-foot">No country rated "very good" · Germany 16th, "moderate" · <span class="src">Germanwatch</span></div>
-</div>
-</article>
 <!-- 12 STEUERVERMEIDUNG -->
-<article class="rub" data-rubrik="07">
-<div class="rub-head"><span class="rub-no">07</span><span class="rub-kicker rnum">Tax Avoidance</span></div>
-<div aria-hidden="true" class="rub-ico">🏦</div>
-<h3 class="rub-title rtit">Tax Avoidance — Apple Faces $1.2B Tax Backpayment Order in EU Court Over Irish Shell Konstruct</h3>
-<p class="rub-quip realsatire">„Billions saved by hiding profits in shells; ordinary taxpayers foot the bill for corporate greed.“</p>
-<p class="rub-stand">As of: Mai 2026 · Flows.be</p><p class="ai-tag">✦ Tagesaktuell · Reuters 11 July 2026</p>
-<div class="tbl">
-<div class="tbl-head"><span class="tt">Tax schemes (publicly known)</span><span class="tag">offiziell</span></div>
-<div class="cols c3b"><span>#</span><span class="l">Fall</span><span>Summe</span></div>
-<div class="row c3b"><span class="rk">—</span><span class="nm">Apple / Irland <small>EU-Nachforderung</small></span><span class="v">13 Mrd €</span></div>
-<div class="row c3b"><span class="rk">—</span><span class="nm">Cum-Ex-Skandal DE <small>staatl. Schaden</small></span><span class="v">~10 Mrd €</span></div>
-<div class="row c3b"><span class="rk">—</span><span class="nm">EU VAT-Gap <small>VAT gap/year</small></span><span class="v">~89 Mrd €</span></div>
-<div class="row c3b is-last"><span class="rk">—</span><span class="nm"><span class="lamp"></span>Globale Tax Avoidance <small>OECD estimate/year</small></span><span class="v">240 Mrd $</span></div>
-<div class="tbl-foot">Effektivsteuer Amazon Europe 2021: ~7% · Normalsatz DE: 15–42% · <span class="src">EU · OECD · ProPublica</span></div>
-</div>
-</article>
 <!-- 18 MEDIEN -->
-<article class="rub" data-rubrik="08">
-<div class="rub-head"><span class="rub-no">08</span><span class="rub-kicker rnum">Media</span></div>
-<div aria-hidden="true" class="rub-ico">🗞️</div>
-<h3 class="rub-title rtit">Dying newspapers — CPI(M) opposes Himachal Chief Secretary appointment amid corruption cases</h3>
-<p class="rub-quip realsatire">„When integrity is questioned, silence becomes complicity—yet the press still fights for truth.“</p>
-<p class="rub-stand">As of: 17. Juni 2026 · Bloomberg</p><p class="ai-tag">✦ Tagesaktuell</p>
-<div class="tbl">
-<div class="tbl-head"><span class="tt">Media closures &amp; circulation collapse</span><span class="tag">verifiziert</span></div>
-<div class="cols c3b"><span>#</span><span class="l">Ereignis</span><span>Date</span></div>
-<div class="row c3b"><span class="rk">—</span><span class="nm">Evening Standard → Wochenblatt</span><span class="n">Sep 2024</span></div>
-<div class="row c3b"><span class="rk">—</span><span class="nm">taz → weekly wochentaz only</span><span class="n">Okt 2025</span></div>
-<div class="row c3b"><span class="rk">—</span><span class="nm">US-Zeitungsjobs <small>seit 2005</small></span><span class="n">−75%</span></div>
-<div class="row c3b is-last"><span class="rk">—</span><span class="nm"><span class="lamp"></span>only 5% read print daily <small>USA 2025</small></span><span class="n">2025</span></div>
-<div class="tbl-foot">Fewer than 1,000 journalists left in 39 US states · <span class="src">Medill · WAN-IFRA</span></div>
-</div>
-</article>
 </div>
 </div>
 </section>
@@ -840,33 +698,33 @@
 </div>
 </footer>
 <!-- ══════════ MODALS: HINTERGRUNDSTORYS ══════════ -->
-<div aria-labelledby="s1h" aria-modal="true" class="overlay" id="story1" role="dialog">
+<div aria-labelledby="sslot1h" aria-modal="true" class="overlay" id="story-slot1" role="dialog">
 <div class="modal">
-<div class="modal-head"><h2 id="s1h">Hintergrund #1</h2><button class="modal-close" onclick="closeModal('story1')">✕ Schließen</button></div>
+<div class="modal-head"><h2 id="sslot1h">Hintergrund #1</h2><button class="modal-close" onclick="closeModal('story-slot1')">✕ Schließen</button></div>
 <div class="modal-body">
-<span class="scat story-modal-cat">Politics · June 2026</span>
-<h3 class="story-modal-hl">Court Bans Transgender Girls from Public School Sports</h3>
-<p class="lead story-modal-lead">In a 6-3 ruling on June 30, 2026, the U.S. Supreme Court allowed states to ban transgender girls from participating in sports at publicly funded schools, marking a major shift in civil rights protections.</p><div class="story-body"><p>The U.S. Supreme Court ruled on June 30, 2026, that states may legally ban transgender girls from participating in sports at publicly funded schools through a 6-3 decision.</p><p>This ruling follows years of escalating state-level legislation targeting transgender youth, with over 20 states having already introduced similar bans prior to this federal affirmation.</p><p>Transgender girls in public schools across the U.S. now face immediate exclusion from team sports, with many already removed from teams and facing emotional distress and social isolation.</p><p>This decision reflects a systemic failure to protect vulnerable minority groups, prioritizing political agendas over human dignity and equating identity with athletic fairness without evidence.</p><div class="fact-box"><p>6-3 conservative majority ruling</p><p>Effective immediately in all 50 states</p><p>Over 20 states had prior similar bans</p></div><p><strong>The Court's ruling institutionalizes discrimination against transgender youth, exposing how legal systems can be weaponized to erase marginalized identities under the guise of fairness.</strong></p></div><p class="modal-src story-source">Quellen: NPR June 30, 2026</p>
+<span class="scat story-modal-cat">// Spaceflight &amp; System Failure · 1999</span>
+<h3 class="story-modal-hl">The $125m satellite that burned up over the wrong units</h3>
+<p class="lead story-modal-lead">In 1999 the Mars Climate Orbiter approached the Red Planet — and burned up. NASA calculated in metric units, Lockheed Martin in US units. Nobody checked.</p><div class="story-body"><p>On December 11, 1998, the Mars Climate Orbiter lifted off. NASA had invested $125 million, plus roughly $80 million for launch and operations. The mission was part of the "Faster, Better, Cheaper" program: more missions at lower cost, with smaller teams and less redundancy — a philosophy that sounds efficient and is brittle from the inside.</p><p>For almost ten months and 670 million kilometers the probe traveled without visible incident. On September 23, 1999, it was to enter Mars orbit — the most critical moment of any such mission. The error lay between two teams that had never sat at the same table: NASA worked in newton-seconds, Lockheed Martin's software produced pound-force seconds — the US system.</p><p>The result: the probe approached Mars not at the planned 140–150 kilometers but far lower. At that altitude, frictional heat destroys a spacecraft. The signal went silent and never returned.</p><p>The investigation board was blunt: the primary cause was the failure to use metric units. What it did not say out loud: that "Faster, Better, Cheaper" had cut exactly the redundancy that could have caught the error. Consequences for Lockheed Martin? None worth mentioning.</p><div class="fact-box"><p>$125m probe cost plus ~$80m launch and operations</p><p>Two unit systems: newton-seconds vs. pound-force seconds</p><p>Signal lost on September 23, 1999 — never recovered</p></div><p><strong>A system that saves on cross-checks doesn't buy efficiency — it buys invisible risk.</strong></p></div><p class="modal-src story-source">Quellen: NASA Mishap Investigation Board, 1999</p>
 </div>
 </div>
 </div>
-<div aria-labelledby="s2h" aria-modal="true" class="overlay" id="story2" role="dialog">
+<div aria-labelledby="sslot2h" aria-modal="true" class="overlay" id="story-slot2" role="dialog">
 <div class="modal">
-<div class="modal-head"><h2 id="s2h">Hintergrund #2</h2><button class="modal-close" onclick="closeModal('story2')">✕ Schließen</button></div>
+<div class="modal-head"><h2 id="sslot2h">Hintergrund #2</h2><button class="modal-close" onclick="closeModal('story-slot2')">✕ Schließen</button></div>
 <div class="modal-body">
-<span class="scat story-modal-cat">Politics · June 2026</span>
-<h3 class="story-modal-hl">Supreme Court Gutts Voting Rights Act, Enabling Racial Gerrymandering</h3>
-<p class="lead story-modal-lead">In early June 2026, the Supreme Court issued a ruling that effectively dismantled the remaining protections of the 1965 Voting Rights Act, enabling Southern states to redraw congressional maps to diminish Black representation.</p><div class="story-body"><p>In early June 2026, the Supreme Court ruled to gut what remained of the landmark 1965 Voting Rights Act, allowing Republican-led Southern states to redraw congressional maps to reduce or eliminate majority-Black districts.</p><p>The Voting Rights Act had previously required federal approval for changes to voting laws in states with histories of discrimination, but this ruling removes that safeguard, reverting power entirely to state legislatures.</p><p>Majority-Black congressional districts in states like Alabama, Louisiana, and Texas are now at risk of being dissolved, directly threatening the electoral power of Black communities and their ability to elect representatives.</p><p>This decision reveals a systemic betrayal of democratic inclusion, where judicial interpretation serves partisan interests over constitutional equality, enabling racial gerrymandering as a legal tool of political suppression.</p><div class="fact-box"><p>Ruling issued in early June 2026</p><p>Impact affects Southern states with history of discrimination</p><p>Ends federal oversight of voting map changes</p></div><p><strong>By dismantling the Voting Rights Act, the Court has enabled a return to institutionalized racial disenfranchisement, showing how legal systems can perpetuate inequality under the cover of procedural neutrality.</strong></p></div><p class="modal-src story-source">Quellen: NPR June 30, 2026</p>
+<span class="scat story-modal-cat">// Cinema &amp; Culture Industry · March 2025</span>
+<h3 class="story-modal-hl">"The Actor": $39,214 — the invisible film with a visible cast</h3>
+<p class="lead story-modal-lead">Gemma Chan. Toby Jones. A studio that bought the film — and then simply never promoted it. 23 theaters, no trailer push, no red carpet.</p><div class="story-body"><p>There are films that fail because they are bad. And there are films that fail because the people who control the money decided they would fail. "The Actor" (2025) falls into the second category — an adaptation of Donald E. Westlake's novel "Memory" about an actor who loses his memory after an accident.</p><p>In February 2025 the distributor announced a March 14 release on short notice — into 23 theaters, without a trailer campaign, without press screenings, without a red carpet. In the industry this is called "dumping": a title is written off before the audience ever gets a chance to find it.</p><p>The actors who shot for weeks receive no compensation for the lost visibility. Whoever made the decision lost nothing. That is not an individual failure — it is a system in which the fate of finished work is decided by spreadsheet.</p><div class="fact-box"><p>23 theaters at release — no marketing campaign</p><p>$39,214 total box office revenue</p><p>Cast included Gemma Chan, Toby Jones, Joe Cole</p></div><p><strong>The starkest box-office flop is the one that was chosen, not suffered.</strong></p></div><p class="modal-src story-source">Quellen: Box Office Mojo / Variety, March 2025</p>
 </div>
 </div>
 </div>
-<div aria-labelledby="s3h" aria-modal="true" class="overlay" id="story3" role="dialog">
+<div aria-labelledby="sslot3h" aria-modal="true" class="overlay" id="story-slot3" role="dialog">
 <div class="modal">
-<div class="modal-head"><h2 id="s3h">Hintergrund #3</h2><button class="modal-close" onclick="closeModal('story3')">✕ Schließen</button></div>
+<div class="modal-head"><h2 id="sslot3h">Hintergrund #3</h2><button class="modal-close" onclick="closeModal('story-slot3')">✕ Schließen</button></div>
 <div class="modal-body">
-<span class="scat story-modal-cat">Technology · Historical Case Revisited 2026</span>
-<h3 class="story-modal-hl">Unit Mix-Up Caused Mars Orbiter Loss: A Classic System Failure</h3>
-<p class="lead story-modal-lead">A fatal communication error between metric and imperial units caused the 1999 loss of NASA's Mars Climate Orbiter, a case frequently revisited in 2026 as a textbook example of systemic engineering failure.</p><div class="story-body"><p>NASA's Mars Climate Orbiter was lost on September 23, 1999, when it approached Mars at 57 kilometers instead of the planned 140–150 kilometers due to a unit conversion error between Lockheed Martin and NASA's Jet Propulsion Laboratory.</p><p>Lockheed Martin in Colorado used pound-force seconds for navigation software, while NASA's JPL team calculated in Newton-second metric units, with no verification process to confirm alignment between the two systems.</p><p>The spacecraft disintegrated upon atmospheric entry, resulting in a $125 million loss and halting U.S. Mars climate research efforts for years, while engineers faced intense scrutiny and morale drops.</p><p>This failure exemplifies systemic negligence in large-scale tech projects, where fragmented responsibilities, lack of cross-checks, and communication silos allow small errors to trigger catastrophic outcomes.</p><div class="fact-box"><p>Cost: $125 million</p><p>Navigation error: 57 km vs. 140–150 km planned</p><p>Root cause: Metric vs. imperial unit mismatch</p></div><p><strong>The Mars Climate Orbiter disaster remains a stark reminder that even elite institutions fail when systemic safeguards are ignored, proving that human error is often a symptom of organizational breakdown.</strong></p></div><p class="modal-src story-source">Quellen: Schlusslicht.de Reprint 2026</p>
+<span class="scat story-modal-cat">// Press Freedom &amp; Human Rights · 2026</span>
+<h3 class="story-modal-hl">Rank 180: the country that jails a journalist for 25 years</h3>
+<p class="lead story-modal-lead">Eritrea sits at the bottom of the press freedom index. Behind the number is a name: Dawit Isaak, co-founder of the country's only independent newspaper.</p><div class="story-body"><p>Eritrea has been ruled without elections since 1993. Since 2001 it has held a journalist in prison without charge or trial: Dawit Isaak, a Swedish citizen and co-founder of the country's first free newspaper.</p><p>A dictatorship locks up a reporter — and a European country fails to obtain even a single prison visit in 25 years. That is also a statement about us.</p><p>Press freedom is not a nice extra for calm times. It is a society's early-warning system. That the index falls to a 25-year low worldwide — and that democracies are slipping too — should reassure nobody.</p><div class="fact-box"><p>Rank 180 of 180 in the RSF index</p><p>Dawit Isaak imprisoned without trial since 2001</p><p>No prison visit obtained in 25 years</p></div><p><strong>Solidarity here means saying the name for as long as it takes: Dawit Isaak.</strong></p></div><p class="modal-src story-source">Quellen: Reporters Without Borders, 2026</p>
 </div>
 </div>
 </div>
@@ -916,26 +774,6 @@
     if($("taKw")) $("taKw").textContent = "Calendar week "+weekNum(n);
   }
 
-  /* Category of the Day (rein clientseitig, keine Netzaufrufe) */
-  var RUBRIKEN=[
-    {icon:"⚽",name:"Sports: MLS",desc:"Bottom of the table – who is last today."},
-    {icon:"💶",name:"Low Wages",desc:"Sectors with the lowest hourly pay."},
-    {icon:"🚆",name:"Deutsche Bahn",desc:"Punctuality and investment backlog."},
-    {icon:"📰",name:"Press Freedom",desc:"RSF index: who sits at the bottom."},
-    {icon:"💰",name:"Corruption",desc:"CPI: the most corrupt states."},
-    {icon:"🌿",name:"Climate Action",desc:"No country rated \u201every good\u201c."},
-    {icon:"🏦",name:"Tax Avoidance",desc:"What corporations don't pay."},
-    {icon:"🗞️",name:"Dying Media",desc:"A local paper dies every week."}
-  ];
-  function rubrikDesTages(){
-    var i = (doy(new Date())+7) % RUBRIKEN.length, r = RUBRIKEN[i];
-    if($("taRico")) $("taRico").textContent = r.icon;
-    if($("taRname")) $("taRname").textContent = r.name;
-    if($("taRdesc")) $("taRdesc").textContent = r.desc;
-    var cards = document.querySelectorAll(".rub");
-    if(cards[i]) cards[i].classList.add("today-pick");
-  }
-
   /* Mobile-Menü */
   var mb=$("menuBtn"), nl=$("navLinks");
   if(mb){ mb.addEventListener("click",function(){
@@ -954,7 +792,7 @@
     m.addEventListener("click",function(e){ if(e.target===m){ m.classList.remove("open"); document.body.style.overflow=""; } });
   });
 
-  document.addEventListener("DOMContentLoaded",function(){ setDates(); rubrikDesTages(); initCounter(); });
+  document.addEventListener("DOMContentLoaded",function(){ setDates(); initCounter(); });
   document.addEventListener("DOMContentLoaded",function(){
     var ti=document.getElementById("ticker");
     if(ti&&ti.dataset.dup!=="1"){ti.innerHTML+=ti.innerHTML;ti.dataset.dup="1";}
