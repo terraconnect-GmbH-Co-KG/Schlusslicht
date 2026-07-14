@@ -793,10 +793,28 @@ def main() -> int:
         log("Keine Kolumne hat die Quellen-Verifikation bestanden — Datei bleibt unverändert.")
         return 0
 
-    # WICHTIG: OUTPUT (gestriges, echtes Ergebnis) wird bevorzugt geladen,
-    # NICHT das statische TEMPLATE (siehe generate.py für die volle
-    # Begründung des Root-Cause-Fixes).
-    base_path = OUTPUT if os.path.exists(OUTPUT) else TEMPLATE
+    # WICHTIG (Redesign-Migrations-Fix, siehe generate.py für die volle
+    # Begründung): OUTPUT wird nur bevorzugt, wenn es bereits die neue
+    # 3-Spalten-Struktur hat — sonst würde ein bestehendes altes
+    # insights.html (5 Spalten, aus der Zeit vor dem Redesign) für immer
+    # als Basis dienen und die neue Struktur nie übernommen.
+    def _hat_neue_struktur(html_text: str) -> bool:
+        try:
+            probe = BeautifulSoup(html_text, "html.parser")
+        except Exception:
+            return False
+        return len(probe.select("article.col")) == N_COLS and probe.select_one("#col4") is None
+
+    base_path = TEMPLATE
+    if os.path.exists(OUTPUT):
+        with open(OUTPUT, encoding="utf-8") as fh:
+            bestehendes_html = fh.read()
+        if _hat_neue_struktur(bestehendes_html):
+            base_path = OUTPUT
+        else:
+            log(f"  {OUTPUT} hat noch die alte Struktur (vor dem Redesign) — "
+                f"verwende stattdessen {TEMPLATE} als Basis (einmaliger "
+                f"Migrationsschritt).")
     log(f"Verwende als Basis: {base_path}")
     with open(base_path, encoding="utf-8") as fh:
         html = fh.read()

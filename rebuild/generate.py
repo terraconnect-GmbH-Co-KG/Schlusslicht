@@ -1188,7 +1188,34 @@ def main() -> int:
     # — wodurch dieselben veralteten Storys/Kategorien immer wieder
     # auftauchten, obwohl an anderer Stelle im selben Lauf frische, echte
     # Inhalte erfolgreich verifiziert wurden.
-    template_path = OUTPUT if os.path.exists(OUTPUT) else TEMPLATE
+    # WICHTIG (Redesign-Migrations-Fix, gefunden nach Live-Meldung): Die
+    # obige "OUTPUT bevorzugen"-Logik schützt zwar vor einem Rückfall auf
+    # uralte Tag-0-Platzhalter bei einem fehlgeschlagenen Lauf — sie hatte
+    # aber einen blinden Fleck: wenn sich die STRUKTUR des Templates ändert
+    # (wie beim Rotations-Redesign: 8 Rubrik-Karten -> 3 feste Slots), bleibt
+    # ein bereits bestehendes, altes index.html für immer die Basis, weil es
+    # ja existiert — die neue Struktur aus dem Template wird NIE übernommen,
+    # egal wie oft der Workflow erfolgreich läuft. Fix: Vor der Verwendung
+    # wird geprüft, ob OUTPUT bereits die erwartete neue Struktur hat (genau
+    # N_ITEMS Slots mit data-slot). Fehlt sie, wird einmalig auf TEMPLATE
+    # zurückgegriffen, um die neue Struktur zu übernehmen.
+    def _hat_neue_struktur(html_text: str) -> bool:
+        try:
+            probe = BeautifulSoup(html_text, "html.parser")
+        except Exception:
+            return False
+        return len(probe.select('article.rub[data-slot]')) == N_ITEMS
+
+    template_path = TEMPLATE
+    if os.path.exists(OUTPUT):
+        with open(OUTPUT, encoding="utf-8") as fh:
+            bestehendes_html = fh.read()
+        if _hat_neue_struktur(bestehendes_html):
+            template_path = OUTPUT
+        else:
+            log(f"  {OUTPUT} hat noch die alte Struktur (vor dem Redesign) — "
+                f"verwende stattdessen {TEMPLATE} als Basis, um die neue "
+                f"3-Slot-Struktur zu übernehmen (einmaliger Migrationsschritt).")
     if not os.path.exists(template_path):
         log("FEHLER: Weder index.html noch index.template.html gefunden.")
         return 1

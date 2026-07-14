@@ -798,10 +798,29 @@ def main() -> int:
     build_time = datetime.datetime.now(datetime.timezone.utc).strftime("%d.%m.%Y %H:%M UTC")
     log(f"Visionen-Ausgabe: {date_label}")
 
-    # Root-Cause-Fix (identisch zu generate.py): OUTPUT (gestriger, echter
-    # Stand) wird bevorzugt geladen statt des statischen TEMPLATE mit
-    # Tag-0-Platzhalterinhalten.
-    template_path = OUTPUT if os.path.exists(OUTPUT) else TEMPLATE
+    # Redesign-Migrations-Fix (siehe generate.py für die volle Begründung):
+    # OUTPUT wird nur bevorzugt, wenn es bereits die neue 3-Meldungen-
+    # Struktur mit eingebetteten Storys hat — sonst bliebe ein altes
+    # brightside.html (7 Meldungen + separate Story-Vorschau) für immer
+    # die Basis und die neue Struktur würde nie übernommen.
+    def _hat_neue_struktur(html_text: str) -> bool:
+        try:
+            probe = BeautifulSoup(html_text, "html.parser")
+        except Exception:
+            return False
+        return (len(probe.select("article.gn")) == 3
+                and probe.select_one(".stories-grid") is None)
+
+    template_path = TEMPLATE
+    if os.path.exists(OUTPUT):
+        with open(OUTPUT, encoding="utf-8") as fh:
+            bestehendes_html = fh.read()
+        if _hat_neue_struktur(bestehendes_html):
+            template_path = OUTPUT
+        else:
+            log(f"  {OUTPUT} hat noch die alte Struktur (vor dem Redesign) — "
+                f"verwende stattdessen {TEMPLATE} als Basis (einmaliger "
+                f"Migrationsschritt).")
     if not os.path.exists(template_path):
         log("FEHLER: Weder brightside.html noch brightside.template.html gefunden.")
         return 1

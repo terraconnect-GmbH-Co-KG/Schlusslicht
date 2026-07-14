@@ -496,7 +496,26 @@ def main() -> int:
         log("Keine Essays erzeugt — Seite bleibt unverändert (bestehender Stand).")
         return 0
 
-    base_path = OUTPUT if os.path.exists(OUTPUT) else TEMPLATE
+    # Redesign-Migrations-Fix (siehe generate.py für die volle Begründung):
+    # OUTPUT wird nur bevorzugt, wenn es bereits die neue 3-Essay-Struktur
+    # hat — sonst bliebe ein altes nonconformist.html (5 Essays) für immer
+    # die Basis und die neue Struktur würde nie übernommen.
+    def _hat_neue_struktur(html_text: str) -> bool:
+        try:
+            probe = BeautifulSoup(html_text, "html.parser")
+        except Exception:
+            return False
+        return len(probe.select("section.essay")) == N_ESSAYS
+
+    base_path = TEMPLATE
+    if os.path.exists(OUTPUT):
+        bestehendes_html = open(OUTPUT, encoding="utf-8").read()
+        if _hat_neue_struktur(bestehendes_html):
+            base_path = OUTPUT
+        else:
+            log(f"  {OUTPUT} hat noch die alte Struktur (vor dem Redesign) — "
+                f"verwende stattdessen {TEMPLATE} als Basis (einmaliger "
+                f"Migrationsschritt).")
     log(f"Verwende als Basis: {base_path}")
     html = open(base_path, encoding="utf-8").read()
     html = inject(html, essays, date_label)
