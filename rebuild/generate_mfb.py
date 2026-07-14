@@ -486,6 +486,90 @@ Liefere GENAU dieses JSON-Schema:
     return data
 
 
+def review_and_rewrite_columns(columns: list, date_label: str) -> list:
+    """NEUER Zwischenschritt vor der Veröffentlichung: Prüft Sinnhaftigkeit
+    von Titel und Fliesstext-Absätzen und formuliert bei Bedarf sprachlich
+    um. WICHTIG: Rührt NIEMALS bignum_text, bignum_caption oder
+    stat_bullets an — diese Zahlen werden separat (validate_column) gegen
+    echte, extrahierte Fakten geprüft und dürfen durch diesen Schritt
+    nicht verändert werden. Auch bei Titel/Absätzen wird geprüft, dass
+    keine neuen, im Original nicht vorhandenen Zahlen hinzukommen."""
+    pruefbar = {}
+    for i, col in enumerate(columns):
+        if not isinstance(col, dict):
+            continue
+        paras = [p.get("text", "") for p in col.get("paragraphs", []) if isinstance(p, dict)]
+        if col.get("title") and paras:
+            pruefbar[str(i)] = {"title": col["title"], "paragraphs": paras}
+
+    if not pruefbar:
+        return columns
+
+    log("  Prüfe Insights-Kolumnen auf Sinnhaftigkeit vor Veröffentlichung …")
+    system = (
+        "Du bist Chef vom Dienst bei schlusslicht.de (Rubrik 'Insights') "
+        "und prüfst Texte vor der Veröffentlichung. Du erfindest NIEMALS "
+        "neue Fakten oder Zahlen — du darfst aber vorhandene, korrekte "
+        "Inhalte SPRACHLICH verbessern (Grammatik, Klarheit, holprige "
+        "Formulierungen, Redundanz, kaputte Kunstwörter), wenn das "
+        "inhaltlich exakt dasselbe aussagt wie vorher. Antworte "
+        "AUSSCHLIESSLICH auf " + ("Englisch (US)" if LANG == "en" else "Deutsch") +
+        ". Antworte NUR mit validem JSON, keine Erklärung."
+    )
+    prompt = (
+        "Prüfe jede Kolumne: Ist der Titel ein echtes, vollständiges Wort/"
+        "eine echte Phrase (kein abgebrochenes Kunstwort wie 'Bahnbrech' "
+        "statt 'bahnbrechend')? Sind die Absätze in sich sinnvoll, klar "
+        "formuliert, ohne Wiederholung?\n\n"
+        "WENN INHALTLICH KORREKT, ABER SCHLECHT FORMULIERT: gib 'ok': true "
+        "UND 'title_neu'/'paragraphs_neu' (Liste, gleiche Reihenfolge/Länge) "
+        "mit einer verbesserten Fassung zurück — DIESELBEN Fakten/Zahlen, "
+        "nur klarer formuliert. NIEMALS neue Zahlen einführen. Lass die "
+        "'_neu'-Felder weg, wenn der Text bereits gut ist.\n\n"
+        "WENN INHALTLICH KAPUTT: gib 'ok': false mit kurzer 'grund'-Angabe zurück.\n\n"
+        f"Kolumnen:\n{json.dumps(pruefbar, ensure_ascii=False, indent=2)}\n\n"
+        "Antworte als JSON, z.B.:\n"
+        '{"0": {"ok": true}, "1": {"ok": true, "title_neu": "...", '
+        '"paragraphs_neu": ["...", "...", "...", "..."]}, "2": {"ok": false, "grund": "..."}}'
+    )
+    urteil = call_api_json(system, prompt, max_tokens=4000) or {}
+
+    for i, col in enumerate(columns):
+        if not isinstance(col, dict) or str(i) not in urteil:
+            continue
+        bewertung = urteil[str(i)]
+        if bewertung.get("ok") is False:
+            log(f"  Kolumne {i} ({col.get('title', '')!r}): Sinnhaftigkeits-Prüfung "
+                f"fehlgeschlagen ({bewertung.get('grund', 'kein Grund')}) — "
+                f"Titel/Text bleiben unverändert (Zahlen-Validierung greift "
+                f"separat weiterhin).")
+            continue
+
+        alte_zahlen = _numbers_in(col.get("title", "")) | _numbers_in(
+            " ".join(p.get("text", "") for p in col.get("paragraphs", []) if isinstance(p, dict))
+        )
+
+        title_neu = (bewertung.get("title_neu") or "").strip()
+        if title_neu and not (_numbers_in(title_neu) - alte_zahlen):
+            log(f"  Kolumne {i}: Titel sprachlich überarbeitet.")
+            col["title"] = title_neu
+        elif title_neu:
+            log(f"  Kolumne {i}: Titel-Umformulierung enthält neue Zahlen — verworfen.")
+
+        paras_neu = bewertung.get("paragraphs_neu")
+        if isinstance(paras_neu, list) and len(paras_neu) == len(col.get("paragraphs", [])):
+            neuer_text = " ".join(str(p) for p in paras_neu)
+            if not (_numbers_in(neuer_text) - alte_zahlen):
+                for p_obj, neuer_p_text in zip(col["paragraphs"], paras_neu):
+                    if isinstance(p_obj, dict) and str(neuer_p_text).strip():
+                        p_obj["text"] = str(neuer_p_text).strip()
+                log(f"  Kolumne {i}: Absätze sprachlich überarbeitet.")
+            else:
+                log(f"  Kolumne {i}: Absatz-Umformulierung enthält neue Zahlen — verworfen.")
+
+    return columns
+
+
 # ── Validierung: Zahlen müssen wirklich aus den Fakten stammen ───────────────
 def _numbers_in(text: str) -> set:
     return set(re.findall(r"\d+[.,]?\d*", text or ""))
@@ -653,6 +737,8 @@ def main() -> int:
     columns = [c for c in data.get("columns", [])[:N_COLS] if isinstance(c, dict)]
     for col in columns:
         col["paragraphs"] = dedupe_column_paragraphs(col.get("paragraphs"))
+
+    columns = review_and_rewrite_columns(columns, date_label)
 
     # Sicherheitsnetz: Spalten mit nicht belegbaren Zahlen aussortieren.
     #

@@ -374,6 +374,8 @@ def get_essays(date_label: str, themen: list, history: list):
         log(f"  Nur {len(geprueft)}/{N_ESSAYS} Essays bestanden — "
             f"vorhandene werden verwendet, Rest behält Alt-Stand.")
 
+    geprueft = review_and_rewrite_essays(geprueft, date_label)
+
     if geprueft:
         today_iso = datetime.date.today().isoformat()
         neue_eintraege = []
@@ -389,6 +391,73 @@ def get_essays(date_label: str, themen: list, history: list):
                 f"{ESSAY_HISTORY_KEEP_DAYS} Tage Wiederholungssperre je Thema).")
 
     return geprueft or None
+
+
+def review_and_rewrite_essays(essays: list, date_label: str) -> list:
+    """NEUER Zwischenschritt vor der Veröffentlichung: Prüft Sinnhaftigkeit
+    der Essays (Grammatik, Klarheit, Kohärenz zwischen den Absätzen) und
+    formuliert bei Bedarf sprachlich um — OHNE dabei neue Behauptungen,
+    Namen oder Ereignisse hinzuzufügen (juristische Leitplanken bleiben
+    unberührt, die 'verboten'-Prüfung lief bereits vorher)."""
+    if not essays:
+        return essays
+
+    pruefbar = {
+        str(i): {"title": e["title"], "paragraphs": [p.get("text", "") for p in e["paragraphs"]
+                                                       if isinstance(p, dict)]}
+        for i, e in enumerate(essays)
+    }
+
+    log("  Prüfe Nonconformist-Essays auf Sinnhaftigkeit vor Veröffentlichung …")
+    system = (
+        "Du bist Chef vom Dienst bei schlusslicht.de (Rubrik 'Nonconformist') "
+        "und prüfst Essays vor der Veröffentlichung. Du fügst NIEMALS neue "
+        "Behauptungen, Namen oder Ereignisse hinzu — du darfst aber "
+        "vorhandene, korrekte Formulierungen sprachlich verbessern "
+        "(Grammatik, Klarheit, holprige Sätze, Redundanz), wenn das "
+        "inhaltlich exakt dieselbe Aussage trifft wie vorher. Antworte "
+        "AUSSCHLIESSLICH auf " + ("Englisch (US)" if LANG == "en" else "Deutsch") +
+        ". Antworte NUR mit validem JSON, keine Erklärung."
+    )
+    prompt = (
+        "Prüfe jeden Essay: Ist der Titel prägnant und vollständig (kein "
+        "abgebrochenes Kunstwort)? Sind die Absätze klar formuliert, "
+        "logisch aufeinander aufbauend, ohne Wiederholung?\n\n"
+        "WENN INHALTLICH KORRUPT, ABER SCHLECHT FORMULIERT: gib 'ok': true "
+        "UND 'title_neu'/'paragraphs_neu' (Liste, gleiche Reihenfolge/Länge) "
+        "mit verbesserter Fassung zurück — DIESELBE Aussage, nur klarer. "
+        "Lass die '_neu'-Felder weg, wenn der Text bereits gut ist.\n\n"
+        "WENN UNRETTBAR UNSINNIG: gib 'ok': false mit kurzer 'grund'-Angabe zurück.\n\n"
+        f"Essays:\n{json.dumps(pruefbar, ensure_ascii=False, indent=2)}\n\n"
+        "Antworte als JSON, z.B.:\n"
+        '{"0": {"ok": true}, "1": {"ok": true, "title_neu": "...", '
+        '"paragraphs_neu": ["...", "...", "...", "..."]}, "2": {"ok": false, "grund": "..."}}'
+    )
+    urteil = call_api_json(system, prompt, max_tokens=4000) or {}
+
+    ergebnis = []
+    for i, e in enumerate(essays):
+        bewertung = urteil.get(str(i), {})
+        if bewertung.get("ok") is False:
+            log(f"  Essay {e.get('title', '')!r}: Sinnhaftigkeits-Prüfung "
+                f"fehlgeschlagen ({bewertung.get('grund', 'kein Grund')}) "
+                f"— verworfen, bestehender Stand für diesen Essay-Slot bleibt.")
+            continue
+
+        title_neu = (bewertung.get("title_neu") or "").strip()
+        if title_neu:
+            log(f"  Essay {i}: Titel sprachlich überarbeitet.")
+            e["title"] = title_neu
+
+        paras_neu = bewertung.get("paragraphs_neu")
+        if isinstance(paras_neu, list) and len(paras_neu) == len(e["paragraphs"]):
+            for p_obj, neuer_text in zip(e["paragraphs"], paras_neu):
+                if isinstance(p_obj, dict) and str(neuer_text).strip():
+                    p_obj["text"] = str(neuer_text).strip()
+            log(f"  Essay {i}: Absätze sprachlich überarbeitet.")
+        ergebnis.append(e)
+
+    return ergebnis
 
 
 def inject(html: str, essays: list, date_label: str) -> str:

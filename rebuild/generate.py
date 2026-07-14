@@ -650,33 +650,37 @@ def get_spotlight_and_ticker(date_label: str, items: dict):
 
 
 def review_and_fix_items(items: dict, date_label: str) -> dict:
-    """Letzter Schritt vor der Veröffentlichung: Prüft Sinnhaftigkeit UND
-    verifiziert technisch jede Quellen-URL. WICHTIG: Dieser Schritt darf
-    NIEMALS neue Inhalte erfinden — er darf nur bestehende, bereits
-    recherchierte Einträge bestätigen oder verwerfen. Ein verworfener
-    Eintrag wird geleert (behält den bestehenden Stand aus der Vorlage)
-    statt durch erfundenen Ersatz ausgetauscht zu werden."""
+    """Letzter Schritt vor der Veröffentlichung: Prüft Sinnhaftigkeit,
+    verifiziert technisch jede Quellen-URL — UND formuliert bei Bedarf
+    um (Grammatik, Klarheit, Redundanz, Wiederholungen), OHNE dabei neue
+    Fakten/Zahlen/Namen zu erfinden. Ein Eintrag, der nur schlecht
+    formuliert ist (aber inhaltlich stimmt), wird also nicht mehr
+    automatisch verworfen, sondern repariert — nur ein inhaltlich
+    kaputter oder fehlzugeordneter Eintrag wird weiterhin verworfen."""
     echte_items = {num: it for num, it in items.items() if it}
     if not echte_items:
         return items
 
-    # Schritt 1: Sinnhaftigkeits-Prüfung durch die KI — reine Ja/Nein-Bewertung,
-    # KEIN Umschreiben oder Erfinden von Inhalten.
+    # Schritt 1: Sinnhaftigkeits-Prüfung MIT Umformulierungs-Option.
     log("  Prüfe alle Rubrik-Texte auf Sinnhaftigkeit vor Veröffentlichung …")
     system = (
         "Du bist Chef vom Dienst bei schlusslicht.de und prüfst Texte vor "
-        "der Veröffentlichung. Du erfindest NIEMALS neue Inhalte — du "
-        "bewertest ausschließlich, ob die vorliegenden Einträge bereits "
-        "sinnvoll sind. Antworte AUSSCHLIESSLICH auf " + ("Englisch (US)" if LANG == "en" else "Deutsch") + ". Antworte NUR "
+        "der Veröffentlichung. Du erfindest NIEMALS neue Fakten, Zahlen, "
+        "Namen oder Ereignisse — du darfst aber vorhandene, korrekte "
+        "Inhalte SPRACHLICH verbessern (Grammatik, Klarheit, holprige "
+        "Formulierungen, Redundanz, Wiederholung von Standardsätzen), "
+        "wenn das inhaltlich exakt dasselbe aussagt wie vorher. Antworte "
+        "AUSSCHLIESSLICH auf " + ("Englisch (US)" if LANG == "en" else "Deutsch") + ". Antworte NUR "
         "mit validem JSON, keine Erklärung."
     )
     prompt = (
-        "Prüfe jeden der folgenden Einträge NUR auf Sinnhaftigkeit: Ist die "
+        "Prüfe jeden der folgenden Einträge auf Sinnhaftigkeit: Ist die "
         "Schlagzeile eine konkrete, in sich sinnvolle Aussage (keine "
         "generische Platzhalterformulierung wie 'X: 2026-Bericht', kein "
-        "abgeschnittener oder zusammenhangloser Satz)? Passt der Kommentar "
-        "inhaltlich zur Schlagzeile? Ist es KEINE Wiederholung eines "
-        "Standardsatzes aus einem anderen Eintrag?\n\n"
+        "abgeschnittener oder zusammenhangloser Satz, keine holprige "
+        "Grammatik)? Passt der Kommentar inhaltlich zur Schlagzeile? Ist "
+        "es KEINE Wiederholung eines Standardsatzes aus einem anderen "
+        "Eintrag?\n\n"
         "ZUSÄTZLICH — KATEGORIE-KOHÄRENZ (sehr wichtig, häufigster Fehler): "
         "Jeder Eintrag hat ein Feld 'rubrik_soll' — die Kategorie, der er "
         "zugeordnet ist. Prüfe, ob Schlagzeile UND Kommentar TATSÄCHLICH "
@@ -684,17 +688,29 @@ def review_and_fix_items(items: dict, date_label: str) -> dict:
         "den du erkennen musst: rubrik_soll='Klimaschutz', aber die "
         "Schlagzeile handelt tatsächlich von einem Korruptionsfall — das "
         "ist eine KATEGORIE-FEHLZUORDNUNG und muss mit ok:false markiert "
-        "werden, selbst wenn Schlagzeile und Kommentar für sich genommen "
-        "sinnvoll und gut belegt sind.\n\n"
-        "WICHTIG: Du bewertest nur, du erfindest oder änderst keine Inhalte. "
-        "Für jeden Eintrag gib zurück, ob er sinnvoll UND kategorietreu ist "
-        '(\"ok\": true) oder nicht (\"ok\": false, mit kurzer "grund"-Angabe, '
-        'z.B. "Kategorie-Fehlzuordnung: Text handelt von Korruption statt Klimaschutz").\n\n'
+        "werden — das ist ein inhaltlicher Fehler, keine Formulierungsfrage, "
+        "und kann NICHT durch Umformulieren behoben werden.\n\n"
+        "WENN DER EINTRAG INHALTLICH KORREKT, ABER SCHLECHT FORMULIERT IST "
+        "(holprig, unklar, unnötig wiederholend, generisch klingend): gib "
+        "'ok': true UND zusätzlich 'headline_neu'/'kommentar_neu' mit einer "
+        "verbesserten Fassung zurück — DIESELBEN Fakten, Zahlen, Namen und "
+        "Ereignisse, nur klarer/besser formuliert. Erfinde dabei NICHTS "
+        "Neues hinzu und lasse keine Fakten weg. Wenn der Eintrag bereits "
+        "gut formuliert ist, lass 'headline_neu'/'kommentar_neu' einfach weg.\n\n"
+        "WENN DER EINTRAG INHALTLICH KAPUTT IST (Kategorie-Fehlzuordnung, "
+        "Platzhalter, Widerspruch zwischen Schlagzeile und Kommentar, "
+        "unrettbar unsinnig): gib 'ok': false mit kurzer 'grund'-Angabe "
+        "zurück — das kann NICHT durch Umformulieren behoben werden.\n\n"
         f"Einträge:\n{json.dumps({num: {**it, 'rubrik_soll': RUBRIKEN.get(num, '')} for num, it in echte_items.items()}, ensure_ascii=False, indent=2)}\n\n"
         "Antworte als JSON:\n"
-        '{"01": {"ok": true}, "02": {"ok": false, "grund": "generischer Platzhalter"}, ...}'
+        '{"01": {"ok": true}, '
+        '"02": {"ok": true, "headline_neu": "verbesserte Schlagzeile", "kommentar_neu": "verbesserter Kommentar"}, '
+        '"03": {"ok": false, "grund": "Kategorie-Fehlzuordnung: Text handelt von X statt Y"}, ...}'
     )
-    urteil = call_api_json(system, prompt, max_tokens=2000) or {}
+    urteil = call_api_json(system, prompt, max_tokens=3000) or {}
+
+    def _zahlen(text: str) -> set:
+        return set(re.findall(r"\d+[.,]?\d*", text or ""))
 
     for num in list(echte_items.keys()):
         bewertung = urteil.get(num, {})
@@ -702,6 +718,26 @@ def review_and_fix_items(items: dict, date_label: str) -> dict:
             log(f"  Rubrik {num}: Sinnhaftigkeits-Prüfung fehlgeschlagen "
                 f"({bewertung.get('grund', 'kein Grund angegeben')}) — verworfen.")
             items[num] = {}
+            continue
+
+        # Umformulierung anwenden, aber NUR wenn dabei keine neuen Zahlen
+        # auftauchen, die im Original nicht vorhanden waren (Schutz gegen
+        # Fakten-Drift während der sprachlichen Überarbeitung).
+        original = items[num]
+        for feld, feld_neu in (("headline", "headline_neu"), ("kommentar", "kommentar_neu")):
+            neu = (bewertung.get(feld_neu) or "").strip()
+            if not neu:
+                continue
+            alte_zahlen = _zahlen(original.get(feld, ""))
+            neue_zahlen = _zahlen(neu)
+            if neue_zahlen - alte_zahlen:
+                log(f"  Rubrik {num}: Umformulierung von '{feld}' enthält neue, "
+                    f"nicht im Original vorhandene Zahlen — Umformulierung "
+                    f"verworfen, Original bleibt.")
+                continue
+            log(f"  Rubrik {num}: '{feld}' sprachlich überarbeitet "
+                f"({original.get(feld, '')!r} -> {neu!r}).")
+            items[num][feld] = neu
 
     # Schritt 2: Technische URL-Verifikation — UNABHÄNGIG von der KI-Bewertung,
     # das ist die eigentliche Absicherung gegen halluzinierte Quellen.

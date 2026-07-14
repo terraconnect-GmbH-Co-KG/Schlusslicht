@@ -428,7 +428,9 @@ def get_visionen_content(date_label: str):
     if not data["spotlight"] and not data["good_news"] and not data["stories"]:
         log("  Keine verwertbaren Visionen-Inhalte erhalten.")
         return None
-    return verify_visionen_sources(data)
+    data = verify_visionen_sources(data)
+    data = review_and_rewrite_visionen(data, date_label)
+    return data
 
 
 _VERDAECHTIGE_DOMAIN_MUSTER = re.compile(
@@ -441,6 +443,98 @@ def _domain_ist_verdaechtig(url: str) -> bool:
     Namen der eigenen Rubrik/Website passen (z. B. 'neuevisionen.de') —
     ein starkes Anzeichen für eine halluzinierte statt echte Quelle."""
     return bool(_VERDAECHTIGE_DOMAIN_MUSTER.search(url or ""))
+
+
+def review_and_rewrite_visionen(data: dict, date_label: str) -> dict:
+    """NEUER Zwischenschritt vor der Veröffentlichung: Prüft Sinnhaftigkeit
+    von Good-News-Kacheln und Story-Vorschauen und formuliert bei Bedarf
+    sprachlich um (Grammatik, Klarheit, Redundanz) — OHNE dabei neue
+    Fakten/Zahlen zu erfinden. Analog zur gleichnamigen Prüfung in
+    generate.py. Läuft NACH der URL-Verifikation, damit nur bereits
+    quellen-geprüfte Einträge die (kostenpflichtige) KI-Prüfung durchlaufen."""
+    pruefbar = {}
+    for i, item in enumerate(data.get("good_news", [])):
+        if item.get("title") and item.get("body_html"):
+            pruefbar[f"gn{i}"] = {"title": item["title"], "body_html": item["body_html"]}
+    for i, st in enumerate(data.get("stories", [])):
+        if st.get("teaser_title") and st.get("teaser_text"):
+            pruefbar[f"story{i}"] = {"teaser_title": st["teaser_title"], "teaser_text": st["teaser_text"]}
+
+    if not pruefbar:
+        return data
+
+    log("  Prüfe Good-News/Story-Texte auf Sinnhaftigkeit vor Veröffentlichung …")
+    system = (
+        "Du bist Chef vom Dienst bei schlusslicht.de (Rubrik 'Visionen'/"
+        "Brightside) und prüfst Texte vor der Veröffentlichung. Du "
+        "erfindest NIEMALS neue Fakten, Zahlen oder Ereignisse — du darfst "
+        "aber vorhandene, korrekte Inhalte SPRACHLICH verbessern (Grammatik, "
+        "Klarheit, holprige Formulierungen, Redundanz), wenn das inhaltlich "
+        "exakt dasselbe aussagt wie vorher. Antworte AUSSCHLIESSLICH auf "
+        + ("Englisch (US)" if LANG == "en" else "Deutsch") +
+        ". Antworte NUR mit validem JSON, keine Erklärung."
+    )
+    prompt = (
+        "Prüfe jeden Eintrag: Ist der Text konkret und in sich sinnvoll "
+        "(keine generische Platzhalterformulierung, kein abgeschnittener "
+        "oder zusammenhangloser Satz, keine holprige Grammatik, keine "
+        "Wiederholung eines Standardsatzes aus einem anderen Eintrag)? "
+        "Passt der Fliesstext inhaltlich zum Titel?\n\n"
+        "WENN INHALTLICH KORREKT, ABER SCHLECHT FORMULIERT: gib 'ok': true "
+        "UND eine verbesserte Fassung im jeweiligen '_neu'-Feld zurück — "
+        "DIESELBEN Fakten/Zahlen/Namen, nur klarer formuliert. Lass die "
+        "'_neu'-Felder weg, wenn der Text bereits gut ist.\n\n"
+        "WENN INHALTLICH KAPUTT (Widerspruch, Unsinn, Platzhalter): gib "
+        "'ok': false mit kurzer 'grund'-Angabe zurück.\n\n"
+        f"Einträge:\n{json.dumps(pruefbar, ensure_ascii=False, indent=2)}\n\n"
+        "Antworte als JSON, z.B.:\n"
+        '{"gn0": {"ok": true}, '
+        '"gn1": {"ok": true, "title_neu": "...", "body_html_neu": "..."}, '
+        '"story0": {"ok": false, "grund": "..."}}'
+    )
+    urteil = call_api_json(system, prompt, max_tokens=3000) or {}
+
+    def _zahlen(text: str) -> set:
+        return set(re.findall(r"\d+[.,]?\d*", text or ""))
+
+    def _anwenden(obj: dict, key: str, feld: str, feld_neu: str, bewertung: dict, label: str):
+        neu = (bewertung.get(feld_neu) or "").strip()
+        if not neu:
+            return
+        if _zahlen(neu) - _zahlen(obj.get(feld, "")):
+            log(f"  {label}: Umformulierung von '{feld}' enthält neue Zahlen "
+                f"— verworfen, Original bleibt.")
+            return
+        log(f"  {label}: '{feld}' sprachlich überarbeitet.")
+        obj[feld] = neu
+
+    neue_good_news = []
+    for i, item in enumerate(data.get("good_news", [])):
+        bewertung = urteil.get(f"gn{i}", {})
+        if bewertung.get("ok") is False:
+            log(f"  Good-News {item.get('title', '(ohne Titel)')!r}: "
+                f"Sinnhaftigkeits-Prüfung fehlgeschlagen "
+                f"({bewertung.get('grund', 'kein Grund')}) — verworfen.")
+            continue
+        _anwenden(item, f"gn{i}", "title", "title_neu", bewertung, f"Good-News {i}")
+        _anwenden(item, f"gn{i}", "body_html", "body_html_neu", bewertung, f"Good-News {i}")
+        neue_good_news.append(item)
+    data["good_news"] = neue_good_news
+
+    neue_stories = []
+    for i, st in enumerate(data.get("stories", [])):
+        bewertung = urteil.get(f"story{i}", {})
+        if bewertung.get("ok") is False:
+            log(f"  Story {st.get('teaser_title', '(ohne Titel)')!r}: "
+                f"Sinnhaftigkeits-Prüfung fehlgeschlagen "
+                f"({bewertung.get('grund', 'kein Grund')}) — verworfen.")
+            continue
+        _anwenden(st, f"story{i}", "teaser_title", "teaser_title_neu", bewertung, f"Story {i}")
+        _anwenden(st, f"story{i}", "teaser_text", "teaser_text_neu", bewertung, f"Story {i}")
+        neue_stories.append(st)
+    data["stories"] = neue_stories
+
+    return data
 
 
 def verify_visionen_sources(data: dict) -> dict:
