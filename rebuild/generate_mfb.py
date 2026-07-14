@@ -7,25 +7,22 @@ Wird vom GitHub-Actions-Workflow .github/workflows/daily-update.yml gestartet,
 nach generate.py und generate_visionen.py.
 
 WICHTIGES DESIGNPRINZIP (Sorgfaltspflicht bei Meinungsinhalten):
-Die Zahlen in dieser Meinungsstrecke ("204 zu 1", "Sieben Prozent" usw.)
-stammen NICHT aus einer neuen KI-Recherche, sondern werden deterministisch aus
-den bereits verifizierten, festen Tabellen in index.template.html ausgelesen
-(dieselben Daten, die auch auf der Startseite stehen). Die KI bekommt diese
-Fakten als Vorgabe und schreibt NUR den Kommentartext dazu — sie recherchiert
-und erfindet keine neuen Zahlen. Das minimiert Halluzinationsrisiko bei einer
-Seite, die explizit als "pointiert und parteiisch, aber überprüfbar" beworben
-wird.
+Diese Meinungsstrecke recherchiert ihre 3 Themen und Zahlen jeden Tag FRISCH
+per Websuche (kein fester Themen-Pool, keine Rotation mehr) — genau wie
+Brightside/Nonconformist auch. Die Absicherung gegen Halluzination läuft
+deshalb nicht mehr über eine vorgegebene, fest verifizierte Zahlentabelle,
+sondern über dieselbe technische Quellen-URL-Verifikation (HTTP-Check), die
+auch die anderen drei Seiten verwenden: eine Zahl ohne echte, erreichbare
+Quelle wird verworfen, nicht veröffentlicht.
 
 Ablauf:
-  1. Liest die Rubrik-Tabellen aus index.template.html (feste Fakten).
-  2. Liest die heutigen Schlagzeilen/Kommentare aus dem frisch gebauten
-     index.html (aktueller Anlass des Tages je Rubrik).
-  3. Wählt per Datum rotierend 3 politische Rubriken aus (volle Abdeckung alle
-     ~7 Tage, deterministisch, kein Zufall).
-  4. Lässt die KI für jede der 3 Rubriken einen Meinungskommentar auf Basis
-     der vorgegebenen Fakten schreiben.
-  5. Baut Text in insights.template.html ein, schreibt
-     insights.html.
+  1. Recherchiert 3 eigenständige politische/gesellschaftliche Themen samt
+     Zahlen und Quelle (kein Bezug zur Startseite oder zu anderen Seiten).
+  2. Verifiziert jede angegebene Quellen-URL technisch.
+  3. Baut Text in insights.template.html ein, schreibt insights.html.
+  4. Merkt sich die heutigen Themen in einer kleinen Historie-Datei, damit
+     sich Themen nicht postwendend wiederholen (kein Pool/Rotation, nur ein
+     Wiederholungs-Schutz).
 """
 
 import datetime
@@ -44,9 +41,8 @@ API_URL = "https://openrouter.ai/api/v1/chat/completions"
 MODEL = "perplexity/sonar"
 LANG = os.environ.get("SL_LANG", "de").strip().lower()
 TEMPLATE = "insights.en.template.html" if LANG == "en" else "insights.template.html"
-FACTS_SOURCE = "index.en.template.html" if LANG == "en" else "index.template.html"
-TODAY_SOURCE = "index.en.html" if LANG == "en" else "index.html"
 OUTPUT = "insights.en.html" if LANG == "en" else "insights.html"
+HISTORY_PATH = os.path.join("data", "insights_theme_history.en.json" if LANG == "en" else "insights_theme_history.json")
 TIMEOUT = 240
 N_COLS = 3
 
@@ -57,6 +53,41 @@ MONATE = (
     ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
      "August", "September", "Oktober", "November", "Dezember"]
 )
+
+
+# ── Themen-Historie (Wiederholungsschutz, KEIN Pool/Rotation) ───────────────
+def load_recent_themes(path: str, max_items: int = 20) -> list:
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data[-max_items:] if isinstance(data, list) else []
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+def save_recent_themes(path: str, existing: list, new_themes: list, max_items: int = 40) -> None:
+    combined = [t for t in (existing + new_themes) if t][-max_items:]
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(combined, fh, ensure_ascii=False, indent=2)
+
+
+def verify_url(url: str, timeout: int = 8) -> bool:
+    """Prüft, ob eine Quellen-URL tatsächlich existiert und erreichbar ist —
+    identische Absicherung wie in generate.py/generate_visionen.py."""
+    if not url or not isinstance(url, str) or not url.strip().lower().startswith("http"):
+        return False
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; SchlusslichtBot/1.0)"}
+    try:
+        r = requests.head(url, timeout=timeout, allow_redirects=True, headers=headers)
+        if r.status_code >= 400:
+            r = requests.get(url, timeout=timeout, allow_redirects=True, headers=headers, stream=True)
+        return r.status_code < 400
+    except requests.RequestException as exc:
+        log(f"  Quellen-URL nicht erreichbar: {url} ({exc.__class__.__name__})")
+        return False
 
 
 def log(msg: str) -> None:
@@ -309,98 +340,10 @@ def dedupe_column_paragraphs(paragraphs, threshold=0.75):
     return result
 
 
-# ── Deterministische Fakten-Extraktion aus den Rubrik-Tabellen ───────────────
-def extract_rubrik_facts(path: str) -> dict:
-    """Liest alle Rubrik-Tabellen aus und liefert strukturierte Fakten
-    (Name, Tabellentitel, Zeilen, Fußzeile) — ohne jede KI-Beteiligung."""
-    with open(path, encoding="utf-8") as fh:
-        soup = BeautifulSoup(fh, "html.parser")
-
-    facts = {}
-    for art in soup.select("article.rub"):
-        num = art.get("data-rubrik")
-        if not num:
-            continue
-        rnum_el = art.select_one(".rnum")
-        name = rnum_el.get_text(strip=True) if rnum_el else ""
-        tbl = art.select_one(".tbl")
-        rows, tbl_title, tbl_tag, foot = [], "", "", ""
-        if tbl:
-            head = tbl.select_one(".tbl-head")
-            if head:
-                tt = head.select_one(".tt")
-                tg = head.select_one(".tag")
-                tbl_title = tt.get_text(strip=True) if tt else ""
-                tbl_tag = tg.get_text(strip=True) if tg else ""
-            for row in tbl.select(".row"):
-                nm = row.select_one(".nm")
-                # BUGFIX: nicht jede Tabelle nutzt .v für die Werte-Spalte —
-                # einige (z.B. Klimaschutz, Medien) benutzen stattdessen .n
-                # für die letzte Spalte. Vorher lieferte select_one(".v")
-                # dafür None, wodurch die ganze Zeile übersprungen wurde und
-                # betroffene Rubriken mit 0 Zeilen (leeren Fakten) endeten.
-                v = row.select_one(".v")
-                if v is None:
-                    n_cells = row.select(".n")
-                    v = n_cells[-1] if n_cells else None
-                if nm and v:
-                    rows.append({
-                        "name": nm.get_text(" ", strip=True),
-                        "value": v.get_text(strip=True),
-                    })
-            foot_el = tbl.select_one(".tbl-foot")
-            if foot_el:
-                foot = foot_el.get_text(" ", strip=True)
-        facts[num] = {
-            "name": name,
-            "table_title": tbl_title,
-            "table_period": tbl_tag,
-            "rows": rows,
-            "foot": foot,
-        }
-    return facts
-
-
-def extract_today_headlines(path: str) -> dict:
-    """Liest die heutigen (bereits generierten) Schlagzeilen/Kommentare aus
-    index.html — gibt dem Kommentar einen aktuellen Anlass."""
-    if not os.path.exists(path):
-        return {}
-    with open(path, encoding="utf-8") as fh:
-        soup = BeautifulSoup(fh, "html.parser")
-    out = {}
-    for art in soup.select("article.rub"):
-        num = art.get("data-rubrik")
-        if not num:
-            continue
-        title = art.select_one(".rtit")
-        quip = art.select_one(".realsatire")
-        out[num] = {
-            "headline": title.get_text(strip=True) if title else "",
-            "quip": quip.get_text(strip=True) if quip else "",
-        }
-    return out
-
-
-# Nur Rubriken mit klarem Politik-/Weltgeschehen-Bezug für die Meinungsstrecke.
-# Ausgeschlossen: Sport (01,02), Raumfahrt (03), App-Bewertungen (19),
-# Kino/Eurovision/Film (20,21,22) — passen thematisch nicht zu einer
-# politischen Kolumne für ein Gen-X-/Boomer-Publikum.
-POLITISCHE_RUBRIKEN = ["02", "03", "04", "05", "06", "07", "08"]
-
-
-def pick_rubriken(today: datetime.date) -> list:
-    """Deterministische, rotierende Auswahl von 5 aus den politisch
-    relevanten Rubriken — kein Zufall, volle Abdeckung alle paar Tage."""
-    pool = POLITISCHE_RUBRIKEN
-    n = len(pool)
-    start = (today.toordinal() * N_COLS) % n
-    return [pool[(start + i) % n] for i in range(N_COLS)]
-
-
-# ── KI-Aufruf: nur Formulierung, keine neuen Zahlen ──────────────────────────
-def get_commentary(facts_package: list, date_label: str):
-    log("Erstelle Meinungskommentare zu vorgegebenen, festen Fakten …")
+# ── KI-Aufruf: eigenständige Recherche + Meinungskommentar ──────────────────
+def get_fresh_columns(date_label: str, recent_themes: list):
+    log(f"Recherchiere {N_COLS} frische politische/gesellschaftliche Themen "
+        "samt Zahlen und Quelle …")
 
     system = (
         "Du bist Kolumnist der Meinungsstrecke 'more from behind' auf "
@@ -413,13 +356,14 @@ def get_commentary(facts_package: list, date_label: str):
         "einem gedruckten Satiremagazin (Stil: Titanic, Eulenspiegel, "
         "klassische Feuilleton-Polemik) stehen könnte — nicht wie eine "
         "Boulevard-Schlagzeile oder ein Tweet.\n\n"
-        "Du bekommst zu jeder Rubrik FESTE, bereits verifizierte Fakten "
-        "(Zahlen, Quellen) vorgegeben. ABSOLUTE REGEL (nicht verhandelbar): "
-        "Verwende AUSSCHLIESSLICH die dir gegebenen Zahlen und Fakten, "
-        "wortwörtlich übernommen. Erfinde KEINE neuen Statistiken, Studien, "
-        "Prozentsätze oder Vergleichszahlen — auch keine berechneten "
-        "Verhältnisse, die nicht explizit vorgegeben sind. Wahrheitsgehalt "
-        "geht immer vor Zuspitzung.\n\n"
+        "Recherchiere zu JEDEM Thema per Websuche ECHTE, aktuelle Zahlen und "
+        "Fakten. ABSOLUTE REGEL (nicht verhandelbar): Erfinde KEINE "
+        "Statistiken, Studien, Prozentsätze oder Vergleichszahlen. Jede Zahl "
+        "MUSS von einer echten, mit Websuche auffindbaren Quelle stammen, "
+        "UND du musst die tatsächliche, funktionierende URL dieser Quelle "
+        "angeben. Findest du zu einem Thema keine echte Zahl mit einer "
+        "echten, existierenden Quelle, wähle ein anderes Thema, aber "
+        "erfinde nichts. Wahrheitsgehalt geht immer vor Zuspitzung.\n\n"
         "STIL (hier darfst und sollst du zuspitzen): pointiert, bissig, "
         "mit trockenem schwarzem Humor und klarer politischer Haltung für "
         "die Benachteiligten — Satire durch Sprachwitz, Ironie und "
@@ -440,73 +384,78 @@ def get_commentary(facts_package: list, date_label: str):
         "validen JSON-Objekt, keine Erklärung davor oder danach."
     )
 
-    prompt = f"""Ausgabe vom {date_label}. Schreibe zu JEDER der folgenden {len(facts_package)} Rubriken
-einen Meinungskommentar, basierend NUR auf den gegebenen Fakten:
-
-{json.dumps(facts_package, ensure_ascii=False, indent=2)}
+    themen_hinweis = (
+        f"\n\nDiese Themen wurden in den letzten Tagen bereits verwendet — "
+        f"wähle KEINES davon erneut: {', '.join(recent_themes)}."
+        if recent_themes else ""
+    )
+    prompt = f"""Ausgabe vom {date_label}. Recherchiere und schreibe {N_COLS} eigenständige,
+thematisch unterschiedliche politische/gesellschaftliche Meinungskolumnen.{themen_hinweis}
 
 Liefere GENAU dieses JSON-Schema:
 {{
   "columns": [
     {{
-      "rubrik_num": "die Nummer aus der Vorgabe",
+      "thema": "1-2 Wörter Themen-Schlagwort, für Wiederholungsschutz",
       "tag": "" + ("Standpoint · short topic" if LANG == "en" else "Standpunkt · Kurzthema") + "",
       "title": "kreativer, prägnanter Titel (wie eine Schlagzeile, max 40 Zeichen)",
       "paragraphs": [
-        {{"text": "Absatz 1 — NUR: Einstieg mit einer der vorgegebenen Zahlen, nüchtern dargestellt. Keine Bewertung.", "punch": false}},
+        {{"text": "Absatz 1 — NUR: Einstieg mit einer recherchierten Zahl, nüchtern dargestellt. Keine Bewertung.", "punch": false}},
         {{"text": "Absatz 2 — NUR: der zugespitzte Kernsatz/die Wertung dazu. Die Zahl aus Absatz 1 nicht wiederholen.", "punch": true}},
         {{"text": "Absatz 3 — NUR: zusätzlicher Kontext oder Gegenargument, das in Absatz 1+2 noch nicht vorkam.", "punch": false}},
         {{"text": "Absatz 4 — NUR: eine konkrete Schlussfolgerung/Forderung, die nirgends vorher stand.", "punch": false}}
       ],
-      "bignum_text": "eine der vorgegebenen Zahlen, wortwörtlich, z.B. '204×' oder '~7 %'",
+      "bignum_text": "die recherchierte Kernzahl, wortwörtlich, z.B. '204×' oder '~7 %'",
       "bignum_caption": "1 kurzer Satz, was die Zahl bedeutet",
       "stat_bullets": [
-        {{"label": "Bezeichnung", "value": "Wert, wortwörtlich aus den Fakten"}}
-        // 2-3 Einträge, alle wortwörtlich aus den vorgegebenen Fakten
-      ]
+        {{"label": "Bezeichnung", "value": "Wert, wortwörtlich recherchiert"}}
+        // 2-3 Einträge
+      ],
+      "source_name": "Name der echten Quelle, z.B. 'Destatis' oder 'OECD'",
+      "source_url": "https://echte-existierende-url, die exakt zu source_name passt",
+      "source_date": "Datum/Zeitraum der Quelle, z.B. '2025'"
     }}
-    // für jede der {len(facts_package)} Rubriken ein Eintrag, in derselben Reihenfolge
+    // genau {N_COLS} Einträge, thematisch unterschiedlich
   ]
 }}"""
 
     raw = call_api(system, prompt, max_tokens=6000)
     data = extract_json(raw)
-    if not data or "columns" not in data:
+    if not data or "columns" not in data or not isinstance(data["columns"], list):
         log("  Keine verwertbaren Kommentar-Daten erhalten.")
         return None
-    return data
+
+    log("  Verifiziere Quellen-URLs technisch (HTTP-Check) …")
+    verified = []
+    for col in data["columns"][:N_COLS]:
+        if not isinstance(col, dict):
+            continue
+        url = (col.get("source_url") or "").strip()
+        if not verify_url(url):
+            log(f"  Kolumne {col.get('title', '(ohne Titel)')!r}: Quellen-URL "
+                f"fehlt oder nicht erreichbar ({url or 'keine URL angegeben'}) "
+                f"— komplett verworfen, keine Halluzinationen ohne Beleg.")
+            continue
+        log(f"  Kolumne {col.get('title', '')!r}: Quelle verifiziert ({url})")
+        verified.append(col)
+
+    if not verified:
+        log("  Keine Kolumne hat die Quellen-Verifikation bestanden.")
+        return None
+    return {"columns": verified}
 
 
-# ── Validierung: Zahlen müssen wirklich aus den Fakten stammen ───────────────
-def _numbers_in(text: str) -> set:
-    return set(re.findall(r"\d+[.,]?\d*", text or ""))
-
-
-def validate_column(col: dict, fact: dict) -> bool:
-    """Grobe Sicherheitsnetz-Prüfung: alle Zahlen im bignum/Bullets müssen
-    auch irgendwo in den vorgegebenen Fakten auftauchen."""
-    allowed = _numbers_in(json.dumps(fact, ensure_ascii=False))
-    for field in [col.get("bignum_text", "")] + [b.get("value", "") for b in col.get("stat_bullets", [])]:
-        nums = _numbers_in(field)
-        if nums and not nums.issubset(allowed):
-            return False
-    return True
-
-
-# ── HTML-Injektion ────────────────────────────────────────────────────────────
 def set_text(node, value):
     if node is not None and value is not None:
         node.clear()
         node.append(str(value))
 
 
-def inject(html: str, columns: list, facts: dict) -> str:
+# ── HTML-Injektion ────────────────────────────────────────────────────────────
+def inject(html: str, columns: list) -> str:
     soup = BeautifulSoup(html, "html.parser")
 
     for i, col in enumerate(columns, start=1):
-        rubrik_num = col.get("rubrik_num")
-        fact = facts.get(rubrik_num, {})
-
         set_text(soup.select_one(f"#col{i}-tag"), col.get("tag"))
         set_text(soup.select_one(f"#col{i}-h2"), col.get("title"))
 
@@ -536,10 +485,12 @@ def inject(html: str, columns: list, facts: dict) -> str:
                 strong.string = str(b.get("value", ""))
                 li.append(strong)
 
-        # Quelle: aus den deterministisch extrahierten Fakten, nicht von der KI
-        src_text = (f"Source: {fact.get('table_title', '')} · {fact.get('table_period', '')} (Category {rubrik_num})"
-                    if LANG == "en" else
-                    f"Quelle: {fact.get('table_title', '')} · {fact.get('table_period', '')} (Rubrik {rubrik_num})")
+        # Quelle: direkt aus der heute recherchierten und verifizierten
+        # Angabe der KI (kein fester Datenpool mehr).
+        name = (col.get("source_name") or "").strip()
+        date = (col.get("source_date") or "").strip()
+        prefix = "Source" if LANG == "en" else "Quelle"
+        src_text = f"{prefix}: {name}" + (f" · {date}" if date else "") if name else f"{prefix}: —"
         set_text(soup.select_one(f"#col{i}-src"), src_text)
 
     return str(soup)
@@ -557,26 +508,15 @@ def main() -> int:
                   f"{today.day}. {MONATE[today.month - 1]} {today.year}")
     log(f"more_from_behind-Ausgabe: {date_label}")
 
-    if not os.path.exists(FACTS_SOURCE):
-        log(f"FEHLER: {FACTS_SOURCE} nicht gefunden.")
-        return 1
     if not os.path.exists(TEMPLATE):
         log(f"FEHLER: {TEMPLATE} nicht gefunden.")
         return 1
 
-    facts = extract_rubrik_facts(FACTS_SOURCE)
-    today_headlines = extract_today_headlines(TODAY_SOURCE)
-    selected = pick_rubriken(today)
-    log(f"  Ausgewählte Rubriken heute: {', '.join(selected)}")
+    recent_themes = load_recent_themes(HISTORY_PATH)
+    log(f"Bereits kürzlich verwendete Themen ({len(recent_themes)}): "
+        + (", ".join(recent_themes) if recent_themes else "keine"))
 
-    facts_package = []
-    for num in selected:
-        f = dict(facts.get(num, {}))
-        f["rubrik_num"] = num
-        f["heutiger_anlass"] = today_headlines.get(num, {})
-        facts_package.append(f)
-
-    data = get_commentary(facts_package, date_label)
+    data = get_fresh_columns(date_label, recent_themes)
     if not data:
         log("Keine Inhalte erzeugt — insights.html bleibt unverändert.")
         return 0
@@ -585,28 +525,23 @@ def main() -> int:
     for col in columns:
         col["paragraphs"] = dedupe_column_paragraphs(col.get("paragraphs"))
 
-    # Sicherheitsnetz: Spalten mit nicht belegbaren Zahlen aussortieren
-    # (Platz bleibt dann bei den alten Inhalten stehen, statt falsche Zahlen zu zeigen)
-    checked = []
-    for col in columns:
-        fact = facts.get(col.get("rubrik_num"), {})
-        if validate_column(col, fact):
-            checked.append(col)
-        else:
-            log(f"  WARNUNG: Rubrik {col.get('rubrik_num')} enthält nicht belegbare Zahlen — übersprungen.")
-
-    if not checked:
-        log("Keine Spalte hat die Faktenprüfung bestanden — Datei bleibt unverändert.")
+    if not columns:
+        log("Keine Spalte übrig nach Bereinigung — Datei bleibt unverändert.")
         return 0
 
     with open(TEMPLATE, encoding="utf-8") as fh:
         html = fh.read()
 
-    html = inject(html, checked, facts)
+    html = inject(html, columns)
+
+    new_themes = [c.get("thema", "").strip() for c in columns if c.get("thema")]
+    if new_themes:
+        save_recent_themes(HISTORY_PATH, recent_themes, new_themes)
+        log(f"Themen-Historie aktualisiert: {', '.join(new_themes)}")
 
     with open(OUTPUT, "w", encoding="utf-8") as fh:
         fh.write(html)
-    log(f"{OUTPUT} geschrieben ({len(html):,} Zeichen), {len(checked)}/{N_COLS} Spalten aktualisiert.")
+    log(f"{OUTPUT} geschrieben ({len(html):,} Zeichen), {len(columns)}/{N_COLS} Spalten aktualisiert.")
     return 0
 
 

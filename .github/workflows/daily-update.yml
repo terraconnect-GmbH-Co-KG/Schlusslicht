@@ -2,8 +2,8 @@ name: Tägliche Aktualisierung – schlusslicht.de
 
 # ─────────────────────────────────────────────────────────────────────────
 #  Baut die Seite jeden Morgen neu: recherchiert per OpenRouter-API + Websuche
-#  tagesaktuelle Meldungen für 3 rotierende Rubriken (aus einem Pool von 8)
-#  sowie deren eingebettete Hintergrundstorys, schreibt sie fest in
+#  3 frisch recherchierte Schlusslicht-Meldungen (kein Themen-Pool, keine
+#  Rotation) samt eingebetteten Hintergrundstorys, schreibt sie fest in
 #  index.html, committet das Ergebnis und legt ein GitHub Release mit der
 #  fertigen index.html als Artifact an.
 # ─────────────────────────────────────────────────────────────────────────
@@ -105,6 +105,7 @@ jobs:
           git config user.name  "schlusslicht-bot"
           git config user.email "burkhard.frie@terraconnect.de"
           git add index.html brightside.html insights.html index.en.html brightside.en.html insights.en.html nonconformist.html nonconformist.en.html
+          git add data/*.json 2>/dev/null || true
           if git diff --staged --quiet; then
             echo "Keine Änderungen – heute nichts zu committen."
           else

@@ -4,6 +4,10 @@
 generate_ncf.py — Tägliche Aktualisierung der Nonconformist-Seite.
 
 Erzeugt 3 philosophisch-linke Meinungsessays (DE oder EN via SL_LANG=en).
+Die KI wählt die 3 Themen jeden Tag selbst frei (kein fester Themen-Pool,
+keine Rotation mehr) — eine kleine Historie-Datei sorgt nur dafür, dass
+dieselben Themen nicht unmittelbar an den Folgetagen wiederkehren.
+
 Enthält dieselben Schutzebenen wie die anderen Generatoren:
   - Vierstufige Sprach-Durchsetzung inkl. Sprach-Schranke im EN-Modus
   - Juristische Leitplanken im Prompt (keine Personen/Firmen, keine Aufrufe)
@@ -28,6 +32,7 @@ MODEL = "perplexity/sonar"
 LANG = os.environ.get("SL_LANG", "de").strip().lower()
 TEMPLATE = "nonconformist.en.template.html" if LANG == "en" else "nonconformist.template.html"
 OUTPUT = "nonconformist.en.html" if LANG == "en" else "nonconformist.html"
+HISTORY_PATH = os.path.join("data", "ncf_theme_history.en.json" if LANG == "en" else "ncf_theme_history.json")
 
 MONATE = (
     ["January", "February", "March", "April", "May", "June", "July",
@@ -39,22 +44,28 @@ MONATE = (
 
 N_ESSAYS = 3
 
-# Themenpool: rein philosophisch/strukturell, rotiert nach Kalendertag
-THEMENPOOL = [
-    "Gehorsam und Autorität", "Eigentum und Macht", "Normalität als Konstruktion",
-    "Wachstumskritik", "Utopie und Hoffnung", "Arbeit und Entfremdung",
-    "Zeit und Beschleunigung", "Konsum und Bedürfnis", "Solidarität statt Konkurrenz",
-    "Öffentliches Gut und Gemeineigentum", "Leistungsbegriff und Erbe",
-    "Technik und Herrschaft", "Bildung als Anpassung oder Befreiung",
-    "Angst als Herrschaftsinstrument", "Demokratie jenseits der Wahl",
-    "Care-Arbeit und Unsichtbarkeit", "Fortschritt, der keiner ist",
-    "Freiheit: von etwas oder zu etwas", "Der Wert des Nutzlosen",
-    "Schweigen und Komplizenschaft",
-]
-
 
 def log(msg: str) -> None:
     print(f"[{datetime.datetime.now():%H:%M:%S}] {msg}", flush=True)
+
+
+# ── Themen-Historie (Wiederholungsschutz, KEIN Pool/Rotation) ───────────────
+def load_recent_themes(path: str, max_items: int = 15) -> list:
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data[-max_items:] if isinstance(data, list) else []
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+def save_recent_themes(path: str, existing: list, new_themes: list, max_items: int = 30) -> None:
+    combined = [t for t in (existing + new_themes) if t][-max_items:]
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(combined, fh, ensure_ascii=False, indent=2)
 
 
 # ── Sprach-Schranke (identisch zu den anderen Generatoren) ───────────────────
@@ -158,7 +169,7 @@ def extract_json(raw):
     return data
 
 
-def get_essays(date_label: str, themen: list):
+def get_essays(date_label: str, recent_themes: list):
     log(f"Erzeuge {N_ESSAYS} Nonconformist-Essays ({LANG}) …")
     system = (
         "Du bist Essayist der Seite 'Nonconformist' auf schlusslicht.de — einer "
@@ -182,18 +193,27 @@ def get_essays(date_label: str, themen: list):
         " — keine nicht-lateinischen Schriftzeichen. Antworte NUR mit einem "
         "einzigen validen JSON-Objekt, keine Erklärungen."
     )
+    themen_hinweis = (
+        f"\n\nDiese Themen wurden in den letzten Tagen bereits behandelt — "
+        f"wähle KEINES davon erneut: {', '.join(recent_themes)}."
+        if recent_themes else ""
+    )
     prompt = (
-        f"Schreibe {N_ESSAYS} eigenständige philosophische Kurzessays für die "
-        f"Ausgabe vom {date_label}.\n\n"
-        f"Die Themen für heute (je Essay eines, in dieser Reihenfolge):\n"
-        + "\n".join(f"{i+1}. {t}" for i, t in enumerate(themen)) +
-        "\n\nJeder Essay: 4 Absätze à 2-4 Sätze. Genau EINER der Absätze "
+        f"Wähle selbst {N_ESSAYS} eigenständige, thematisch klar unterschiedliche "
+        "philosophische/strukturkritische Themen (rein philosophisch/strukturell, "
+        "z.B. Macht, Eigentum, Zeit, Arbeit, Freiheit, Technik, Demokratie, "
+        "Wachstum, Solidarität, Angst als Herrschaftsinstrument — oder ein "
+        f"anderes Thema aus derselben Denkrichtung) und schreibe zu jedem einen "
+        f"eigenständigen philosophischen Kurzessay für die Ausgabe vom "
+        f"{date_label}.{themen_hinweis}\n\n"
+        "Jeder Essay: 4 Absätze à 2-4 Sätze. Genau EINER der Absätze "
         "(Position 2 oder 3) ist der Zuspitzungs-Absatz: maximal 2 Sätze, "
         "aphoristisch, merkbar.\n\n"
         "Liefere GENAU dieses JSON-Schema:\n"
         "{\n"
         '  "essays": [\n'
         "    {\n"
+        '      "thema": "1-3 Wörter Themen-Schlagwort, für Wiederholungsschutz",\n'
         '      "title": "prägnanter Essay-Titel, kein Doppelpunkt-Klischee",\n'
         '      "paragraphs": [\n'
         '        {"text": "Absatz 1", "punch": false},\n'
@@ -204,7 +224,7 @@ def get_essays(date_label: str, themen: list):
         '      "aside": "' + ("Lines of thought: " if LANG == "en" else "Denkrichtung: ")
         + '2-3 Denker/Konzepte, kommagetrennt"\n'
         "    }\n"
-        f"    // genau {N_ESSAYS} Essays\n"
+        f"    // genau {N_ESSAYS} Essays, thematisch unterschiedlich\n"
         "  ]\n"
         "}"
     )
@@ -279,23 +299,23 @@ def main() -> int:
     log(f"Nonconformist-Ausgabe ({LANG}): {date_label}")
     log(f"Verwende Vorlage: {TEMPLATE}")
 
-    # Themenrotation: N_ESSAYS Themen je Tag, deterministisch. WICHTIG: die
-    # Schrittweite MUSS mit N_ESSAYS mitgehen (vorher hart auf 5 codiert) —
-    # sonst können Schrittweite und Poolgröße einen gemeinsamen Teiler > 1
-    # haben, was zu einem viel zu kurzen Wiederholungszyklus führt (z.B.
-    # Schritt 5 auf Pool 20 ergab nur alle 4 Tage denselben Themensatz).
-    # ggT(3, 20) = 1 -> voller Zyklus über alle 20 Tage, keine Wiederholung.
-    start = today.toordinal() * N_ESSAYS
-    themen = [THEMENPOOL[(start + i) % len(THEMENPOOL)] for i in range(N_ESSAYS)]
-    log("Themen heute: " + " · ".join(themen))
+    recent_themes = load_recent_themes(HISTORY_PATH)
+    log(f"Bereits kürzlich behandelte Themen ({len(recent_themes)}): "
+        + (", ".join(recent_themes) if recent_themes else "keine"))
 
-    essays = get_essays(date_label, themen)
+    essays = get_essays(date_label, recent_themes)
     if not essays:
         log("Keine Essays erzeugt — Seite bleibt unverändert (bestehender Stand).")
         return 0
 
     html = open(TEMPLATE, encoding="utf-8").read()
     html = inject(html, essays, date_label)
+
+    new_themes = [e.get("thema", "").strip() for e in essays if e.get("thema")]
+    if new_themes:
+        save_recent_themes(HISTORY_PATH, recent_themes, new_themes)
+        log(f"Themen-Historie aktualisiert: {', '.join(new_themes)}")
+
     open(OUTPUT, "w", encoding="utf-8").write(html)
     log(f"{OUTPUT} geschrieben ({len(essays)} Essays).")
     return 0

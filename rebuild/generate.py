@@ -7,13 +7,16 @@ Wird vom GitHub-Actions-Workflow .github/workflows/daily-update.yml gestartet.
 
 Ablauf:
   1. Liest die Vorlage  index.template.html  (Fallback: index.html).
-  2. Wählt deterministisch 3 von 8 möglichen Rubriken für heute aus (Rotation,
-     siehe select_todays_rubriken).
-  3. Recherchiert per OpenRouter-API mit Web-Search-Server-Tool
-       a) tagesaktuelle Meldungen für die 3 heutigen Rubriken,
-       b) je Rubrik eine EINGEBETTETE Hintergrundstory zum selben Thema.
-  4. Baut die Inhalte fest in das HTML ein (inkl. Entfernen der 5 nicht
-     ausgewählten Rubrik-Karten und ihrer Modals) und schreibt  index.html.
+  2. Recherchiert per OpenRouter-API mit Web-Search-Server-Tool FRISCH, ohne
+     festen Themen-Pool und ohne Rotation:
+       a) 3 tagesaktuelle "Schlusslicht"-Meldungen aus beliebigen Bereichen,
+          jede mit echter, verifizierter Quelle,
+       b) je Meldung eine EINGEBETTETE Hintergrundstory zum selben Thema.
+  3. Baut die Inhalte fest in das HTML ein (3 feste Slots im Template) und
+     schreibt  index.html.
+  4. Merkt sich die heutigen Themen in einer kleinen Historie-Datei, damit die
+     KI an den Folgetagen nicht dieselben Themen wiederholt — das ist KEIN
+     Pool/Rotationssystem, sondern nur ein Wiederholungs-Schutz.
 
 Die fertige index.html ist damit eine vollständig statische Seite —
 ohne API-Schlüssel im Browser, lauffähig auf jedem Hoster bzw. GitHub Pages.
@@ -37,6 +40,8 @@ MODEL = "perplexity/sonar"  # beliebiges OpenRouter-Modell hier eintragen
 LANG = os.environ.get("SL_LANG", "de").strip().lower()
 TEMPLATE = "index.en.template.html" if LANG == "en" else "index.template.html"
 OUTPUT = "index.en.html" if LANG == "en" else "index.html"
+HISTORY_PATH = os.path.join("data", "home_theme_history.en.json" if LANG == "en" else "home_theme_history.json")
+N_ITEMS = 3
 TIMEOUT = 240
 
 WOCHENTAGE = (
@@ -52,35 +57,28 @@ MONATE = (
      "August", "September", "Oktober", "November", "Dezember"]
 )
 
-# Pool von 8 möglichen Rubriken. Es werden täglich nur 3 davon angezeigt
-# (rotierend, siehe select_todays_rubriken) — jede Rubrik bekommt dabei eine
-# EINGEBETTETE Hintergrundstory zum selben Thema statt einer separaten,
-# thematisch unabhängigen Story.
-RUBRIKEN = {
-    "01": "Sport / MLS — schlechtestes Team im Tabellenende (die einzige Sport-Rubrik)",
-    "02": "Niedriglohn — Branche, Tarifabschluss, Studie",
-    "03": "Bahn & ÖPNV — Pünktlichkeit, Ausfall, Streik, Investitionsstau",
-    "04": "Pressefreiheit — RSF-Index, Journalist inhaftiert/bedroht, Zensur",
-    "05": "Korruption — CPI, aktueller Fall mit Urteil/Anklage (nur belegt!)",
-    "06": "Klimaschutz — CCPI, verfehltes Ziel, Rückschritt eines Landes",
-    "07": "Steuervermeidung — Konzern-Konstrukt, Urteil, Nachzahlung (nur belegt!)",
-    "08": "Medien — Zeitungssterben, Auflagenkollaps, Redaktionsschließung",
-}
+
+# ── Themen-Historie (Wiederholungsschutz, KEIN Pool/Rotation) ───────────────
+def load_recent_themes(path: str, max_items: int = 20) -> list:
+    """Liest die zuletzt verwendeten Themen-Schlagworte aus einer kleinen
+    JSON-Datei. Dient nur dazu, der KI zu sagen 'das hattest du kürzlich
+    schon' — es ist kein festes Themen-Set, die KI kann jederzeit ein
+    komplett neues Thema wählen."""
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data[-max_items:] if isinstance(data, list) else []
+    except (json.JSONDecodeError, OSError):
+        return []
 
 
-def select_todays_rubriken(today: "datetime.date", n: int = 3) -> list:
-    """Wählt deterministisch n von 8 Rubriken für den heutigen Tag aus.
-
-    Schrittweite 3 bei 8 Rubriken ist teilerfremd (ggT(3, 8) = 1): daraus
-    ergibt sich ein voller Umlauf über alle 8 Rubriken alle 8 Tage, ohne dass
-    sich eine Rubrik vorzeitig wiederholt, und ohne dass an zwei
-    aufeinanderfolgenden Tagen dieselbe Kombination erscheint (dieselbe
-    Fixierung wie beim Nonconformist-Rotationsfix)."""
-    keys = list(RUBRIKEN.keys())
-    total = len(keys)
-    day_index = today.toordinal()
-    start = (day_index * n) % total
-    return [keys[(start + i) % total] for i in range(n)]
+def save_recent_themes(path: str, existing: list, new_themes: list, max_items: int = 40) -> None:
+    combined = [t for t in (existing + new_themes) if t][-max_items:]
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(combined, fh, ensure_ascii=False, indent=2)
 
 
 # ── Hilfsfunktionen ──────────────────────────────────────────────────────────
@@ -325,42 +323,44 @@ def dedupe_paragraphs(paragraphs, threshold=0.75):
 
 
 # ── Recherche: 3 rotierende Rubriken ────────────────────────────────────────
-def _fetch_items_batch(batch: dict, date_label: str, bereits_vergebene_themen: list):
-    """Holt Meldungen für die heutigen (rotierenden) Rubriken in einem Aufruf."""
+def _fetch_fresh_items(date_label: str, recent_themes: list):
+    """Recherchiert 3 frische 'Schlusslicht'-Meldungen aus BELIEBIGEN
+    Bereichen (kein fester Themen-Pool, keine Rotation) — inkl. der
+    kompletten Anzeige-Daten (Icon, Kategorie-Label, kleine Rangliste), die
+    früher aus einer festen, von Hand gepflegten Tabelle kamen. Die KI muss
+    jede Zahl mit einer echten, verifizierten Quelle belegen."""
     system = (
         f"Du bist Chefredakteur von schlusslicht.de, einem deutschen "
         f"linkssatirischen Magazin. Heute ist {date_label}.\n\n"
-        "Finde zu JEDER der folgenden Rubriken eine ECHTE, tagesaktuelle oder "
-        "höchstens 14 Tage alte Meldung via Websuche. Hat eine Rubrik heute "
-        "keine eigene Meldung, wähle die überraschendste Schlusslicht-Meldung "
-        "aus einem ANDEREN passenden Bereich — Aktualität geht vor Rubriktreue.\n\n"
+        f"Finde {N_ITEMS} ECHTE, tagesaktuelle oder höchstens 14 Tage alte "
+        "'Schlusslicht'-Meldungen via Websuche — jeweils aus einem ANDEREN "
+        "Bereich (z.B. Sport, Niedriglohn, Verkehr, Pressefreiheit, "
+        "Korruption, Klimaschutz, Steuervermeidung, Medien, oder jeder "
+        "andere Bereich, in dem jemand/etwas nachweislich 'Schlusslicht' "
+        "bzw. Tabellenletzter ist). Die 3 Meldungen müssen sich thematisch "
+        "klar unterscheiden.\n\n"
         "ABSOLUTES VERBOT VON PLATZHALTERN: Jede Schlagzeile und jeder "
         "Kommentar muss eine ECHTE, konkrete, recherchierte Meldung mit "
         "echten Eigennamen, Orten und Zahlen sein. Schreibe NIEMALS "
         "generische Platzhaltersätze wie 'Land mit niedrigstem Etat: "
         "2026-Bericht' oder 'Team X: 2026-Ergebnis' — das ist kein "
-        "Stilmittel, sondern ein Fehler. Wenn du keine echte Meldung findest, "
-        "recherchiere weiter oder wähle ein anderes konkretes Thema, aber "
-        "erfinde keine Schema-Lückentext-Sätze.\n\n"
+        "Stilmittel, sondern ein Fehler.\n\n"
         "KEINE WIEDERKEHRENDEN STANDARDSÄTZE: Verwende niemals denselben "
         "Schlusssatz (z. B. 'Stabilität fehlt, um die Saison zu retten') in "
-        "mehreren Rubriken — jeder Kommentar muss individuell zum jeweiligen "
-        "Fall passen.\n\n"
+        "mehreren Meldungen — jeder Kommentar muss individuell zum "
+        "jeweiligen Fall passen.\n\n"
         "ABSOLUTES VERBOT VON ERFUNDENEN QUELLEN — HÖCHSTE PRIORITÄT: "
         "Erfinde NIEMALS Firmennamen, Ereignisse, Zahlen oder Studien. Jede "
         "Meldung MUSS von einer echten, mit Websuche auffindbaren Quelle "
         "stammen, UND du musst die tatsächliche, funktionierende URL dieser "
         "Quelle angeben (die Seite, die du bei der Websuche gefunden hast — "
-        "keine geratene oder aus dem Gedächtnis rekonstruierte URL). Findest "
-        "du zu einer Rubrik keine echte Meldung mit einer echten, "
-        "existierenden URL, dann liefere für diese Rubrik GAR KEINEN "
-        "Eintrag (lass sie im JSON weg), statt etwas zu erfinden. Eine "
-        "fehlende Meldung ist immer besser als eine erfundene.\n\n"
+        "keine geratene oder aus dem Gedächtnis rekonstruierte URL). Auch "
+        "die kleine Rangliste (rows) muss aus derselben echten Quelle "
+        "stammen, nicht erfunden sein.\n\n"
         + (
-            f"Diese Themen sind in anderen Rubriken heute bereits vergeben — "
-            f"wähle KEIN Ausweichthema, das damit überschneidet: "
-            f"{', '.join(bereits_vergebene_themen)}.\n\n"
-            if bereits_vergebene_themen
+            f"Diese Themen wurden in den letzten Tagen bereits verwendet — "
+            f"wähle KEINES davon erneut: {', '.join(recent_themes)}.\n\n"
+            if recent_themes
             else ""
         )
         + "Stil: schwarze Satire mit menschlicher Wärme — nicht kalt-nüchtern, "
@@ -374,44 +374,47 @@ def _fetch_items_batch(batch: dict, date_label: str, bereits_vergebene_themen: l
         "Schriftzeichen, auch nicht einzelne Wörter oder Zeichen davon."
     )
 
-    zeilen = "\n".join(f"{num} {beschr}" for num, beschr in batch.items())
     prompt = (
-        f"Suche für JEDE dieser {len(batch)} Rubriken eine aktuelle echte "
-        "Meldung. Nutze die Websuche mehrfach, auf Deutsch und Englisch.\n\n"
-        f"Rubriken:\n{zeilen}\n\n"
+        f"Recherchiere {N_ITEMS} eigenständige, thematisch unterschiedliche "
+        "Schlusslicht-Meldungen für die heutige Ausgabe. Nutze die Websuche "
+        "mehrfach, auf Deutsch und Englisch.\n\n"
         "Antworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown:\n"
         "{\n"
-        f'  "{list(batch.keys())[0]}": {{"rubrik_name": "Name falls Rubrik gewechselt wurde, sonst leer", '
-        '"thema": "1-2 Wörter Themen-Schlagwort, z.B. \'Fußball\' oder \'Steuerpolitik\'", '
-        '"headline": "kurze, konkrete Schlagzeile mit echten Namen/Zahlen", '
-        '"kommentar": "individueller Kommentar, max 130 Zeichen", '
-        '"quelle": "Quellenname und Datum, z.B. Reuters 22.06.2026 — KEINE Zitationsnummern wie [1]", '
-        '"quelle_url": "die ECHTE, vollständige URL der Quelle (https://...) — PFLICHTFELD, ohne echte funktionierende URL keine Veröffentlichung"}},\n'
-        f'  ... für jede der {len(batch)} Rubriken ein Eintrag ...\n'
-        "}}"
+        '  "1": {\n'
+        '    "thema": "1-2 Wörter Themen-Schlagwort, z.B. \'Fußball\' oder \'Steuerpolitik\'",\n'
+        '    "kicker": "Kategorie-Label, z.B. \'Sport · MLS\' oder \'Pressefreiheit\'",\n'
+        '    "icon": "ein passendes Emoji",\n'
+        '    "headline": "kurze, konkrete Schlagzeile mit echten Namen/Zahlen",\n'
+        '    "kommentar": "individueller Kommentar, max 130 Zeichen",\n'
+        '    "table_title": "Kurztitel der Rangliste, z.B. \'MLS — Tabellenende\'",\n'
+        '    "table_tag": "Zeitraum, z.B. \'Saison 2026\'",\n'
+        '    "rows": [{"rank": "28", "name": "Team/Ort/Fall A", "value": "Zahl"}, {"rank": "29", "name": "Team/Ort/Fall B", "value": "Zahl"}, {"rank": "30", "name": "das eigentliche Schlusslicht", "value": "Zahl"}],\n'
+        '    "foot": "1 Satz Einordnung/Vergleichswert für die Fußzeile",\n'
+        '    "quelle": "Quellenname und Datum, z.B. Reuters 22.06.2026 — KEINE Zitationsnummern wie [1]",\n'
+        '    "quelle_url": "die ECHTE, vollständige URL der Quelle (https://...) — PFLICHTFELD"\n'
+        "  },\n"
+        f'  ... insgesamt {N_ITEMS} Einträge mit den Schlüsseln "1".."{N_ITEMS}" ...\n'
+        "}"
     )
 
-    return extract_json(call_api(system, prompt, max_tokens=2200))
+    return extract_json(call_api(system, prompt, max_tokens=3000))
 
 
-def get_daily_items(date_label: str, selected_keys: list):
-    """Holt Meldungen NUR für die heute rotierend ausgewählten Rubriken
-    (statt für alle 8 auf einmal) — kleinere, fokussierte Aufgabe pro Tag."""
-    batch = {k: RUBRIKEN[k] for k in selected_keys}
-    log(f"Recherchiere Tagesmeldungen für die {len(batch)} heutigen Rubriken "
-        f"({', '.join(batch.keys())}) …")
+def get_daily_items(date_label: str, recent_themes: list):
+    """Holt die 3 frei recherchierten Tagesmeldungen (kein Themen-Pool, keine
+    Rotation — siehe _fetch_fresh_items)."""
+    log(f"Recherchiere {N_ITEMS} frische Schlusslicht-Meldungen …")
 
-    batch_result = _fetch_items_batch(batch, date_label, [])
+    batch_result = _fetch_fresh_items(date_label, recent_themes) or {}
     all_items = {}
-    if not batch_result:
-        log("  Keine verwertbare Antwort erhalten.")
-    else:
-        for num, item in batch_result.items():
-            if num in batch and isinstance(item, dict) and item.get("headline"):
-                all_items[num] = item
-            elif num in batch:
-                log(f"  Rubrik {num}: leerer oder ungültiger Eintrag von der "
-                    f"KI geliefert — übersprungen, bestehender Stand bleibt.")
+    for i in range(1, N_ITEMS + 1):
+        key = str(i)
+        item = batch_result.get(key)
+        if isinstance(item, dict) and item.get("headline"):
+            all_items[key] = item
+        else:
+            log(f"  Meldung {key}: leerer oder ungültiger Eintrag von der "
+                f"KI geliefert — übersprungen, bestehender Stand bleibt.")
 
     all_items = dedupe_rubrik_topics(all_items)
     all_items = strip_repeated_boilerplate(all_items)
@@ -420,9 +423,9 @@ def get_daily_items(date_label: str, selected_keys: list):
     spotlight_ticker = get_spotlight_and_ticker(date_label, all_items)
 
     if all_items:
-        log(f"  {len(all_items)} Rubrik-Meldungen final erhalten.")
+        log(f"  {len(all_items)} Meldungen final erhalten.")
     else:
-        log("  Keine verwertbaren Rubrik-Daten erhalten.")
+        log("  Keine verwertbaren Meldungsdaten erhalten.")
 
     if not all_items and not spotlight_ticker.get("spotlight") and not spotlight_ticker.get("ticker"):
         return None
@@ -703,54 +706,83 @@ def set_text(node, value):
         node.append(str(value))
 
 
-def inject(html: str, items, stories, selected_keys: list, date_label: str, build_time: str) -> str:
+def set_html(node, html_value):
+    """Setzt HTML-Inhalt in ein BeautifulSoup-Element."""
+    if node is not None and html_value:
+        node.clear()
+        node.append(BeautifulSoup(str(html_value), "html.parser"))
+
+
+def _build_table_html(item: dict) -> str:
+    """Baut das .tbl-HTML-Fragment aus den frisch recherchierten Zeilen der
+    KI (immer 3-spaltig: Rang/Name/Wert — einheitliches Format, damit die KI
+    nicht auch noch unterschiedliche Spaltenzahlen gestalten muss)."""
+    title = (item.get("table_title") or "").strip()
+    tag = (item.get("table_tag") or "").strip()
+    foot = (item.get("foot") or "").strip()
+    rows = item.get("rows") or []
+
+    rows_html = []
+    for i, row in enumerate(rows[:3]):
+        is_last = " is-last" if i == len(rows[:3]) - 1 else ""
+        lamp = '<span class="lamp"></span>' if i == len(rows[:3]) - 1 else ""
+        rank = (row.get("rank") or "—")
+        name = (row.get("name") or "").strip()
+        value = (row.get("value") or "").strip()
+        rows_html.append(
+            f'<div class="row c3{is_last}"><span class="rk">{rank}</span>'
+            f'<span class="nm">{lamp}{name}</span><span class="v">{value}</span></div>'
+        )
+
+    return (
+        f'<div class="tbl-head"><span class="tt">{title}</span><span class="tag">{tag}</span></div>'
+        f'<div class="cols c3"><span>#</span><span class="l">{"Name" if LANG != "en" else "Name"}</span><span>{"Wert" if LANG != "en" else "Value"}</span></div>'
+        + "".join(rows_html)
+        + f'<div class="tbl-foot">{foot}</div>'
+    )
+
+
+def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
 
-    # ── Rotation: nicht ausgewählte Rubrik-Karten + ihre Modals entfernen ──
-    for num in RUBRIKEN:
-        if num in selected_keys:
+    # ── Die 3 festen Slots im Template bekommen ihren kompletten Inhalt
+    #    direkt aus der heutigen, frisch recherchierten KI-Meldung (kein
+    #    Pool, keine Rotation, kein zweistufiges Fallback-Overwrite-Muster
+    #    mehr). Fehlt eine Meldung (Recherche fehlgeschlagen), bleibt der
+    #    Slot einfach beim zuletzt veröffentlichten Stand.
+    for slot_i in range(1, N_ITEMS + 1):
+        key = str(slot_i)
+        it = (items or {}).get("items", {}).get(key)
+        card = soup.select_one(f'article.rub[data-slot="{slot_i}"]')
+        if card is None or not it:
             continue
-        card = soup.select_one(f'article.rub[data-rubrik="{num}"]')
-        if card is not None:
-            card.decompose()
-        modal = soup.select_one(f"#story-{num}")
-        if modal is not None:
-            modal.decompose()
-
-    # ── Rubrik-Meldungen ───────────────────────────────────────────────
-    if items and items.get("items"):
-        for num, it in items["items"].items():
-            card = soup.select_one(f'[data-rubrik="{num}"]')
-            if not card:
-                continue
-            kommentar = (it.get("kommentar") or "").strip()
-            if kommentar:
-                set_text(card.select_one(".realsatire"), f"„{kommentar}“")
-            tag = card.select_one(".ai-tag")
-            if tag is not None:
-                quelle = (it.get("quelle") or "").strip()
-                set_text(
-                    tag,
-                    (
-                        f"✦ Tagesaktuell · {quelle}"
-                        if quelle
-                        else "✦ Tagesaktuell"
-                    ),
-                )
-            # Schlagzeile (Text nach „ — ")
-            headline = (it.get("headline") or "").strip()
-            rtit = card.select_one(".rtit")
-            if rtit and headline and len(headline) > 4:
-                cur = rtit.get_text()
-                dash = cur.find(" — ")
-                set_text(rtit, (cur[: dash + 3] + headline) if dash > 0 else headline)
-            # Rubrikname nur wenn Rubrik gewechselt wurde
-            rname = (it.get("rubrik_name") or "").strip()
-            rnum = card.select_one(".rnum")
-            if rnum and rname:
-                cur = rnum.get_text()
-                sep = cur.find(" ⸺ ")
-                set_text(rnum, (cur[: sep + 3] + rname) if sep > 0 else cur)
+        card["data-rubrik"] = key
+        rub_no = card.select_one(".rub-no")
+        if rub_no is not None:
+            rub_no.string = str(slot_i)
+        set_text(card.select_one(".rub-ico"), it.get("icon"))
+        set_text(card.select_one(".rnum"), it.get("kicker"))
+        headline = (it.get("headline") or "").strip()
+        if headline:
+            set_text(card.select_one(".rtit"), headline)
+        kommentar = (it.get("kommentar") or "").strip()
+        if kommentar:
+            set_text(card.select_one(".realsatire"), f"„{kommentar}“")
+        quelle = (it.get("quelle") or "").strip()
+        stand = card.select_one(".rub-stand")
+        if stand is not None and quelle:
+            set_text(stand, (f"As of: {date_label} · {quelle}" if LANG == "en"
+                              else f"Stand: {date_label} · {quelle}"))
+        tag = card.select_one(".ai-tag")
+        if tag is not None:
+            set_text(tag, f"✦ Tagesaktuell · {quelle}" if quelle else "✦ Tagesaktuell")
+        tbl = card.select_one(".tbl")
+        if tbl is not None and it.get("rows"):
+            tbl.clear()
+            tbl.append(BeautifulSoup(_build_table_html(it), "html.parser"))
+        story_btn = card.select_one(".story-more")
+        if story_btn is not None:
+            story_btn["onclick"] = f"openModal('story-slot{slot_i}')"
 
     # ── Spotlight (Tagesausgabe) ──────────────────────────────────────────
     if items and items.get("spotlight"):
@@ -777,10 +809,10 @@ def inject(html: str, items, stories, selected_keys: list, date_label: str, buil
                 item.append(sep)
                 inner.append(item)
 
-    # ── Eingebettete Hintergrundstorys (je Rubrik ihre eigene) ─────────────
+    # ── Eingebettete Hintergrundstorys (je Slot ihre eigene) ────────────────
     if stories:
         for num, st in stories.items():
-            modal = soup.select_one(f"#story-{num}")
+            modal = soup.select_one(f"#story-slot{num}")
             if not modal:
                 continue
             set_text(modal.select_one(".story-modal-cat"), st.get("cat"))
@@ -868,18 +900,27 @@ def main() -> int:
     with open(template_path, encoding="utf-8") as fh:
         html = fh.read()
 
-    selected_keys = select_todays_rubriken(today)
-    log(f"Heutige Rubrik-Rotation: {', '.join(selected_keys)} "
-        f"(von {len(RUBRIKEN)} möglichen)")
+    recent_themes = load_recent_themes(HISTORY_PATH)
+    log(f"Bereits kürzlich verwendete Themen ({len(recent_themes)}): "
+        + (", ".join(recent_themes) if recent_themes else "keine"))
 
-    items = get_daily_items(date_label, selected_keys)
+    items = get_daily_items(date_label, recent_themes)
     stories = get_embedded_stories(date_label, (items or {}).get("items", {}))
 
     if not items and not stories:
         log("Keine Inhalte erzeugt — index.html bleibt unverändert.")
         return 0
 
-    html = inject(html, items, stories, selected_keys, date_label, build_time)
+    html = inject(html, items, stories, date_label, build_time)
+
+    new_themes = [
+        (it.get("thema") or "").strip()
+        for it in (items or {}).get("items", {}).values()
+        if it.get("thema")
+    ]
+    if new_themes:
+        save_recent_themes(HISTORY_PATH, recent_themes, new_themes)
+        log(f"Themen-Historie aktualisiert: {', '.join(new_themes)}")
 
     with open(OUTPUT, "w", encoding="utf-8") as fh:
         fh.write(html)
