@@ -287,13 +287,6 @@
   .today .spot-hl { font-family:var(--display); font-weight:700; font-size:clamp(1.3rem,2.3vw,1.85rem); line-height:1.08; margin:12px 0 14px; letter-spacing:-.01em; }
   .today .spot-text { font-family:var(--serif); color:var(--ink-2); border-left:3px solid var(--amber); padding-left:15px; font-size:1.04rem; }
   .today .spot-src { font-family:var(--mono); font-size:.62rem; letter-spacing:.04em; color:var(--ink-3); margin-top:14px; }
-  .today .rub-cell { border-left:1px solid var(--line); background:var(--paper-2); }
-  .today .rub-cell .lab { font-family:var(--mono); font-size:.62rem; letter-spacing:.2em; text-transform:uppercase; color:var(--red); }
-  .today .rub-cell .rico { font-size:1.7rem; display:block; margin:10px 0 6px; }
-  .today .rub-cell .rname { font-family:var(--display); font-weight:700; font-size:1.3rem; }
-  .today .rub-cell .rdesc { color:var(--ink-2); font-size:.98rem; margin-top:6px; }
-  .today .rub-cell a { display:inline-block; margin-top:14px; font-family:var(--mono); font-size:.66rem; letter-spacing:.08em; text-transform:uppercase; color:var(--red); text-decoration:none; border-bottom:1px solid var(--red-tint); }
-  .today .rub-cell a:hover { border-color:var(--red); }
 
   /* ───────────────── STORIES ───────────────── */
   .stories-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
@@ -423,7 +416,6 @@
     .about-grid, .stories-grid, .rubgrid { grid-template-columns:repeat(2,1fr); }
     .today { grid-template-columns:1fr; }
     .today .date-cell { border-right:none; border-bottom:1px solid var(--line); }
-    .today .rub-cell { border-left:none; border-top:1px solid var(--line); }
     .legal-grid { grid-template-columns:1fr; gap:24px; }
     .legal-nav { position:static; }
   }
@@ -462,6 +454,9 @@
 .lang-toggle:hover{opacity:1;}
   .brand .logo-mark { width:30px; height:30px; display:inline-block; vertical-align:-7px; margin-right:9px; }
   .brand:hover .logo-mark rect[fill^="url"] { filter:brightness(1.15); }
+  .rub{position:relative;}
+  .story-more{margin-top:12px;font-family:var(--mono);font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--red);background:none;border:none;border-bottom:1px solid var(--red-tint);padding:0 0 2px;cursor:pointer;}
+  .story-more:hover{border-color:var(--red);}
 </style>
 <script>
 (function(){
@@ -484,7 +479,7 @@
 <!-- ══════════ NAV ══════════ -->
 <header class="site">
 <div class="wrap nav">
-<a class="brand" href="#top"><svg aria-hidden="true" class="logo-mark" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="slg" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#F0322D" stop-opacity=".65"/><stop offset="70%" stop-color="#F0322D" stop-opacity=".15"/><stop offset="100%" stop-color="#F0322D" stop-opacity="0"/></radialGradient><linearGradient id="sll" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FF6A5E"/><stop offset="55%" stop-color="#F0322D"/><stop offset="100%" stop-color="#C5201A"/></linearGradient></defs><rect x="7" y="14" width="10" height="36" rx="3" fill="currentColor"/><rect x="21" y="23" width="10" height="27" rx="3" fill="currentColor"/><rect x="35" y="32" width="10" height="18" rx="3" fill="currentColor"/><circle cx="54" cy="43.5" r="19" fill="url(#slg)"/><rect x="48" y="37" width="12" height="13" rx="4" fill="url(#sll)"/><rect x="50.5" y="40.2" width="7" height="1.9" rx=".95" fill="#FFD9D4" opacity=".95"/><rect x="50.5" y="43.6" width="7" height="1.9" rx=".95" fill="#FFC9C2" opacity=".75"/></svg>SCHLUSSLICHT</a>
+<a class="brand" href="#top"><svg aria-hidden="true" class="logo-mark" viewbox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><defs><radialgradient cx="50%" cy="50%" id="slg" r="50%"><stop offset="0%" stop-color="#F0322D" stop-opacity=".65"></stop><stop offset="70%" stop-color="#F0322D" stop-opacity=".15"></stop><stop offset="100%" stop-color="#F0322D" stop-opacity="0"></stop></radialgradient><lineargradient id="sll" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#FF6A5E"></stop><stop offset="55%" stop-color="#F0322D"></stop><stop offset="100%" stop-color="#C5201A"></stop></lineargradient></defs><rect fill="currentColor" height="36" rx="3" width="10" x="7" y="14"></rect><rect fill="currentColor" height="27" rx="3" width="10" x="21" y="23"></rect><rect fill="currentColor" height="18" rx="3" width="10" x="35" y="32"></rect><circle cx="54" cy="43.5" fill="url(#slg)" r="19"></circle><rect fill="url(#sll)" height="13" rx="4" width="12" x="48" y="37"></rect><rect fill="#FFD9D4" height="1.9" opacity=".95" rx=".95" width="7" x="50.5" y="40.2"></rect><rect fill="#FFC9C2" height="1.9" opacity=".75" rx=".95" width="7" x="50.5" y="43.6"></rect></svg>SCHLUSSLICHT</a>
 <button aria-expanded="false" aria-label="Menü" class="menu-btn" id="menuBtn">☰</button>
 <ul class="nav-links" id="navLinks">
 <li><a href="#stories">Background</a></li>
@@ -515,7 +510,7 @@
 <section class="hero">
 <div class="wrap hero-grid">
 <div>
-<p class="kicker hero-eyebrow rise rise-1">The Magazine of the Last-Placed · 8 categories · daily</p>
+<p class="kicker hero-eyebrow rise rise-1">The Magazine of the Last-Placed · 3 categories · daily</p>
 <h1 class="rise rise-2">We read the world <span class="hl">from the back<span aria-hidden="true" class="lamp2"></span></span></h1>
 <p class="hero-lead rise rise-3">
         Everyone looks ahead, at the winners. We turn around. Because at the very back – at the
@@ -524,7 +519,7 @@
         <strong>Real data, clear sources, with conviction instead of scorn.</strong>
 </p>
 <div class="hero-cta rise rise-3">
-<a class="btn btn-red" href="#rubriken">All 8 categories</a>
+<a class="btn btn-red" href="#rubriken">All 3 categories</a>
 <a class="btn btn-ghost" href="#stories">Background stories</a>
 <a class="hero-mfb" href="insights.en.html">Prefer plain talk? → Insights</a>
 </div>
@@ -604,51 +599,18 @@
 <p class="spot-text" id="ta-text">An ex-president already convicted of insurrection now also has to answer for a $3,500 handbag. Seoul police referred the case to the prosecutor's office — as if Yoon's problems weren't big enough already.</p>
 <p class="spot-src" id="ta-source">— Reuters, June 2026 · July 4, 2026</p>
 </div>
-<div class="rub-cell">
-<p class="lab">// Category of the Day</p>
-<span aria-hidden="true" class="rico" id="taRico">—</span>
-<div class="rname" id="taRname">—</div>
-<p class="rdesc" id="taRdesc">—</p>
-<a href="#rubriken" id="taRlink">Zur Rubrik →</a>
-</div>
+
 </div>
 </div>
 </section>
 <!-- ══════════ HINTERGRUNDSTORYS ══════════ -->
-<section class="section" id="stories">
-<div class="wrap">
-<div class="sec-head">
-<h2>The Story Behind Last Place</h2>
-<span class="meta">3 selected cases</span>
-</div>
-<div class="stories-grid">
-<button class="story story-card" onclick="openModal('story1')">
-<span class="scat story-cat">// Spaceflight &amp; System Failure · 1999</span>
-<h3 class="story-title">The $125m satellite that burned up over the wrong units</h3>
-<p class="story-teaser">In 1999 the Mars Climate Orbiter approached the Red Planet — and burned up. NASA calculated in metric units, Lockheed Martin in US units. Nobody checked.</p>
-<span class="more">Read the story →</span>
-</button>
-<button class="story story-card" onclick="openModal('story2')">
-<span class="scat story-cat">// Cinema &amp; Culture Industry · March 2025</span>
-<h3 class="story-title">"The Actor": $39,214 — the invisible film with a visible cast</h3>
-<p class="story-teaser">Gemma Chan. Toby Jones. A studio that bought the film — and then simply never promoted it. 23 theaters, no trailer push, no red carpet.</p>
-<span class="more">Read the story →</span>
-</button>
-<button class="story story-card" onclick="openModal('story3')">
-<span class="scat story-cat">// Press Freedom &amp; Human Rights · 2026</span>
-<h3 class="story-title">Rank 180: the country that jails a journalist for 25 years</h3>
-<p class="story-teaser">Eritrea sits at the bottom of the press freedom index. Behind the number is a name: Dawit Isaak, co-founder of the country's only independent newspaper.</p>
-<span class="more">Read the story →</span>
-</button>
-</div>
-</div>
-</section>
+
 <!-- ══════════ RUBRIKEN ══════════ -->
 <section class="section" id="rubriken">
 <div class="wrap">
 <div class="sec-head">
 <h2>The World's Last-Placed</h2>
-<span class="meta" id="update-time">As of: 04.07.2026 09:00 UTC — automatically generated on July 4, 2026</span>
+<span class="meta" id="update-time">3 categories · rotating daily</span>
 </div>
 <div class="rubgrid">
 <!-- 01 MLS -->
@@ -666,7 +628,7 @@
 <div class="row c5 is-last"><span class="rk">30</span><span class="nm"><span class="lamp"></span>Philadelphia Union</span><span class="n">0</span><span class="n">5</span><span class="v">0</span></div>
 <div class="tbl-foot">MLS Saison 2026 · <span class="src">ESPN</span></div>
 </div>
-</article>
+<button class="story-more" onclick="openModal('story-01')">Background →</button></article>
 <!-- 07 NIEDRIGLOHN -->
 <article class="rub" data-rubrik="02">
 <div class="rub-head"><span class="rub-no">02</span><span class="rub-kicker rnum">Low Wages</span></div>
@@ -682,7 +644,7 @@
 <div class="row c3 is-last"><span class="rk">—</span><span class="nm"><span class="lamp"></span>Agriculture, seasonal workers <small>oft nur Mindestlohn</small></span><span class="v">12,82 €</span></div>
 <div class="tbl-foot">Gesetzl. Mindestlohn 2025: 12,82 €/h · DAX-CEO Ø: ~2.163 €/h · <span class="src">Destatis · Böckler Foundation</span></div>
 </div>
-</article>
+<button class="story-more" onclick="openModal('story-02')">Background →</button></article>
 <!-- 08 BAHN -->
 <article class="rub" data-rubrik="03">
 <div class="rub-head"><span class="rub-no">03</span><span class="rub-kicker rnum">Bahn &amp; ÖPNV</span></div>
@@ -699,7 +661,7 @@
 <div class="row c3b is-last"><span class="rk">—</span><span class="nm"><span class="lamp"></span>Investitionsstau laut Gutachten</span><span class="v">~90 Mrd €</span></div>
 <div class="tbl-foot">Japan Shinkansen punctuality: 99.7% · <span class="src">Bundesrechnungshof · ADAC</span></div>
 </div>
-</article>
+<button class="story-more" onclick="openModal('story-03')">Background →</button></article>
 <!-- 09 PRESSEFREIHEIT -->
 <article class="rub" data-rubrik="04">
 <div class="rub-head"><span class="rub-no">04</span><span class="rub-kicker rnum">Press Freedom</span></div>
@@ -716,7 +678,7 @@
 <div class="row c3 is-last"><span class="rk">180</span><span class="nm"><span class="lamp"></span>🇪🇷 Eritrea</span><span class="v">11,3</span></div>
 <div class="tbl-foot">42 countries "very serious" · see background story 3 · <span class="src">RSF</span></div>
 </div>
-</article>
+<button class="story-more" onclick="openModal('story-04')">Background →</button></article>
 <!-- 10 KORRUPTION -->
 <article class="rub" data-rubrik="05">
 <div class="rub-head"><span class="rub-no">05</span><span class="rub-kicker rnum">Corruption</span></div>
@@ -733,7 +695,7 @@
 <div class="row c3 is-last"><span class="rk">182</span><span class="nm"><span class="lamp"></span>🇸🇸 South Sudan</span><span class="v">9</span></div>
 <div class="tbl-foot">Globaler Ø 2025: 42 – neuer Tiefstand · 0 = hochkorrupt · <span class="src">Transparency Int.</span></div>
 </div>
-</article>
+<button class="story-more" onclick="openModal('story-05')">Background →</button></article>
 <!-- 11 KLIMASCHUTZ -->
 <article class="rub" data-rubrik="06">
 <div class="rub-head"><span class="rub-no">06</span><span class="rub-kicker rnum">Climate Action</span></div>
@@ -750,7 +712,7 @@
 <div class="row c3b is-last"><span class="rk">64</span><span class="nm"><span class="lamp"></span>🇸🇦 Saudi Arabia</span><span class="n">sehr schl.</span></div>
 <div class="tbl-foot">No country rated "very good" · Germany 16th, "moderate" · <span class="src">Germanwatch</span></div>
 </div>
-</article>
+<button class="story-more" onclick="openModal('story-06')">Background →</button></article>
 <!-- 12 STEUERVERMEIDUNG -->
 <article class="rub" data-rubrik="07">
 <div class="rub-head"><span class="rub-no">07</span><span class="rub-kicker rnum">Tax Avoidance</span></div>
@@ -767,7 +729,7 @@
 <div class="row c3b is-last"><span class="rk">—</span><span class="nm"><span class="lamp"></span>Globale Tax Avoidance <small>OECD estimate/year</small></span><span class="v">240 Mrd $</span></div>
 <div class="tbl-foot">Effektivsteuer Amazon Europe 2021: ~7% · Normalsatz DE: 15–42% · <span class="src">EU · OECD · ProPublica</span></div>
 </div>
-</article>
+<button class="story-more" onclick="openModal('story-07')">Background →</button></article>
 <!-- 18 MEDIEN -->
 <article class="rub" data-rubrik="08">
 <div class="rub-head"><span class="rub-no">08</span><span class="rub-kicker rnum">Media</span></div>
@@ -784,7 +746,7 @@
 <div class="row c3b is-last"><span class="rk">—</span><span class="nm"><span class="lamp"></span>only 5% read print daily <small>USA 2025</small></span><span class="n">2025</span></div>
 <div class="tbl-foot">Fewer than 1,000 journalists left in 39 US states · <span class="src">Medill · WAN-IFRA</span></div>
 </div>
-</article>
+<button class="story-more" onclick="openModal('story-08')">Background →</button></article>
 </div>
 </div>
 </section>
@@ -898,19 +860,64 @@
 </div>
 </footer>
 <!-- ══════════ MODALS: HINTERGRUNDSTORYS ══════════ -->
-<div aria-labelledby="s1h" aria-modal="true" class="overlay" id="story1" role="dialog">
+<div aria-labelledby="s01h" aria-modal="true" class="overlay" id="story-01" role="dialog">
 <div class="modal">
-<div class="modal-head"><h2 id="s1h">Hintergrund #1</h2><button class="modal-close" onclick="closeModal('story1')">✕ Schließen</button></div>
+<div class="modal-head"><h2 id="s01h">Hintergrund #1</h2><button class="modal-close" onclick="closeModal('story-01')">✕ Schließen</button></div>
 <div class="modal-body">
 <span class="scat story-modal-cat">// Spaceflight &amp; System Failure · 1999</span>
 <h3 class="story-modal-hl">The $125m satellite that burned up over the wrong units</h3>
 <p class="lead story-modal-lead">In 1999 the Mars Climate Orbiter approached the Red Planet — and burned up. NASA calculated in metric units, Lockheed Martin in US units. Nobody checked.</p><div class="story-body"><p>On December 11, 1998, the Mars Climate Orbiter lifted off. NASA had invested $125 million, plus roughly $80 million for launch and operations. The mission was part of the "Faster, Better, Cheaper" program: more missions at lower cost, with smaller teams and less redundancy — a philosophy that sounds efficient and is brittle from the inside.</p><p>For almost ten months and 670 million kilometers the probe traveled without visible incident. On September 23, 1999, it was to enter Mars orbit — the most critical moment of any such mission. The error lay between two teams that had never sat at the same table: NASA worked in newton-seconds, Lockheed Martin's software produced pound-force seconds — the US system.</p><p>The result: the probe approached Mars not at the planned 140–150 kilometers but far lower. At that altitude, frictional heat destroys a spacecraft. The signal went silent and never returned.</p><p>The investigation board was blunt: the primary cause was the failure to use metric units. What it did not say out loud: that "Faster, Better, Cheaper" had cut exactly the redundancy that could have caught the error. Consequences for Lockheed Martin? None worth mentioning.</p><div class="fact-box"><p>$125m probe cost plus ~$80m launch and operations</p><p>Two unit systems: newton-seconds vs. pound-force seconds</p><p>Signal lost on September 23, 1999 — never recovered</p></div><p><strong>A system that saves on cross-checks doesn't buy efficiency — it buys invisible risk.</strong></p></div><p class="modal-src story-source">Quellen: NASA Mishap Investigation Board, 1999</p>
 </div>
 </div>
-</div>
-<div aria-labelledby="s2h" aria-modal="true" class="overlay" id="story2" role="dialog">
+</div><div aria-labelledby="s04h" aria-modal="true" class="overlay" id="story-04" role="dialog">
 <div class="modal">
-<div class="modal-head"><h2 id="s2h">Hintergrund #2</h2><button class="modal-close" onclick="closeModal('story2')">✕ Schließen</button></div>
+<div class="modal-head"><h2 id="s04h">Background</h2><button class="modal-close" onclick="closeModal('story-04')">✕ Close</button></div>
+<div class="modal-body">
+<span class="scat story-modal-cat">—</span>
+<h3 class="story-modal-hl">—</h3>
+<p class="lead story-modal-lead">—</p><div class="story-body"></div><p class="modal-src story-source"></p>
+</div>
+</div>
+</div><div aria-labelledby="s05h" aria-modal="true" class="overlay" id="story-05" role="dialog">
+<div class="modal">
+<div class="modal-head"><h2 id="s05h">Background</h2><button class="modal-close" onclick="closeModal('story-05')">✕ Close</button></div>
+<div class="modal-body">
+<span class="scat story-modal-cat">—</span>
+<h3 class="story-modal-hl">—</h3>
+<p class="lead story-modal-lead">—</p><div class="story-body"></div><p class="modal-src story-source"></p>
+</div>
+</div>
+</div><div aria-labelledby="s06h" aria-modal="true" class="overlay" id="story-06" role="dialog">
+<div class="modal">
+<div class="modal-head"><h2 id="s06h">Background</h2><button class="modal-close" onclick="closeModal('story-06')">✕ Close</button></div>
+<div class="modal-body">
+<span class="scat story-modal-cat">—</span>
+<h3 class="story-modal-hl">—</h3>
+<p class="lead story-modal-lead">—</p><div class="story-body"></div><p class="modal-src story-source"></p>
+</div>
+</div>
+</div><div aria-labelledby="s07h" aria-modal="true" class="overlay" id="story-07" role="dialog">
+<div class="modal">
+<div class="modal-head"><h2 id="s07h">Background</h2><button class="modal-close" onclick="closeModal('story-07')">✕ Close</button></div>
+<div class="modal-body">
+<span class="scat story-modal-cat">—</span>
+<h3 class="story-modal-hl">—</h3>
+<p class="lead story-modal-lead">—</p><div class="story-body"></div><p class="modal-src story-source"></p>
+</div>
+</div>
+</div><div aria-labelledby="s08h" aria-modal="true" class="overlay" id="story-08" role="dialog">
+<div class="modal">
+<div class="modal-head"><h2 id="s08h">Background</h2><button class="modal-close" onclick="closeModal('story-08')">✕ Close</button></div>
+<div class="modal-body">
+<span class="scat story-modal-cat">—</span>
+<h3 class="story-modal-hl">—</h3>
+<p class="lead story-modal-lead">—</p><div class="story-body"></div><p class="modal-src story-source"></p>
+</div>
+</div>
+</div>
+<div aria-labelledby="s02h" aria-modal="true" class="overlay" id="story-02" role="dialog">
+<div class="modal">
+<div class="modal-head"><h2 id="s02h">Hintergrund #2</h2><button class="modal-close" onclick="closeModal('story-02')">✕ Schließen</button></div>
 <div class="modal-body">
 <span class="scat story-modal-cat">// Cinema &amp; Culture Industry · March 2025</span>
 <h3 class="story-modal-hl">"The Actor": $39,214 — the invisible film with a visible cast</h3>
@@ -918,9 +925,9 @@
 </div>
 </div>
 </div>
-<div aria-labelledby="s3h" aria-modal="true" class="overlay" id="story3" role="dialog">
+<div aria-labelledby="s03h" aria-modal="true" class="overlay" id="story-03" role="dialog">
 <div class="modal">
-<div class="modal-head"><h2 id="s3h">Hintergrund #3</h2><button class="modal-close" onclick="closeModal('story3')">✕ Schließen</button></div>
+<div class="modal-head"><h2 id="s03h">Hintergrund #3</h2><button class="modal-close" onclick="closeModal('story-03')">✕ Schließen</button></div>
 <div class="modal-body">
 <span class="scat story-modal-cat">// Press Freedom &amp; Human Rights · 2026</span>
 <h3 class="story-modal-hl">Rank 180: the country that jails a journalist for 25 years</h3>
@@ -974,26 +981,6 @@
     if($("taKw")) $("taKw").textContent = "Calendar week "+weekNum(n);
   }
 
-  /* Category of the Day (rein clientseitig, keine Netzaufrufe) */
-  var RUBRIKEN=[
-    {icon:"⚽",name:"Sports: MLS",desc:"Bottom of the table – who is last today."},
-    {icon:"💶",name:"Low Wages",desc:"Sectors with the lowest hourly pay."},
-    {icon:"🚆",name:"Deutsche Bahn",desc:"Punctuality and investment backlog."},
-    {icon:"📰",name:"Press Freedom",desc:"RSF index: who sits at the bottom."},
-    {icon:"💰",name:"Corruption",desc:"CPI: the most corrupt states."},
-    {icon:"🌿",name:"Climate Action",desc:"No country rated \u201every good\u201c."},
-    {icon:"🏦",name:"Tax Avoidance",desc:"What corporations don't pay."},
-    {icon:"🗞️",name:"Dying Media",desc:"A local paper dies every week."}
-  ];
-  function rubrikDesTages(){
-    var i = (doy(new Date())+7) % RUBRIKEN.length, r = RUBRIKEN[i];
-    if($("taRico")) $("taRico").textContent = r.icon;
-    if($("taRname")) $("taRname").textContent = r.name;
-    if($("taRdesc")) $("taRdesc").textContent = r.desc;
-    var cards = document.querySelectorAll(".rub");
-    if(cards[i]) cards[i].classList.add("today-pick");
-  }
-
   /* Mobile-Menü */
   var mb=$("menuBtn"), nl=$("navLinks");
   if(mb){ mb.addEventListener("click",function(){
@@ -1012,7 +999,7 @@
     m.addEventListener("click",function(e){ if(e.target===m){ m.classList.remove("open"); document.body.style.overflow=""; } });
   });
 
-  document.addEventListener("DOMContentLoaded",function(){ setDates(); rubrikDesTages(); initCounter(); });
+  document.addEventListener("DOMContentLoaded",function(){ setDates(); initCounter(); });
   document.addEventListener("DOMContentLoaded",function(){
     var ti=document.getElementById("ticker");
     if(ti&&ti.dataset.dup!=="1"){ti.innerHTML+=ti.innerHTML;ti.dataset.dup="1";}

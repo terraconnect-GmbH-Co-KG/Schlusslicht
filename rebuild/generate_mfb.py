@@ -20,9 +20,9 @@ Ablauf:
   1. Liest die Rubrik-Tabellen aus index.template.html (feste Fakten).
   2. Liest die heutigen Schlagzeilen/Kommentare aus dem frisch gebauten
      index.html (aktueller Anlass des Tages je Rubrik).
-  3. Wählt per Datum rotierend 5 politische Rubriken aus (volle Abdeckung alle
-     ~5 Tage, deterministisch, kein Zufall).
-  4. Lässt die KI für jede der 5 Rubriken einen Meinungskommentar auf Basis
+  3. Wählt per Datum rotierend 3 politische Rubriken aus (volle Abdeckung alle
+     ~7 Tage, deterministisch, kein Zufall).
+  4. Lässt die KI für jede der 3 Rubriken einen Meinungskommentar auf Basis
      der vorgegebenen Fakten schreiben.
   5. Baut Text in insights.template.html ein, schreibt
      insights.html.
@@ -48,8 +48,7 @@ FACTS_SOURCE = "index.en.template.html" if LANG == "en" else "index.template.htm
 TODAY_SOURCE = "index.en.html" if LANG == "en" else "index.html"
 OUTPUT = "insights.en.html" if LANG == "en" else "insights.html"
 TIMEOUT = 240
-N_COLS = 5
-N_RUBRIKEN = 24
+N_COLS = 3
 
 MONATE = (
     ["January", "February", "March", "April", "May", "June", "July",
@@ -134,6 +133,49 @@ def _wirkt_deutsch(obj) -> bool:
     return (treffer / len(woerter)) > 0.08
 
 
+def _close_brackets(text: str) -> str:
+    repaired = re.sub(r",\s*$", "", text.rstrip())
+    if repaired.count('"') % 2 == 1:
+        repaired += '"'
+    open_brackets = repaired.count("[") - repaired.count("]")
+    open_braces = repaired.count("{") - repaired.count("}")
+    repaired += "]" * max(open_brackets, 0)
+    repaired += "}" * max(open_braces, 0)
+    return repaired
+
+
+def _repair_truncated_json(text: str):
+    """Versucht, eine abgeschnittene JSON-Antwort (Modellantwort wurde mitten
+    im Objekt abgeschnitten) zu retten. Zwei Stufen:
+      1) Nur offene Klammern/Anführungszeichen schließen (fängt Truncation
+         direkt nach einem vollständigen Element ab).
+      2) Falls das nicht reicht (z.B. mitten in einem Schlüssel/Wert
+         abgeschnitten): schrittweise am letzten vollständigen Element-Ende
+         (',' nach '}' oder ']') zurückschneiden und erneut schließen.
+    Kein Allheilmittel, fängt aber den häufigsten Fall (Truncation durch
+    max_tokens) ab, der sonst zu einem stillen Totalausfall führt."""
+    candidate = _close_brackets(text)
+    try:
+        return json.loads(candidate)
+    except json.JSONDecodeError:
+        pass
+
+    cut = text
+    for _ in range(6):
+        last_obj = cut.rfind("},")
+        last_arr = cut.rfind("],")
+        pos = max(last_obj, last_arr)
+        if pos <= 0:
+            break
+        cut = cut[: pos + 1]  # bis inkl. schließender Klammer, Komma weg
+        candidate = _close_brackets(cut)
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+    raise json.JSONDecodeError("Selbstreparatur ausgeschöpft", text, 0)
+
+
 def extract_json(text):
     if not text:
         return None
@@ -141,11 +183,17 @@ def extract_json(text):
     start, end = text.find("{"), text.rfind("}") + 1
     if start < 0 or end <= start:
         return None
+    raw = text[start:end]
     try:
-        data = json.loads(text[start:end])
+        data = json.loads(raw)
     except json.JSONDecodeError as exc:
-        log(f"  JSON-Parsefehler: {exc}")
-        return None
+        log(f"  JSON-Parsefehler: {exc} — versuche Selbstreparatur (Truncation?) …")
+        try:
+            data = _repair_truncated_json(raw)
+            log("  Selbstreparatur erfolgreich — abgeschnittene Antwort gerettet.")
+        except json.JSONDecodeError as exc2:
+            log(f"  Selbstreparatur fehlgeschlagen: {exc2} — Antwort verworfen.")
+            return None
     data = sanitize(data)
     if LANG == "en" and _wirkt_deutsch(data):
         log("  SPRACH-SCHRANKE: Antwort wirkt deutsch, obwohl Englisch verlangt "
@@ -286,7 +334,15 @@ def extract_rubrik_facts(path: str) -> dict:
                 tbl_tag = tg.get_text(strip=True) if tg else ""
             for row in tbl.select(".row"):
                 nm = row.select_one(".nm")
+                # BUGFIX: nicht jede Tabelle nutzt .v für die Werte-Spalte —
+                # einige (z.B. Klimaschutz, Medien) benutzen stattdessen .n
+                # für die letzte Spalte. Vorher lieferte select_one(".v")
+                # dafür None, wodurch die ganze Zeile übersprungen wurde und
+                # betroffene Rubriken mit 0 Zeilen (leeren Fakten) endeten.
                 v = row.select_one(".v")
+                if v is None:
+                    n_cells = row.select(".n")
+                    v = n_cells[-1] if n_cells else None
                 if nm and v:
                     rows.append({
                         "name": nm.get_text(" ", strip=True),
@@ -384,7 +440,7 @@ def get_commentary(facts_package: list, date_label: str):
         "validen JSON-Objekt, keine Erklärung davor oder danach."
     )
 
-    prompt = f"""Ausgabe vom {date_label}. Schreibe zu JEDER der folgenden 5 Rubriken
+    prompt = f"""Ausgabe vom {date_label}. Schreibe zu JEDER der folgenden {len(facts_package)} Rubriken
 einen Meinungskommentar, basierend NUR auf den gegebenen Fakten:
 
 {json.dumps(facts_package, ensure_ascii=False, indent=2)}
@@ -409,7 +465,7 @@ Liefere GENAU dieses JSON-Schema:
         // 2-3 Einträge, alle wortwörtlich aus den vorgegebenen Fakten
       ]
     }}
-    // für jede der 5 Rubriken ein Eintrag, in derselben Reihenfolge
+    // für jede der {len(facts_package)} Rubriken ein Eintrag, in derselben Reihenfolge
   ]
 }}"""
 

@@ -233,6 +233,9 @@
 .lang-toggle:hover{opacity:1;}
   .brand .logo-mark { width:30px; height:30px; display:inline-block; vertical-align:-7px; margin-right:9px; }
   .brand:hover .logo-mark rect[fill^="url"] { filter:brightness(1.15); }
+  .gn{position:relative;}
+  .story-more{display:inline-block;margin-top:10px;font-family:var(--mono, monospace);font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:inherit;background:none;border:none;border-bottom:1px solid currentColor;padding:0 0 2px;cursor:pointer;opacity:.85;}
+  .story-more:hover{opacity:1;}
 </style>
 <!-- Favicon (base64 inline — keine externen Pfadabhängigkeiten) -->
 <link href="data:image/png;base64,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" rel="apple-touch-icon" sizes="180x180"/>
@@ -257,11 +260,11 @@
 <a class="skip" href="#main">Zum Inhalt springen</a>
 <header class="site">
 <div class="wrap nav">
-<a class="brand" href="index.html"><svg aria-hidden="true" class="logo-mark" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="slg" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#F0322D" stop-opacity=".65"/><stop offset="70%" stop-color="#F0322D" stop-opacity=".15"/><stop offset="100%" stop-color="#F0322D" stop-opacity="0"/></radialGradient><linearGradient id="sll" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FF6A5E"/><stop offset="55%" stop-color="#F0322D"/><stop offset="100%" stop-color="#C5201A"/></linearGradient></defs><rect x="7" y="14" width="10" height="36" rx="3" fill="currentColor"/><rect x="21" y="23" width="10" height="27" rx="3" fill="currentColor"/><rect x="35" y="32" width="10" height="18" rx="3" fill="currentColor"/><circle cx="54" cy="43.5" r="19" fill="url(#slg)"/><rect x="48" y="37" width="12" height="13" rx="4" fill="url(#sll)"/><rect x="50.5" y="40.2" width="7" height="1.9" rx=".95" fill="#FFD9D4" opacity=".95"/><rect x="50.5" y="43.6" width="7" height="1.9" rx=".95" fill="#FFC9C2" opacity=".75"/></svg>SCHLUSSLICHT</a>
+<a class="brand" href="index.html"><svg aria-hidden="true" class="logo-mark" viewbox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><defs><radialgradient cx="50%" cy="50%" id="slg" r="50%"><stop offset="0%" stop-color="#F0322D" stop-opacity=".65"></stop><stop offset="70%" stop-color="#F0322D" stop-opacity=".15"></stop><stop offset="100%" stop-color="#F0322D" stop-opacity="0"></stop></radialgradient><lineargradient id="sll" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#FF6A5E"></stop><stop offset="55%" stop-color="#F0322D"></stop><stop offset="100%" stop-color="#C5201A"></stop></lineargradient></defs><rect fill="currentColor" height="36" rx="3" width="10" x="7" y="14"></rect><rect fill="currentColor" height="27" rx="3" width="10" x="21" y="23"></rect><rect fill="currentColor" height="18" rx="3" width="10" x="35" y="32"></rect><circle cx="54" cy="43.5" fill="url(#slg)" r="19"></circle><rect fill="url(#sll)" height="13" rx="4" width="12" x="48" y="37"></rect><rect fill="#FFD9D4" height="1.9" opacity=".95" rx=".95" width="7" x="50.5" y="40.2"></rect><rect fill="#FFC9C2" height="1.9" opacity=".75" rx=".95" width="7" x="50.5" y="43.6"></rect></svg>SCHLUSSLICHT</a>
 <button aria-expanded="false" aria-label="Menü" class="menu-btn" id="menuBtn">☰</button>
 <ul class="nav-links" id="navLinks">
 <li><a href="index.html#stories">Hintergrund</a></li>
-<li><a href="index.html#rubriken">8 Rubriken</a></li>
+<li><a href="index.html#rubriken">3 Rubriken</a></li>
 <li><a href="index.html#manifest">Manifest</a></li>
 <li><a href="index.html#impressum">Impressum</a></li>
 <li><a class="mfb" href="insights.html">Insights →</a></li>
@@ -332,7 +335,7 @@
         In den Zulassungsstudien bot die nur halbjährliche Injektion einen nahezu vollständigen Schutz
         vor einer Ansteckung – ein Wendepunkt für die Prävention.</p>
 <span class="src" id="gn1-src">Quelle: <a href="https://www.unaids.org/en/resources/presscentre/pressreleaseandstatementarchive/2025/july/20250714_PS_WHO_Lenacapavir_Guidelines" rel="noopener" target="_blank">WHO / UNAIDS</a> · 14. Juli 2025</span>
-</article>
+<button class="story-more" onclick="openModal('vstory1')">Zum Hintergrund →</button></article>
 <article class="gn" id="gn2">
 <span class="dom" id="gn2-dom">Klima &amp; Energie <span class="badge" id="gn2-badge">Welt</span></span>
 <span aria-hidden="true" class="ico" id="gn2-icon">☀️</span>
@@ -341,7 +344,7 @@
         davon rund 605 GW Solar. Der Zuwachs an Solarstrom war der größte je gemessene Anstieg einer
         einzigen Stromquelle in einem Jahr. Erneuerbare wachsen jetzt schneller als die Kohle.</p>
 <span class="src" id="gn2-src">Quelle: <a href="https://www.iea.org/reports/global-energy-review-2026/technology-solar-pv-and-wind" rel="noopener" target="_blank">IEA, Global Energy Review 2026</a> · April 2026</span>
-</article>
+<button class="story-more" onclick="openModal('vstory2')">Zum Hintergrund →</button></article>
 <article class="gn" id="gn3">
 <span class="dom" id="gn3-dom">Klima &amp; Energie <span class="badge" id="gn3-badge">Deutschland</span></span>
 <span aria-hidden="true" class="ico" id="gn3-icon">🔌</span>
@@ -350,78 +353,16 @@
         ersten Quartal 2026 waren es bereits 53 Prozent, fast sechs Punkte mehr als im Vorjahr,
         getragen vor allem von deutlich mehr Windstrom.</p>
 <span class="src" id="gn3-src">Quelle: <a href="https://www.bdew.de/presse/erneuerbare-decken-53-prozent-des-stromverbrauchs-im-1-quartal-2026/" rel="noopener" target="_blank">BDEW / ZSW</a> · 1. April 2026</span>
-</article>
-<article class="gn" id="gn4">
-<span class="dom" id="gn4-dom">Natur &amp; Artenschutz <span class="badge" id="gn4-badge">Europa</span></span>
-<span aria-hidden="true" class="ico" id="gn4-icon">🐾</span>
-<h3 id="gn4-title">Der Iberische Luchs ist zurück von der Schwelle</h3>
-<p id="gn4-text">Jahrzehntelanger Schutz wirkt: Die IUCN stufte den Iberischen Luchs von „stark gefährdet"
-        auf „gefährdet" herab. Eine der bemerkenswertesten Erholungen einer Großkatze – von wenigen
-        Hundert Tieren zurück zu stabilen, wachsenden Beständen.</p>
-<span class="src" id="gn4-src">Quelle: <a href="https://www.iucnredlist.org/news" rel="noopener" target="_blank">IUCN Red List</a> · 2025</span>
-</article>
-<article class="gn" id="gn5">
-<span class="dom" id="gn5-dom">Natur &amp; Artenschutz <span class="badge" id="gn5-badge">Welt</span></span>
-<span aria-hidden="true" class="ico" id="gn5-icon">🐢</span>
-<h3 id="gn5-title">Grüne Meeresschildkröten erholen sich global</h3>
-<p id="gn5-text">Im jüngsten Update der IUCN Red List zählt die Grüne Meeresschildkröte zu den Gewinnern:
-        Ihre Bestände wachsen wieder – das Ergebnis von Strandschutz, besserem Fischereimanagement und
-        jahrzehntelanger internationaler Zusammenarbeit.</p>
-<span class="src" id="gn5-src">Quelle: <a href="https://www.iucnredlist.org/news" rel="noopener" target="_blank">IUCN Red List 2025-2</a> · 2025</span>
-</article>
-<article class="gn" id="gn6">
-<span class="dom" id="gn6-dom">Gesellschaft <span class="badge" id="gn6-badge">Welt</span></span>
-<span aria-hidden="true" class="ico" id="gn6-icon">🌍</span>
-<h3 id="gn6-title">Kindersterblichkeit seit 2000 mehr als halbiert</h3>
-<p id="gn6-text">Eine der größten, stillen Erfolgsgeschichten der Menschheit: Die weltweite Sterblichkeit
-        von Kindern unter fünf Jahren hat sich seit dem Jahr 2000 mehr als halbiert – dank Impfungen,
-        sauberem Wasser und besserer Gesundheitsversorgung.</p>
-<span class="src" id="gn6-src">Quelle: <a href="https://childmortality.org/" rel="noopener" target="_blank">UN IGME</a> · <a href="https://ourworldindata.org/child-mortality" rel="noopener" target="_blank">Our World in Data</a></span>
-</article>
-<article class="gn" id="gn7">
-<span class="dom" id="gn7-dom">Technik &amp; Energie <span class="badge" id="gn7-badge">Welt</span></span>
-<span aria-hidden="true" class="ico" id="gn7-icon">🔋</span>
-<h3 id="gn7-title">Batteriespeicher sind die am schnellsten wachsende Technik</h3>
-<p id="gn7-text">Stromspeicher waren 2025 die am schnellsten wachsende Kraftwerkstechnologie: Die jährlich
-        neu installierte Leistung stieg um rund 40 Prozent auf fast 110 GW – mehr als der bisherige
-        Jahresrekord beim Erdgas. Damit wird grüner Strom planbarer.</p>
-<span class="src" id="gn7-src">Quelle: <a href="https://www.iea.org/reports/global-energy-review-2026" rel="noopener" target="_blank">IEA, Global Energy Review 2026</a> · April 2026</span>
-</article>
+<button class="story-more" onclick="openModal('vstory3')">Zum Hintergrund →</button></article>
+
+
+
+
 </div>
 </div>
 </section>
 <!-- BACKGROUND -->
-<section class="section" style="padding-top:0;">
-<div class="wrap">
-<div class="sec-head">
-<h2>Die Geschichte hinter der guten Nachricht</h2>
-<span class="meta">3 Hintergründe</span>
-</div>
-<div class="stories-grid">
-<button class="story" onclick="openModal('vstory1')">
-<span class="scat" id="vs1-cat">Gesundheit · Afrika</span>
-<h3 id="vs1-title">Wie eine Impfung beginnt, Malaria zu schlagen</h3>
-<p id="vs1-teaser">Über Jahrzehnte galt eine Malaria-Impfung als unmöglich. Jetzt rettet sie messbar
-        Kinderleben – und 25 Länder ziehen nach.</p>
-<span class="more">Zum Hintergrund →</span>
-</button>
-<button class="story" onclick="openModal('vstory2')">
-<span class="scat" id="vs2-cat">Klima &amp; Energie · weltweit</span>
-<h3 id="vs2-title">2025 – das Jahr, in dem die Sonne die Kohle überholte</h3>
-<p id="vs2-teaser">Zum 23. Mal in Folge ein Rekord beim Erneuerbaren-Ausbau. Warum 2025 ein echter Wendepunkt
-        war – und woran es jetzt liegt.</p>
-<span class="more">Zum Hintergrund →</span>
-</button>
-<button class="story" onclick="openModal('vstory3')">
-<span class="scat" id="vs3-cat">Natur · Spanien &amp; Portugal</span>
-<h3 id="vs3-title">Der Luchs, der zurückkam</h3>
-<p id="vs3-teaser">Vor zwanzig Jahren fast ausgestorben, heute wieder im Aufwind: die Geschichte einer
-        Artenrettung, die zeigt, dass Schutz funktioniert.</p>
-<span class="more">Zum Hintergrund →</span>
-</button>
-</div>
-</div>
-</section>
+
 <!-- TRANSPARENZ -->
 <section class="section" id="transparenz" style="padding-top:0;">
 <div class="wrap">
@@ -463,7 +404,7 @@
 <span class="fbrand">SCHLUSSLICHT.DE</span>
 <ul>
 <li><a href="index.html">Startseite</a></li>
-<li><a href="index.html#rubriken">8 Rubriken</a></li>
+<li><a href="index.html#rubriken">3 Rubriken</a></li>
 <li><a class="mfb" href="insights.html">Insights →</a></li>
 <li><a class="vis" href="brightside.html">Brightside ☀</a></li>
 <li><a class="ncf" href="nonconformist.html">Nonconformist</a></li>

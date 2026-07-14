@@ -10,8 +10,9 @@ Ablauf:
   1. Liest die Vorlage  brightside.template.html.
   2. Recherchiert per OpenRouter-API (perplexity/sonar, eingebaute Websuche)
      a) ein Spotlight ("Heute im Licht"),
-     b) 7 kurze, belegte gute Nachrichten aus unterschiedlichen Bereichen,
-     c) 3 Hintergrundgeschichten mit Fakten und Einordnung.
+     b) 3 kurze, belegte gute Nachrichten aus unterschiedlichen Bereichen,
+     c) je Nachricht eine eingebettete Hintergrundgeschichte mit Fakten und
+        Einordnung (zum selben Thema, nicht unabhängig davon).
   3. Baut die Inhalte fest in das HTML ein und schreibt  brightside.html.
 
 WICHTIG zur Sorgfaltspflicht: Diese Seite behandelt Gesundheits-/Wissenschafts-
@@ -262,57 +263,78 @@ Liefere GENAU dieses JSON-Schema:
     return (result or {}).get("good_news", [])
 
 
-def get_background_stories(date_label: str):
-    log("  Hole Hintergrundstorys …")
-    system = f"Du bist Redakteur der Rubrik 'Visionen' auf schlusslicht.de.\n\n{_GEMEINSAME_REGELN}"
-    prompt = f"""Finde 3 positive Entwicklungen mit ausreichend Tiefe für Hintergrundstorys, Ausgabe {date_label}.
+def get_background_stories(date_label: str, good_news: list):
+    """Schreibt für JEDES der (jetzt 3) Good-News-Elemente eine EINGEBETTETE
+    Hintergrundstory zum selben Thema (statt 3 unabhängig recherchierter
+    Storys zu beliebigen anderen Themen). Rückgabe ist ein dict, das den
+    1-basierten Index des Good-News-Elements auf seine Story abbildet, damit
+    inject() Story und Kachel 1:1 zusammenhalten kann."""
+    anchors = {
+        i: item for i, item in enumerate(good_news, start=1)
+        if item and item.get("title")
+    }
+    if not anchors:
+        log("  Keine Good-News-Elemente vorhanden — keine Hintergrundstorys möglich.")
+        return {}
 
-Liefere GENAU dieses JSON-Schema:
+    log(f"  Hole {len(anchors)} eingebettete Hintergrundstorys (je Meldung) …")
+    system = f"Du bist Redakteur der Rubrik 'Visionen' auf schlusslicht.de.\n\n{_GEMEINSAME_REGELN}"
+
+    zeilen = "\n".join(
+        f'{i}: "{item.get("title", "")}" — {BeautifulSoup(item.get("body_html", ""), "html.parser").get_text()}'
+        for i, item in anchors.items()
+    )
+    prompt = f"""Vertiefe JEDE der folgenden {len(anchors)} guten Nachrichten zu einer eigenen
+Hintergrundstory ZUM SELBEN THEMA (nicht zu einem anderen Bereich), Ausgabe {date_label}.
+Nutze die Websuche, um über die kurze Meldung hinaus mehr Kontext, Zahlen und Einordnung zu finden.
+
+Heutige Meldungen:
+{zeilen}
+
+Antworte AUSSCHLIESSLICH mit gültigem JSON, mit genau den Indizes oben als Schlüssel:
 {{
-  "stories": [
-    {{
-      "teaser_cat": "Bereich · Region",
-      "teaser_title": "Kurztitel für die Vorschau-Kachel",
-      "teaser_text": "1-2 Sätze Teaser",
-      "modal_cat": "Bereich · Region · Jahr",
-      "modal_title": "Ausführlicherer Titel",
-      "lead": "1-2 Sätze Einstieg",
-      "intro_html": "1 Absatz HTML mit Kontext/Hintergrund",
-      "facts": ["Fakt 1 mit Zahl", "Fakt 2 mit Zahl", "Fakt 3 mit Zahl"],
-      "einordnung_html": "1 Absatz ehrliche Einordnung inkl. Grenzen/offener Fragen",
-      "sources": [
-        {{"name": "Name der echten Organisation", "url": "https://echte-url, die exakt zu name passt", "date": "Datum"}}
-      ]
-    }}
-    // genau 3 Einträge, thematisch unterschiedlich
-  ]
+  "1": {{
+    "modal_cat": "Bereich · Region · Jahr",
+    "modal_title": "Ausführlicherer Titel",
+    "lead": "1-2 Sätze Einstieg",
+    "intro_html": "1 Absatz HTML mit Kontext/Hintergrund",
+    "facts": ["Fakt 1 mit Zahl", "Fakt 2 mit Zahl", "Fakt 3 mit Zahl"],
+    "einordnung_html": "1 Absatz ehrliche Einordnung inkl. Grenzen/offener Fragen",
+    "sources": [
+      {{"name": "Name der echten Organisation", "url": "https://echte-url, die exakt zu name passt", "date": "Datum"}}
+    ]
+  }},
+  ... für jede der {len(anchors)} Meldungen ein Eintrag ...
 }}"""
-    result = extract_json(call_api(system, prompt, max_tokens=3000))
-    return (result or {}).get("stories", [])
+    data = extract_json(call_api(system, prompt, max_tokens=4000)) or {}
+    stories = {}
+    for i in anchors:
+        st = data.get(str(i))
+        if isinstance(st, dict):
+            stories[i] = st
+        else:
+            log(f"  Meldung {i}: keine verwertbare Story-Antwort erhalten — übersprungen.")
+    return stories
 
 
 def get_visionen_content(date_label: str):
-    log("Recherchiere positive, belegte Nachrichten für brightside.html (in Gruppen) …")
+    log("Recherchiere positive, belegte Nachrichten für brightside.html …")
 
     spotlight = get_spotlight(date_label)
 
-    log("  Hole Good-News-Gruppe 1/2 …")
-    gruppe1 = get_good_news_batch(
-        date_label, 4, "Gesundheit, Klima & Energie, Natur & Artenschutz", []
-    )
-    bereits_verwendet = [it.get("source_url", "") for it in gruppe1 if it.get("source_url")]
-
-    log("  Hole Good-News-Gruppe 2/2 …")
-    gruppe2 = get_good_news_batch(
-        date_label, 3, "Gesellschaft, Wissenschaft & Technik, Bildung", bereits_verwendet
+    log("  Hole Good News (3, mit gemischten Themenbereichen) …")
+    good_news = get_good_news_batch(
+        date_label, 3,
+        "Gesundheit, Klima & Energie, Natur & Artenschutz, Gesellschaft, Wissenschaft & Technik",
+        [],
     )
 
-    stories = get_background_stories(date_label)
+    stories = get_background_stories(date_label, good_news)
 
     data = {
         "stand_date": date_label,
         "spotlight": spotlight,
-        "good_news": gruppe1 + gruppe2,
+        "good_news": good_news,
         "stories": stories,
     }
 
@@ -378,25 +400,25 @@ def verify_visionen_sources(data: dict) -> dict:
             verifizierte_news.append(item)
     data["good_news"] = verifizierte_news
 
-    verifizierte_storys = []
-    for st in data.get("stories", []):
+    verifizierte_storys = {}
+    for i, st in (data.get("stories") or {}).items():
         if not isinstance(st, dict):
             log("  Ungültiger Story-Eintrag (kein Objekt) — übersprungen.")
             continue
         quellen_ok = [
             s for s in (st.get("sources") or [])
-            if url_ok(s.get("url"), f"Story {st.get('teaser_title', '(ohne Titel)')!r}")
+            if url_ok(s.get("url"), f"Story zu Meldung {i} ({st.get('modal_title', '(ohne Titel)')!r})")
         ]
         if not quellen_ok:
-            log(f"  Story {st.get('teaser_title', '(ohne Titel)')!r}: keine "
+            log(f"  Story zu Meldung {i} ({st.get('modal_title', '(ohne Titel)')!r}): keine "
                 f"einzige gültige Quelle — komplett verworfen.")
             continue
         st["sources"] = quellen_ok
-        verifizierte_storys.append(st)
+        verifizierte_storys[i] = st
     data["stories"] = verifizierte_storys
 
     log(f"  Ergebnis: Spotlight {'OK' if data.get('spotlight') else 'verworfen'}, "
-        f"{len(data['good_news'])}/7 Meldungen, {len(data['stories'])}/3 Storys verifiziert.")
+        f"{len(data['good_news'])}/3 Meldungen, {len(data['stories'])}/3 Storys verifiziert.")
     return data
 
 
@@ -443,7 +465,7 @@ def inject(html: str, data, date_label: str, build_time: str) -> str:
     set_text(soup.select_one("#spotStand"), ("As of: " if LANG == "en" else "Stand: ") + date_label)
 
     # ── Good-News-Grid ───────────────────────────────────────────────────────
-    for i, item in enumerate(data.get("good_news", [])[:7], start=1):
+    for i, item in enumerate(data.get("good_news", [])[:3], start=1):
         set_text(soup.select_one(f"#gn{i}-dom"), item.get("domain"))
         set_text(soup.select_one(f"#gn{i}-badge"), item.get("badge"))
         icon = soup.select_one(f"#gn{i}-icon")
@@ -457,12 +479,8 @@ def inject(html: str, data, date_label: str, build_time: str) -> str:
             make_source_html(item.get("source_name"), item.get("source_url"), item.get("source_date")),
         )
 
-    # ── Hintergrundgeschichten ───────────────────────────────────────────────
-    for i, st in enumerate(data.get("stories", [])[:3], start=1):
-        set_text(soup.select_one(f"#vs{i}-cat"), st.get("teaser_cat"))
-        set_text(soup.select_one(f"#vs{i}-title"), st.get("teaser_title"))
-        set_text(soup.select_one(f"#vs{i}-teaser"), st.get("teaser_text"))
-
+    # ── Eingebettete Hintergrundgeschichten (je Meldung ihre eigene) ─────────
+    for i, st in (data.get("stories") or {}).items():
         set_text(soup.select_one(f"#vs{i}-modal-cat"), st.get("modal_cat"))
         set_text(soup.select_one(f"#vs{i}-modal-title"), st.get("modal_title"))
         set_text(soup.select_one(f"#vs{i}-lead"), st.get("lead"))

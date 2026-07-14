@@ -3,7 +3,7 @@
 """
 generate_ncf.py — Tägliche Aktualisierung der Nonconformist-Seite.
 
-Erzeugt 5 philosophisch-linke Meinungsessays (DE oder EN via SL_LANG=en).
+Erzeugt 3 philosophisch-linke Meinungsessays (DE oder EN via SL_LANG=en).
 Enthält dieselben Schutzebenen wie die anderen Generatoren:
   - Vierstufige Sprach-Durchsetzung inkl. Sprach-Schranke im EN-Modus
   - Juristische Leitplanken im Prompt (keine Personen/Firmen, keine Aufrufe)
@@ -37,7 +37,7 @@ MONATE = (
      "August", "September", "Oktober", "November", "Dezember"]
 )
 
-N_ESSAYS = 5
+N_ESSAYS = 3
 
 # Themenpool: rein philosophisch/strukturell, rotiert nach Kalendertag
 THEMENPOOL = [
@@ -279,8 +279,13 @@ def main() -> int:
     log(f"Nonconformist-Ausgabe ({LANG}): {date_label}")
     log(f"Verwende Vorlage: {TEMPLATE}")
 
-    # Themenrotation: 5 Themen je Tag, deterministisch
-    start = today.toordinal() * 5
+    # Themenrotation: N_ESSAYS Themen je Tag, deterministisch. WICHTIG: die
+    # Schrittweite MUSS mit N_ESSAYS mitgehen (vorher hart auf 5 codiert) —
+    # sonst können Schrittweite und Poolgröße einen gemeinsamen Teiler > 1
+    # haben, was zu einem viel zu kurzen Wiederholungszyklus führt (z.B.
+    # Schritt 5 auf Pool 20 ergab nur alle 4 Tage denselben Themensatz).
+    # ggT(3, 20) = 1 -> voller Zyklus über alle 20 Tage, keine Wiederholung.
+    start = today.toordinal() * N_ESSAYS
     themen = [THEMENPOOL[(start + i) % len(THEMENPOOL)] for i in range(N_ESSAYS)]
     log("Themen heute: " + " · ".join(themen))
 
