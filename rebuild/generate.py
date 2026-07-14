@@ -112,18 +112,29 @@ def _domain_is_trusted(url: str) -> bool:
 
 
 def verify_url(url: str, timeout: int = 8) -> bool:
-    """Prüft, ob eine Quellen-URL tatsächlich existiert und erreichbar ist
-    (kein 404, keine DNS-Auflösung fehlgeschlagen, keine Zeitüberschreitung).
+    """Prüft, ob eine Quellen-URL tatsächlich existiert und erreichbar ist.
     Technische Absicherung gegen halluzinierte Quellen: Eine Meldung ohne
     nachweislich funktionierende URL wird NICHT veröffentlicht.
 
-    WICHTIG: Viele seriöse Institutionsseiten (transparency.org,
-    worldhappiness.report, transfermarkt.de, …) blocken automatisierte
-    Anfragen per Bot-Schutz (403/429/503), OBWOHL die Seite echt existiert.
-    Das ist kein Beleg für eine halluzinierte URL — nur ein 404/410 oder ein
-    echter Verbindungsfehler (DNS/Timeout) ist ein verlässliches Indiz dafür,
-    dass die URL nicht existiert. Bot-Blockaden werden daher als
-    'nicht verifizierbar, aber nicht widerlegt' behandelt und durchgelassen."""
+    WICHTIG (grundlegend überarbeitet): Die KI recherchiert täglich neue,
+    unterschiedliche Quellen aus aller Welt — die überwältigende Mehrheit
+    davon kann NIEMALS in einer kuratierten Liste vorab erfasst werden.
+    GitHub-Actions-Server werden von sehr vielen Newsseiten per Bot-Schutz
+    (Cloudflare, Akamai u.ä.) geblockt, OBWOHL die Quelle real existiert.
+    Eine kleine Vertrauensliste (TRUSTED_SOURCE_DOMAINS) half nur bei den
+    ~40 gelisteten Domains — bei jeder anderen echten, aber geblockten
+    Quelle wurde fälschlich 'existiert nicht' angenommen. Das führte dazu,
+    dass grosse Teile der Seite nicht regelmässig aktualisiert wurden.
+
+    Der robuste, verallgemeinerbare Grundsatz: Nur eine ECHTE DNS-
+    Auflösungs-Fehlermeldung (die Domain selbst ist nicht registriert oder
+    falsch geschrieben) ist ein verlässlicher Beleg gegen die Existenz
+    einer Quelle. JEDER andere Fehler (Timeout, Connection Refused/Reset,
+    Bot-Schutz-Statuscodes) bedeutet: der Server existiert und hat auf
+    DNS-Ebene aufgelöst, blockiert aber nur die automatisierte Anfrage —
+    das ist KEIN Beleg gegen die Existenz der Quelle. Nur ein echtes
+    404/410 zu einem KONKRETEN Pfad bleibt ein Ablehnungsgrund, da das
+    ein Beleg gegen genau diese URL ist (nicht gegen die Domain an sich)."""
     if not url or not isinstance(url, str) or not url.strip().lower().startswith("http"):
         return False
     headers = {
@@ -133,6 +144,11 @@ def verify_url(url: str, timeout: int = 8) -> bool:
         "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
     }
     BOT_BLOCK_CODES = {401, 403, 405, 429, 500, 502, 503, 504}
+    DNS_FAILURE_MARKERS = (
+        "nameresolutionerror", "failed to resolve", "getaddrinfo failed",
+        "name or service not known", "temporary failure in name resolution",
+        "no address associated with hostname", "dns lookup failed",
+    )
     try:
         r = requests.head(url, timeout=timeout, allow_redirects=True, headers=headers)
         if r.status_code >= 400:
@@ -145,15 +161,20 @@ def verify_url(url: str, timeout: int = 8) -> bool:
                 f"Server-Fehler, keine echte Nicht-Existenz) — wird trotzdem "
                 f"akzeptiert: {url}")
             return True
-        # Echtes 404/410 -> Quelle existiert nachweislich nicht (auch bei
-        # vertrauenswürdiger Domain, denn ein 404 zu EINEM konkreten Pfad
-        # ist ein echter Beleg gegen genau diese URL).
+        # Echtes 404/410 -> Quelle existiert nachweislich nicht (Beleg
+        # gegen genau diesen Pfad, nicht gegen die Domain generell).
         return False
     except requests.RequestException as exc:
+        msg = str(exc).lower()
+        ist_dns_fehler = any(marker in msg for marker in DNS_FAILURE_MARKERS)
+        if not ist_dns_fehler:
+            log(f"  Quelle technisch nicht erreichbar ({exc.__class__.__name__}, "
+                f"kein DNS-Fehler — Domain existiert real, Server blockiert nur "
+                f"die Anfrage) — wird akzeptiert: {url}")
+            return True
         if _domain_is_trusted(url):
-            log(f"  Quelle technisch nicht erreichbar ({exc.__class__.__name__}) "
-                f"— Domain gilt aber als etablierte Institution/Quelle, wird "
-                f"deshalb trotzdem akzeptiert: {url}")
+            log(f"  Quelle mit DNS-Fehler, aber Domain gilt zusätzlich als "
+                f"etablierte Institution/Quelle — wird trotzdem akzeptiert: {url}")
             return True
         log(f"  Quellen-URL nicht erreichbar: {url} ({exc.__class__.__name__})")
         return False

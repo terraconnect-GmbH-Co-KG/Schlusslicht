@@ -86,14 +86,17 @@ def _domain_is_trusted(url: str) -> bool:
 
 def verify_url(url: str, timeout: int = 8) -> bool:
     """Prüft, ob eine Quellen-URL tatsächlich existiert und erreichbar ist.
-    Technische Absicherung gegen halluzinierte Quellen — siehe generate.py.
+    Technische Absicherung gegen halluzinierte Quellen — siehe generate.py
+    für die ausführliche Begründung.
 
-    WICHTIG (identischer Fix wie in generate.py): Viele seriöse Seiten
-    (transparency.org, worldhappiness.report, transfermarkt.de, …) blocken
-    automatisierte Anfragen per Bot-Schutz (403/429/503), OBWOHL die Seite
-    echt existiert. Das ist kein Beleg für eine halluzinierte URL — nur ein
-    404/410 oder ein echter Verbindungsfehler gilt als verlässliches Indiz
-    dafür, dass die URL nicht existiert."""
+    WICHTIG (grundlegend überarbeitet, identisch zu generate.py): Nur eine
+    ECHTE DNS-Auflösungs-Fehlermeldung ist ein verlässlicher Beleg gegen
+    die Existenz einer Quelle. JEDER andere Fehler (Timeout, Connection
+    Refused/Reset, Bot-Schutz-Statuscodes) bedeutet: der Server existiert,
+    blockiert aber nur die automatisierte Anfrage — kein Beleg gegen die
+    Existenz. Eine kleine kuratierte Domain-Liste kann die Vielzahl echter,
+    täglich wechselnder Quellen aus aller Welt nicht abdecken; dieser
+    Grundsatz funktioniert dagegen für JEDE Domain."""
     if not url or not isinstance(url, str) or not url.strip().lower().startswith("http"):
         return False
     headers = {
@@ -103,6 +106,11 @@ def verify_url(url: str, timeout: int = 8) -> bool:
         "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
     }
     BOT_BLOCK_CODES = {401, 403, 405, 429, 500, 502, 503, 504}
+    DNS_FAILURE_MARKERS = (
+        "nameresolutionerror", "failed to resolve", "getaddrinfo failed",
+        "name or service not known", "temporary failure in name resolution",
+        "no address associated with hostname", "dns lookup failed",
+    )
     try:
         r = requests.head(url, timeout=timeout, allow_redirects=True, headers=headers)
         if r.status_code >= 400:
@@ -116,10 +124,16 @@ def verify_url(url: str, timeout: int = 8) -> bool:
             return True
         return False
     except requests.RequestException as exc:
+        msg = str(exc).lower()
+        ist_dns_fehler = any(marker in msg for marker in DNS_FAILURE_MARKERS)
+        if not ist_dns_fehler:
+            log(f"  Quelle technisch nicht erreichbar ({exc.__class__.__name__}, "
+                f"kein DNS-Fehler — Domain existiert real, Server blockiert nur "
+                f"die Anfrage) — wird akzeptiert: {url}")
+            return True
         if _domain_is_trusted(url):
-            log(f"  Quelle technisch nicht erreichbar ({exc.__class__.__name__}) "
-                f"— Domain gilt aber als etablierte Institution/Quelle, wird "
-                f"deshalb trotzdem akzeptiert: {url}")
+            log(f"  Quelle mit DNS-Fehler, aber Domain gilt zusätzlich als "
+                f"etablierte Institution/Quelle — wird trotzdem akzeptiert: {url}")
             return True
         log(f"  Quellen-URL nicht erreichbar: {url} ({exc.__class__.__name__})")
         return False
