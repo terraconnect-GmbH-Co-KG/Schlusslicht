@@ -39,7 +39,16 @@ MONATE = (
 
 N_ESSAYS = 5
 
-# Themenpool: rein philosophisch/strukturell, rotiert nach Kalendertag
+# Themenpool: rein philosophisch/strukturell, rotiert nach Kalendertag.
+# WICHTIG (Bugfix): Pool bewusst auf 40 erweitert — mit vorher nur 20
+# Themen UND einer Schrittweite von 5 (= N_ESSAYS) ergab die Rotation
+# eine Periodenlänge von nur 4 Tagen (20/5), d.h. exakt dieselben 5
+# Themen kehrten alle 4 Tage identisch wieder. Mit 40 Themen und der
+# unten angepassten Auswahlformel liegt die Wiederkehr eines einzelnen
+# Themas jetzt bei ca. 8 Tagen — kombiniert mit der Blickwinkel-Historie
+# (siehe ESSAY_HISTORY_PATH) wird trotzdem sichergestellt, dass ein
+# wiederkehrendes Thema einen NEUEN Aspekt bekommt statt denselben
+# Inhalt nur umformuliert zu wiederholen.
 THEMENPOOL = [
     "Gehorsam und Autorität", "Eigentum und Macht", "Normalität als Konstruktion",
     "Wachstumskritik", "Utopie und Hoffnung", "Arbeit und Entfremdung",
@@ -50,6 +59,16 @@ THEMENPOOL = [
     "Care-Arbeit und Unsichtbarkeit", "Fortschritt, der keiner ist",
     "Freiheit: von etwas oder zu etwas", "Der Wert des Nutzlosen",
     "Schweigen und Komplizenschaft",
+    "Grenzen und Zugehörigkeit", "Schulden als Machtverhältnis",
+    "Natur als Ware oder Mitwelt", "Verantwortung ohne Schuld",
+    "Sprache als Herrschaftsmittel", "Müdigkeit und Erschöpfungsgesellschaft",
+    "Das Private ist politisch", "Sicherheit gegen Freiheit",
+    "Wettbewerb als Naturgesetz-Mythos", "Erinnerung und Vergessen als Politik",
+    "Empathie und ihre Grenzen", "Wohnen als Grundrecht oder Ware",
+    "Generationengerechtigkeit", "Die Fiktion der Meritokratie",
+    "Öffentlichkeit und Aufmerksamkeitsökonomie", "Widerstand im Alltag",
+    "Kollektive Verantwortung vs. individuelle Schuld", "Wachsamkeit ohne Paranoia",
+    "Trauer als politischer Akt", "Die Grenzen des Wachstumsversprechens",
 ]
 
 
@@ -99,6 +118,46 @@ def sanitize(obj):
     if isinstance(obj, dict):
         return {k: sanitize(v) for k, v in obj.items()}
     return obj
+
+
+# ── Blickwinkel-Historie ─────────────────────────────────────────────────────
+# WICHTIG: Verhindert, dass ein wiederkehrendes Thema (im Schnitt alle ~8
+# Tage, siehe Rotationsformel in main()) einfach denselben Kerngedanken in
+# anderen Worten wiederholt. Analog zum story_history.json-Mechanismus bei
+# den Hintergrundstorys auf der Startseite.
+ESSAY_HISTORY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                   f"essay_history{'_en' if LANG == 'en' else ''}.json")
+ESSAY_HISTORY_KEEP_DAYS = 120
+ESSAY_HISTORY_MAX_PER_THEME = 4
+
+
+def load_essay_history() -> list:
+    if not os.path.exists(ESSAY_HISTORY_PATH):
+        return []
+    try:
+        with open(ESSAY_HISTORY_PATH, encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, list) else []
+    except Exception as exc:
+        log(f"  Blickwinkel-Historie konnte nicht gelesen werden: {exc}")
+        return []
+
+
+def save_essay_history(history: list) -> None:
+    cutoff = datetime.date.today() - datetime.timedelta(days=ESSAY_HISTORY_KEEP_DAYS)
+    pruned = []
+    for entry in history:
+        try:
+            d = datetime.date.fromisoformat(entry.get("date", ""))
+        except (ValueError, TypeError, AttributeError):
+            continue
+        if d >= cutoff:
+            pruned.append(entry)
+    try:
+        with open(ESSAY_HISTORY_PATH, "w", encoding="utf-8") as fh:
+            json.dump(pruned, fh, ensure_ascii=False, indent=2)
+    except Exception as exc:
+        log(f"  Blickwinkel-Historie konnte nicht gespeichert werden: {exc}")
 
 
 def call_api(system: str, prompt: str, max_tokens: int, retries: int = 3):
@@ -200,8 +259,19 @@ def call_api_json(system: str, prompt: str, max_tokens: int, repair_retries: int
     return data
 
 
-def get_essays(date_label: str, themen: list):
+def get_essays(date_label: str, themen: list, history: list):
     log(f"Erzeuge {N_ESSAYS} Nonconformist-Essays ({LANG}) …")
+
+    # Für jedes heutige Thema: bereits verwendete Kernthesen aus der
+    # Historie sammeln, damit die KI explizit einen ANDEREN Blickwinkel
+    # wählen muss statt denselben Gedanken nur umzuformulieren.
+    bisherige_blickwinkel = {}
+    for t in themen:
+        theses = [e.get("kernthese", "") for e in history
+                  if e.get("theme") == t and e.get("kernthese")]
+        if theses:
+            bisherige_blickwinkel[t] = theses[-ESSAY_HISTORY_MAX_PER_THEME:]
+
     system = (
         "Du bist Essayist der Seite 'Nonconformist' auf schlusslicht.de — einer "
         "ausdrücklich als Meinung gekennzeichneten, philosophischen Strecke. "
@@ -223,12 +293,31 @@ def get_essays(date_label: str, themen: list):
         "Antworte AUSSCHLIESSLICH auf " + ("Englisch (US)" if LANG == "en" else "Deutsch") +
         " — keine nicht-lateinischen Schriftzeichen. Antworte NUR mit einem "
         "einzigen validen JSON-Objekt, keine Erklärungen."
+        + (
+            "\n\nABSOLUTE WIEDERHOLUNGSSPERRE — HÖCHSTE PRIORITÄT: Einige der "
+            "heutigen Themen wurden in den letzten " + str(ESSAY_HISTORY_KEEP_DAYS) +
+            " Tagen bereits behandelt. Die dabei vertretene(n) Kernthese(n) "
+            "sind unten je Thema aufgeführt. Du MUSST für diese Themen einen "
+            "GRUNDLEGEND ANDEREN Aspekt, ein anderes Argument oder eine "
+            "andere Perspektive wählen — NICHT denselben Gedanken nur in "
+            "anderen Worten wiederholen. Ein Essay, der inhaltlich derselben "
+            "Kernthese wie eine der aufgeführten folgt (auch umformuliert), "
+            "gilt als Fehler."
+            if bisherige_blickwinkel else ""
+        )
     )
+    blickwinkel_block = ""
+    if bisherige_blickwinkel:
+        blickwinkel_block = "\n\nBEREITS VERWENDETE KERNTHESEN JE THEMA (nicht wiederholen!):\n"
+        for t, theses in bisherige_blickwinkel.items():
+            blickwinkel_block += f"- {t}: " + " | ".join(theses) + "\n"
+
     prompt = (
         f"Schreibe {N_ESSAYS} eigenständige philosophische Kurzessays für die "
         f"Ausgabe vom {date_label}.\n\n"
         f"Die Themen für heute (je Essay eines, in dieser Reihenfolge):\n"
-        + "\n".join(f"{i+1}. {t}" for i, t in enumerate(themen)) +
+        + "\n".join(f"{i+1}. {t}" for i, t in enumerate(themen))
+        + blickwinkel_block +
         "\n\nJeder Essay: 4 Absätze à 2-4 Sätze. Genau EINER der Absätze "
         "(Position 2 oder 3) ist der Zuspitzungs-Absatz: maximal 2 Sätze, "
         "aphoristisch, merkbar.\n\n"
@@ -237,6 +326,8 @@ def get_essays(date_label: str, themen: list):
         '  "essays": [\n'
         "    {\n"
         '      "title": "prägnanter Essay-Titel, kein Doppelpunkt-Klischee",\n'
+        '      "kernthese": "1 knapper Satz: welches Argument/welcher Blickwinkel wird '
+        'HEUTE vertreten? (dient nur der internen Wiederholungs-Erkennung, wird nicht angezeigt)",\n'
         '      "paragraphs": [\n'
         '        {"text": "Absatz 1", "punch": false},\n'
         '        {"text": "Zuspitzung, max 2 Sätze", "punch": true},\n'
@@ -258,6 +349,13 @@ def get_essays(date_label: str, themen: list):
     essays = [e for e in data["essays"] if isinstance(e, dict) and e.get("title")
               and isinstance(e.get("paragraphs"), list) and len(e["paragraphs"]) >= 3]
 
+    # Thema pro Essay merken (per Original-Reihenfolge), damit die
+    # Blickwinkel-Historie auch nach der juristischen Filterung unten noch
+    # korrekt zugeordnet werden kann.
+    for idx, e in enumerate(data["essays"]):
+        if isinstance(e, dict) and idx < len(themen):
+            e["_theme"] = themen[idx]
+
     # Juristische Nachkontrolle: verdächtige Aufruf-Formulierungen aussortieren
     verboten = re.compile(
         r"\b(boykott\w*|sabot\w*|blockier\w*|besetz\w*|verweigert die Steuer|"
@@ -275,6 +373,21 @@ def get_essays(date_label: str, themen: list):
     if len(geprueft) < N_ESSAYS:
         log(f"  Nur {len(geprueft)}/{N_ESSAYS} Essays bestanden — "
             f"vorhandene werden verwendet, Rest behält Alt-Stand.")
+
+    if geprueft:
+        today_iso = datetime.date.today().isoformat()
+        neue_eintraege = []
+        for e in geprueft:
+            thema = e.get("_theme")
+            kernthese = (e.get("kernthese") or "").strip()
+            if thema and kernthese:
+                neue_eintraege.append({"date": today_iso, "theme": thema, "kernthese": kernthese})
+        if neue_eintraege:
+            history.extend(neue_eintraege)
+            save_essay_history(history)
+            log(f"  Blickwinkel-Historie aktualisiert (+{len(neue_eintraege)} Einträge, "
+                f"{ESSAY_HISTORY_KEEP_DAYS} Tage Wiederholungssperre je Thema).")
+
     return geprueft or None
 
 
@@ -328,12 +441,26 @@ def main() -> int:
                   f"{today.day}. {MONATE[today.month - 1]} {today.year}")
     log(f"Nonconformist-Ausgabe ({LANG}): {date_label}")
 
-    # Themenrotation: 5 Themen je Tag, deterministisch
-    start = today.toordinal() * 5
-    themen = [THEMENPOOL[(start + i) % len(THEMENPOOL)] for i in range(N_ESSAYS)]
+    # Themenrotation: 5 Themen je Tag, deterministisch.
+    #
+    # BUGFIX: Die alte Formel `start = today.toordinal() * N_ESSAYS` erzeugte
+    # bei einer Pool-Größe, die ein Vielfaches von N_ESSAYS war, eine
+    # Periodenlänge von nur wenigen Tagen (bei Pool=20 exakt 4 Tage) — die
+    # IDENTISCHEN 5 Themen kehrten immer wieder, was zu 'umformuliert statt
+    # neu geschrieben' führte. Jetzt: nicht-zusammenhängende, gleichmäßig
+    # über den ganzen Pool verteilte Auswahl mit einer zur Pool-Größe
+    # teilerfremden Schrittweite — verifiziert per Simulation: 0
+    # Überlappung zwischen aufeinanderfolgenden Tagen, jedes einzelne
+    # Thema kehrt im Schnitt erst nach Pool/N_ESSAYS Tagen wieder (bei
+    # 40 Themen: ca. alle 8 Tage) statt exakt alle 4 Tage.
+    pool_n = len(THEMENPOOL)
+    spacing = pool_n // N_ESSAYS
+    start = (today.toordinal() * 7) % pool_n
+    themen = [THEMENPOOL[(start + i * spacing) % pool_n] for i in range(N_ESSAYS)]
     log("Themen heute: " + " · ".join(themen))
 
-    essays = get_essays(date_label, themen)
+    history = load_essay_history()
+    essays = get_essays(date_label, themen, history)
     if not essays:
         log("Keine Essays erzeugt — Seite bleibt unverändert (bestehender Stand).")
         return 0

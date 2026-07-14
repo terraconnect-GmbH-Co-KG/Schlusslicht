@@ -74,7 +74,7 @@ jobs:
         run: |
           git config user.name "schlusslicht-bot"
           git config user.email "burkhard.frie@terraconnect.de"
-          git add *.html rebuild/story_history.json 2>/dev/null || true
+          git add *.html rebuild/story_history.json rebuild/essay_history.json rebuild/essay_history_en.json 2>/dev/null || true
           git diff --staged --quiet || (
             git commit -m "Tagesausgabe $(date -u +'%d.%m.%Y')"
             git push
