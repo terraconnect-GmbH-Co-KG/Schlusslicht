@@ -1,5 +1,23 @@
 name: Tägliche Aktualisierung – schlusslicht.de
 
+# ─────────────────────────────────────────────────────────────────────────
+#  Baut die Seite jeden Morgen neu: recherchiert per OpenRouter-API + Websuche
+#  3 frisch recherchierte Schlusslicht-Meldungen (kein Themen-Pool, keine
+#  Rotation) samt eingebetteten Hintergrundstorys, schreibt sie fest in
+#  index.html, committet das Ergebnis und legt ein GitHub Release mit der
+#  fertigen index.html als Artifact an.
+#
+#  WICHTIG (Zuverlässigkeits-Fix): Vorher galt JEDER Lauf als Erfolg (grüner
+#  Workflow), auch wenn die echte KI-Generierung für ALLE Seiten fehlschlug
+#  und nur fallback_update.py stillschweigend das Datum aktualisiert hat —
+#  die Seite sah dadurch täglich "frisch" aus, obwohl der Inhalt tagelang
+#  identisch blieb, und niemand wurde benachrichtigt. Der Workflow prüft
+#  jetzt explizit, welche Seiten NUR den Datums-Fallback bekommen haben,
+#  lässt den Job in diesem Fall bewusst fehlschlagen (rote Anzeige + GitHubs
+#  Standard-Mailbenachrichtigung an Repo-Beobachter) und pflegt zusätzlich
+#  ein dauerhaft sichtbares GitHub Issue, solange der Zustand anhält.
+# ─────────────────────────────────────────────────────────────────────────
+
 on:
   schedule:
     - cron: '10 4 * * *'
@@ -7,6 +25,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 jobs:
   update:
@@ -22,27 +41,47 @@ jobs:
 
       - run: pip install --quiet requests beautifulsoup4
 
-      # Versuche ALLE Seiten mit API zu aktualisieren (DE + EN je einmal)
+      # Versuche ALLE Seiten mit API zu aktualisieren (DE + EN je einmal).
+      # `|| true` je Aufruf ist bewusst: EIN fehlschlagender Aufruf (z.B.
+      # Insights) soll die übrigen 7 nicht verhindern. Ob insgesamt etwas
+      # fehlgeschlagen ist, wird NICHT hier entschieden, sondern weiter
+      # unten anhand von `git diff` ehrlich geprüft (siehe Gesundheits-
+      # prüfung) — deshalb hat dieser Schritt selbst keine Continue-on-
+      # error-Maskierung mehr nötig, sein tatsächliches Ergebnis wird ja
+      # ohnehin überprüft.
       - name: Mit API aktualisieren (wenn verfügbar)
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
-          python rebuild/generate.py 2>&1 || true
-          SL_LANG=en python rebuild/generate.py 2>&1 || true
-          python rebuild/generate_visionen.py 2>&1 || true
-          SL_LANG=en python rebuild/generate_visionen.py 2>&1 || true
-          python rebuild/generate_mfb.py 2>&1 || true
-          SL_LANG=en python rebuild/generate_mfb.py 2>&1 || true
-          python rebuild/generate_ncf.py 2>&1 || true
-          SL_LANG=en python rebuild/generate_ncf.py 2>&1 || true
-        continue-on-error: true
+          python rebuild/generate.py 2>&1 || echo "::warning::generate.py (de) fehlgeschlagen"
+          SL_LANG=en python rebuild/generate.py 2>&1 || echo "::warning::generate.py (en) fehlgeschlagen"
+          python rebuild/generate_visionen.py 2>&1 || echo "::warning::generate_visionen.py (de) fehlgeschlagen"
+          SL_LANG=en python rebuild/generate_visionen.py 2>&1 || echo "::warning::generate_visionen.py (en) fehlgeschlagen"
+          python rebuild/generate_mfb.py 2>&1 || echo "::warning::generate_mfb.py (de) fehlgeschlagen"
+          SL_LANG=en python rebuild/generate_mfb.py 2>&1 || echo "::warning::generate_mfb.py (en) fehlgeschlagen"
+          python rebuild/generate_ncf.py 2>&1 || echo "::warning::generate_ncf.py (de) fehlgeschlagen"
+          SL_LANG=en python rebuild/generate_ncf.py 2>&1 || echo "::warning::generate_ncf.py (en) fehlgeschlagen"
+
+      # Stellt fest, welche Dateien die Hauptgenerierung TATSÄCHLICH
+      # verändert hat (git diff, noch vor dem Fallback-Schritt) — das ist
+      # die einzige ehrliche Quelle der Wahrheit, ob heute echt generiert
+      # wurde oder nicht. Wird sowohl vom Fallback-Schritt als auch von der
+      # Gesundheitsprüfung weiterverwendet.
+      - name: Erkenne echte vs. ausgefallene Aktualisierung
+        run: |
+          : > /tmp/schlusslicht_fallback_needed.txt
+          for file in index.html index.en.html brightside.html brightside.en.html insights.html insights.en.html nonconformist.html nonconformist.en.html; do
+            if git diff --quiet -- "$file"; then
+              echo "$file" >> /tmp/schlusslicht_fallback_needed.txt
+            fi
+          done
+          echo "Seiten ohne echte Aktualisierung heute:"
+          cat /tmp/schlusslicht_fallback_needed.txt
 
       # FALLBACK: Nur für Dateien, die die Hauptgenerierung NICHT bereits
-      # aktualisiert hat (git diff leer = unverändert). Ohne diese Prüfung
-      # würde fallback_update.py auch frisch generierte Seiten nochmal
-      # anfassen und das #update-time-Feld redundant/inkonsistent
-      # überschreiben (gleiche Stelle wird von generate.py UND
-      # fallback_update.py beschrieben).
+      # aktualisiert hat. Aktualisiert wenigstens das Datum, damit die Seite
+      # nicht mit einem sichtbar falschen "Stand: vorgestern" dasteht,
+      # während die Gesundheitsprüfung unten den eigentlichen Ausfall meldet.
       - name: Fallback — Aktualisiere Datum (nur für unveränderte Dateien)
         shell: bash
         run: |
@@ -56,27 +95,88 @@ jobs:
           LANG_FOR[nonconformist.html]=de
           LANG_FOR[nonconformist.en.html]=en
 
-          for file in "${!LANG_FOR[@]}"; do
-            if git diff --quiet -- "$file"; then
-              echo "$file: unveraendert durch Hauptgenerierung -> Fallback-Datum"
-              python rebuild/fallback_update.py "$file" "${LANG_FOR[$file]}" || true
-            else
-              echo "$file: bereits von Hauptgenerierung aktualisiert -> Fallback wird NICHT angewendet"
-            fi
-          done
+          while read -r file; do
+            [ -z "$file" ] && continue
+            echo "$file: unveraendert durch Hauptgenerierung -> Fallback-Datum"
+            python rebuild/fallback_update.py "$file" "${LANG_FOR[$file]}" || true
+          done < /tmp/schlusslicht_fallback_needed.txt
         continue-on-error: true
 
-      # Commit und Push — HTML-Seiten UND die Story-Historie
-      # (story_history.json MUSS committet werden, sonst geht die
-      # Wiederholungssperre bei jedem Lauf verloren, weil GitHub-Actions-
+      # Commit und Push — HTML-Seiten UND alle Historie-/Zustandsdateien
+      # (MÜSSEN committet werden, sonst gehen Wiederholungssperren und die
+      # Gesundheitshistorie bei jedem Lauf verloren, weil GitHub-Actions-
       # Runner ephemeral sind und nur der committete Repo-Stand bleibt)
       - name: Commit und Push
         run: |
           git config user.name "schlusslicht-bot"
           git config user.email "burkhard.frie@terraconnect.de"
-          git add *.html rebuild/story_history.json rebuild/essay_history.json rebuild/essay_history_en.json rebuild/insights_history.json rebuild/insights_history_en.json 2>/dev/null || true
+          git add *.html rebuild/story_history.json rebuild/essay_history.json rebuild/essay_history_en.json rebuild/insights_history.json rebuild/insights_history_en.json rebuild/health_status.json 2>/dev/null || true
           git diff --staged --quiet || (
             git commit -m "Tagesausgabe $(date -u +'%d.%m.%Y')"
             git push
           )
         continue-on-error: true
+
+      # Gesundheitsprüfung: zählt pro Seite consecutive Fallback-Tage,
+      # committet health_status.json separat (die Haupt-Commit-Stufe oben
+      # lief ja schon, bevor dieser Zähler berechnet ist).
+      - name: Gesundheitsprüfung berechnen
+        id: health
+        run: python rebuild/health_check.py
+        continue-on-error: true
+
+      - name: health_status.json committen
+        run: |
+          git config user.name "schlusslicht-bot"
+          git config user.email "burkhard.frie@terraconnect.de"
+          git add rebuild/health_status.json 2>/dev/null || true
+          git diff --staged --quiet || (
+            git commit -m "Gesundheitsstatus $(date -u +'%d.%m.%Y')"
+            git push
+          )
+        continue-on-error: true
+
+      # Bei Ausfall: dauerhaft sichtbares GitHub Issue anlegen/aktualisieren.
+      # Bei Wiederherstellung: das Issue automatisch schliessen. So verpasst
+      # niemand einen anhaltenden Ausfall, selbst wenn niemand aktiv in den
+      # Actions-Tab schaut — und es entsteht kein Spam bei jedem Lauf.
+      - name: GitHub Issue bei anhaltendem Ausfall verwalten
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create "automatisierung-ausfall" --color "d73a4a" \
+            --description "Echte Tagesaktualisierung ist ausgefallen (nur Datums-Fallback)" \
+            2>/dev/null || true
+          EXISTING=$(gh issue list --label "automatisierung-ausfall" --state open --json number --jq '.[0].number' || true)
+          if [ -s /tmp/schlusslicht_unhealthy.txt ]; then
+            BODY="Die folgenden Seiten wurden nicht mehr echt (KI-generiert) aktualisiert, sondern laufen nur noch auf dem Datums-Fallback:
+
+          $(cat /tmp/schlusslicht_unhealthy.txt)
+
+          Mögliche Ursachen: OPENROUTER_API_KEY abgelaufen/ungültig, Rate-Limit erreicht, Modell nicht mehr verfügbar, oder ein Fehler in der Recherche-/Verifikationslogik. Siehe Actions-Log dieses Laufs für die genaue Fehlermeldung je Seite.
+
+          Dieses Issue schliesst sich automatisch, sobald wieder alle Seiten echt aktualisiert werden."
+            if [ -n "$EXISTING" ]; then
+              gh issue comment "$EXISTING" --body "$BODY"
+            else
+              gh issue create --title "⚠️ Schlusslicht: echte Tagesaktualisierung ausgefallen" --body "$BODY" --label "automatisierung-ausfall"
+            fi
+          else
+            if [ -n "$EXISTING" ]; then
+              gh issue comment "$EXISTING" --body "Alle Seiten werden wieder echt aktualisiert. Schliesse dieses Issue."
+              gh issue close "$EXISTING"
+            fi
+          fi
+        continue-on-error: true
+
+      # Erst HIER entscheidet sich der sichtbare Erfolg/Misserfolg des
+      # gesamten Jobs — bewusst OHNE continue-on-error, damit ein
+      # anhaltender Ausfall den Workflow tatsächlich rot färbt und GitHubs
+      # Standard-Benachrichtigung an Repo-Beobachter auslöst.
+      - name: Job-Status anhand der Gesundheitsprüfung setzen
+        run: |
+          if [ -s /tmp/schlusslicht_unhealthy.txt ]; then
+            echo "FEHLER: mindestens eine Seite laeuft nur noch auf Fallback, siehe GitHub Issue."
+            exit 1
+          fi
+          echo "Alle Seiten wurden heute echt aktualisiert."
