@@ -388,9 +388,9 @@ def get_embedded_stories(date_label: str, good_news: list):
 
     system = f"Du bist Redakteur der Rubrik 'Visionen' auf schlusslicht.de.\n\n{_GEMEINSAME_REGELN}"
     zeilen = "\n".join(
-        f'{i}: "{item.get("title", "")}" — '
+        f'- "{item.get("title", "")}" — '
         f'{BeautifulSoup(item.get("body_html", ""), "html.parser").get_text()}'
-        for i, item in anchors.items()
+        for item in anchors.values()
     )
     prompt = f"""Vertiefe JEDE der folgenden {len(anchors)} guten Nachrichten zu einer eigenen
 Hintergrundstory ZUM SELBEN THEMA (nicht zu einem anderen Bereich), Ausgabe {date_label}.
@@ -398,25 +398,40 @@ Hintergrundstory ZUM SELBEN THEMA (nicht zu einem anderen Bereich), Ausgabe {dat
 Heutige Meldungen:
 {zeilen}
 
-Antworte AUSSCHLIESSLICH mit gültigem JSON, mit genau den Indizes oben als Schlüssel:
+Antworte AUSSCHLIESSLICH mit gültigem JSON:
 {{
-  "1": {{
-    "modal_cat": "Bereich · Region · Jahr",
-    "modal_title": "Ausführlicherer Titel",
-    "lead": "1-2 Sätze Einstieg",
-    "intro_html": "1 Absatz HTML mit Kontext/Hintergrund",
-    "facts": ["Fakt 1 mit Zahl", "Fakt 2 mit Zahl", "Fakt 3 mit Zahl"],
-    "einordnung_html": "1 Absatz ehrliche Einordnung inkl. Grenzen/offener Fragen",
-    "sources": [
-      {{"name": "Name der echten Organisation", "url": "https://echte-url, die exakt zu name passt", "date": "Datum"}}
-    ]
-  }},
-  ... für jede der {len(anchors)} Meldungen ein Eintrag ...
+  "stories": [
+    {{
+      "for_title": "MUSS exakt der Titel von oben sein, zu dem diese Story gehört",
+      "modal_cat": "Bereich · Region · Jahr",
+      "modal_title": "Ausführlicherer Titel",
+      "lead": "1-2 Sätze Einstieg",
+      "intro_html": "1 Absatz HTML mit Kontext/Hintergrund",
+      "facts": ["Fakt 1 mit Zahl", "Fakt 2 mit Zahl", "Fakt 3 mit Zahl"],
+      "einordnung_html": "1 Absatz ehrliche Einordnung inkl. Grenzen/offener Fragen",
+      "sources": [
+        {{"name": "Name der echten Organisation", "url": "https://echte-url, die exakt zu name passt", "date": "Datum"}}
+      ]
+    }}
+    // genau {len(anchors)} Einträge in dieser Liste, eine je Meldung
+  ]
 }}"""
+    # WICHTIG (Bugfix, siehe generate.py get_daily_items für die volle
+    # Begründung): Array-Schema statt eines Objekts mit rein numerischen
+    # Schlüsseln ("1", "2", "3") — manche Modellantworten lieferten solche
+    # Schlüssel ohne Anführungszeichen (ungültiges JSON), wodurch die
+    # komplette Story-Recherche zuverlässig scheiterte, während die
+    # (Array-basierte) Good-News-Recherche im selben Lauf normal weiterlief.
     result = call_api_json(system, prompt, max_tokens=4000) or {}
+    story_list = result.get("stories") if isinstance(result.get("stories"), list) else []
+    stories_by_title = {
+        st["for_title"].strip().lower(): st
+        for st in story_list
+        if isinstance(st, dict) and st.get("for_title")
+    }
     stories = {}
-    for i in anchors:
-        st = result.get(str(i))
+    for i, item in anchors.items():
+        st = stories_by_title.get((item.get("title") or "").strip().lower())
         if isinstance(st, dict):
             stories[i] = st
     return stories

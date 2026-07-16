@@ -605,7 +605,7 @@ def review_and_rewrite_columns(columns: list, date_label: str) -> list:
             continue
         paras = [p.get("text", "") for p in col.get("paragraphs", []) if isinstance(p, dict)]
         if col.get("title") and paras:
-            pruefbar[str(i)] = {"title": col["title"], "paragraphs": paras}
+            pruefbar[f"col{i}"] = {"title": col["title"], "paragraphs": paras}
 
     if not pruefbar:
         return columns
@@ -633,16 +633,16 @@ def review_and_rewrite_columns(columns: list, date_label: str) -> list:
         "'_neu'-Felder weg, wenn der Text bereits gut ist.\n\n"
         "WENN INHALTLICH KAPUTT: gib 'ok': false mit kurzer 'grund'-Angabe zurück.\n\n"
         f"Kolumnen:\n{json.dumps(pruefbar, ensure_ascii=False, indent=2)}\n\n"
-        "Antworte als JSON, z.B.:\n"
-        '{"0": {"ok": true}, "1": {"ok": true, "title_neu": "...", '
-        '"paragraphs_neu": ["...", "...", "...", "..."]}, "2": {"ok": false, "grund": "..."}}'
+        "Antworte als JSON, mit genau denselben Schlüsseln wie oben (z.B. 'col0'):\n"
+        '{"col0": {"ok": true}, "col1": {"ok": true, "title_neu": "...", '
+        '"paragraphs_neu": ["...", "...", "...", "..."]}, "col2": {"ok": false, "grund": "..."}}'
     )
     urteil = call_api_json(system, prompt, max_tokens=4000) or {}
 
     for i, col in enumerate(columns):
-        if not isinstance(col, dict) or str(i) not in urteil:
+        if not isinstance(col, dict) or f"col{i}" not in urteil:
             continue
-        bewertung = urteil[str(i)]
+        bewertung = urteil[f"col{i}"]
         if bewertung.get("ok") is False:
             log(f"  Kolumne {i} ({col.get('title', '')!r}): Sinnhaftigkeits-Prüfung "
                 f"fehlgeschlagen ({bewertung.get('grund', 'kein Grund')}) — "

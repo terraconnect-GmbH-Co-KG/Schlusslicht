@@ -503,26 +503,32 @@ def _fetch_fresh_items(date_label: str, avoid_entities: list):
         "mehrfach, auf Deutsch und Englisch.\n\n"
         "Antworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown:\n"
         "{\n"
-        '  "1": {\n'
-        '    "entity": "Kurzname des Falls/der Haupt-Entität zur eindeutigen '
+        '  "items": [\n'
+        "    {\n"
+        '      "entity": "Kurzname des Falls/der Haupt-Entität zur eindeutigen '
         'Wiedererkennung, z.B. \'Philadelphia Union\' oder \'Eritrea Pressefreiheit\' — PFLICHTFELD",\n'
-        '    "thema": "1-2 Wörter Themen-Schlagwort, z.B. \'Fußball\' oder \'Steuerpolitik\'",\n'
-        '    "kicker": "Kategorie-Label, z.B. \'Sport · MLS\' oder \'Pressefreiheit\'",\n'
-        '    "icon": "ein passendes Emoji",\n'
-        '    "headline": "kurze, konkrete Schlagzeile mit echten Namen/Zahlen",\n'
-        '    "kommentar": "individueller Kommentar, max 130 Zeichen",\n'
-        '    "table_title": "Kurztitel der Rangliste, z.B. \'MLS — Tabellenende\'",\n'
-        '    "table_tag": "Zeitraum, z.B. \'Saison 2026\'",\n'
-        '    "rows": [{"rank": "28", "name": "Fall/Ort A", "value": "Zahl"}, {"rank": "29", "name": "Fall/Ort B", "value": "Zahl"}, {"rank": "30", "name": "das eigentliche Schlusslicht", "value": "Zahl"}],\n'
-        '    "foot": "1 Satz Einordnung/Vergleichswert für die Fußzeile",\n'
-        '    "quelle": "Quellenname und Datum, z.B. Reuters 22.06.2026 — KEINE Zitationsnummern wie [1]",\n'
-        '    "quelle_url": "die ECHTE, vollständige URL der Quelle (https://...) — PFLICHTFELD"\n'
-        "  },\n"
-        f'  ... insgesamt {N_ITEMS} Einträge mit den Schlüsseln "1".."{N_ITEMS}" ...\n'
+        '      "thema": "1-2 Wörter Themen-Schlagwort, z.B. \'Fußball\' oder \'Steuerpolitik\'",\n'
+        '      "kicker": "Kategorie-Label, z.B. \'Sport · MLS\' oder \'Pressefreiheit\'",\n'
+        '      "icon": "ein passendes Emoji",\n'
+        '      "headline": "kurze, konkrete Schlagzeile mit echten Namen/Zahlen",\n'
+        '      "kommentar": "individueller Kommentar, max 130 Zeichen",\n'
+        '      "table_title": "Kurztitel der Rangliste, z.B. \'MLS — Tabellenende\'",\n'
+        '      "table_tag": "Zeitraum, z.B. \'Saison 2026\'",\n'
+        '      "rows": [{"rank": "28", "name": "Fall/Ort A", "value": "Zahl"}, {"rank": "29", "name": "Fall/Ort B", "value": "Zahl"}, {"rank": "30", "name": "das eigentliche Schlusslicht", "value": "Zahl"}],\n'
+        '      "foot": "1 Satz Einordnung/Vergleichswert für die Fußzeile",\n'
+        '      "quelle": "Quellenname und Datum, z.B. Reuters 22.06.2026 — KEINE Zitationsnummern wie [1]",\n'
+        '      "quelle_url": "die ECHTE, vollständige URL der Quelle (https://...) — PFLICHTFELD"\n'
+        "    }\n"
+        f"    // genau {N_ITEMS} Einträge in dieser Liste, thematisch unterschiedlich\n"
+        "  ]\n"
         "}"
     )
 
-    return call_api_json(system, prompt, max_tokens=3000)
+    result = call_api_json(system, prompt, max_tokens=3000)
+    if not result:
+        return None
+    items_list = result.get("items")
+    return items_list if isinstance(items_list, list) else None
 
 
 def get_daily_items(date_label: str, avoid_entities: list):
@@ -530,11 +536,24 @@ def get_daily_items(date_label: str, avoid_entities: list):
     keine Rotation — siehe _fetch_fresh_items)."""
     log(f"Recherchiere {N_ITEMS} frische Schlusslicht-Meldungen …")
 
-    batch_result = _fetch_fresh_items(date_label, avoid_entities) or {}
+    # WICHTIG (Bugfix, gefunden nach Live-Meldung "Startseite aktualisiert
+    # sich nicht"): Das JSON-Schema fragte bisher ein Objekt mit REIN
+    # NUMERISCHEN String-Schlüsseln ab ("1", "2", "3" als Schlüssel). Manche
+    # Modellantworten liefern solche Schlüssel ohne Anführungszeichen (wie
+    # ein Python-Dict statt echtem JSON, z.B. {1: {...}}) — das ist
+    # ungültiges JSON und ließ sich auch durch die Selbstreparatur nicht
+    # zuverlässig retten, wodurch die komplette Recherche tagelang immer
+    # wieder scheiterte, während die (Array-basierte) Spotlight/Ticker-
+    # Recherche im selben Lauf ganz normal weiterlief. Jetzt: Array-Schema
+    # ("items": [...]), Zuordnung zu Slot 1..3 rein über die Position in
+    # der Liste — exakt dasselbe robuste Muster wie bei den bereits
+    # zuverlässig laufenden Seiten (Insights, Brightside-Good-News,
+    # Nonconformist).
+    items_list = _fetch_fresh_items(date_label, avoid_entities) or []
     all_items = {}
-    for i in range(1, N_ITEMS + 1):
-        key = str(i)
-        item = batch_result.get(key)
+    for idx in range(N_ITEMS):
+        key = str(idx + 1)
+        item = items_list[idx] if idx < len(items_list) else None
         if not isinstance(item, dict):
             log(f"  Meldung {key}: keine verwertbare Antwort erhalten — übersprungen.")
             continue
@@ -677,11 +696,11 @@ def review_and_fix_items(items: dict, date_label: str) -> dict:
         "Platzhalter, Widerspruch zwischen Schlagzeile und Kommentar, "
         "unrettbar unsinnig): gib 'ok': false mit kurzer 'grund'-Angabe "
         "zurück — das kann NICHT durch Umformulieren behoben werden.\n\n"
-        f"Einträge:\n{json.dumps({num: {**it, 'rubrik_soll': it.get('kicker', '')} for num, it in echte_items.items()}, ensure_ascii=False, indent=2)}\n\n"
-        "Antworte als JSON:\n"
-        '{"01": {"ok": true}, '
-        '"02": {"ok": true, "headline_neu": "verbesserte Schlagzeile", "kommentar_neu": "verbesserter Kommentar"}, '
-        '"03": {"ok": false, "grund": "Kategorie-Fehlzuordnung: Text handelt von X statt Y"}, ...}'
+        f"Einträge:\n{json.dumps({f'slot{num}': {**it, 'rubrik_soll': it.get('kicker', '')} for num, it in echte_items.items()}, ensure_ascii=False, indent=2)}\n\n"
+        "Antworte als JSON, mit genau denselben Schlüsseln wie oben (z.B. 'slot1'):\n"
+        '{"slot1": {"ok": true}, '
+        '"slot2": {"ok": true, "headline_neu": "verbesserte Schlagzeile", "kommentar_neu": "verbesserter Kommentar"}, '
+        '"slot3": {"ok": false, "grund": "Kategorie-Fehlzuordnung: Text handelt von X statt Y"}, ...}'
     )
     urteil = call_api_json(system, prompt, max_tokens=3000) or {}
 
@@ -689,7 +708,7 @@ def review_and_fix_items(items: dict, date_label: str) -> dict:
         return set(re.findall(r"\d+[.,]?\d*", text or ""))
 
     for num in list(echte_items.keys()):
-        bewertung = urteil.get(num, {})
+        bewertung = urteil.get(f"slot{num}", {})
         if bewertung.get("ok") is False:
             log(f"  Rubrik {num}: Sinnhaftigkeits-Prüfung fehlgeschlagen "
                 f"({bewertung.get('grund', 'kein Grund angegeben')}) — verworfen.")
@@ -888,9 +907,9 @@ def get_embedded_stories(date_label: str, items: dict):
     )
 
     zeilen = "\n".join(
-        f'{num}: Entität: "{it.get("entity", "")}" · Schlagzeile: "{it.get("headline", "")}" '
+        f'- Entität: "{it.get("entity", "")}" · Schlagzeile: "{it.get("headline", "")}" '
         f'· Kommentar: "{it.get("kommentar", "")}" · Quelle: {it.get("quelle", "")}'
-        for num, it in anchors.items()
+        for it in anchors.values()
     )
     prompt = (
         f"Vertiefe JEDEN der folgenden {len(anchors)} Tagesfälle zu einer "
@@ -913,33 +932,46 @@ def get_embedded_stories(date_label: str, items: dict):
         "  Absatz 4 — NUR die Einordnung als Systemversagen: die "
         "Schlussfolgerung, warum das mehr als ein Einzelfall ist. Dieser "
         "Gedanke darf NUR hier stehen, nirgends vorher angedeutet werden.\n\n"
-        "Antworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown, mit genau "
-        "den Nummern oben als Schlüssel:\n"
+        "Antworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown:\n"
         "{\n"
-        f'  "{list(anchors.keys())[0]}": {{\n'
-        '    "cat": "// Kategorie · Zeitraum",\n'
-        '    "title": "packender Titel, max 80 Zeichen",\n'
-        '    "teaser": "Einleitung, 2-3 Sätze",\n'
-        '    "body": ["<p>Absatz 1: nur das Ereignis</p>", "<p>Absatz 2: nur Hintergrund/Ursache</p>", "<p>Absatz 3: nur konkrete Auswirkung</p>", "<p>Absatz 4: nur die Einordnung als Systemversagen</p>"],\n'
-        '    "factbox": ["Fakt 1", "Fakt 2", "Fakt 3"],\n'
-        '    "conclusion": "Schlusssatz zum Systemversagen",\n'
-        '    "source": "Quellenname und Datum, z.B. Spiegel 22.06.2026 — KEINE Zitationsnummern wie [1]",\n'
-        '    "source_url": "die ECHTE, vollständige URL der Quelle (https://...) — PFLICHTFELD"\n'
-        "  },\n"
-        f"  ... für jede der {len(anchors)} Meldungen ein Eintrag ...\n"
+        '  "stories": [\n'
+        "    {\n"
+        '      "for_entity": "MUSS exakt die Entität von oben sein, zu der diese Story gehört",\n'
+        '      "cat": "// Kategorie · Zeitraum",\n'
+        '      "title": "packender Titel, max 80 Zeichen",\n'
+        '      "teaser": "Einleitung, 2-3 Sätze",\n'
+        '      "body": ["<p>Absatz 1: nur das Ereignis</p>", "<p>Absatz 2: nur Hintergrund/Ursache</p>", "<p>Absatz 3: nur konkrete Auswirkung</p>", "<p>Absatz 4: nur die Einordnung als Systemversagen</p>"],\n'
+        '      "factbox": ["Fakt 1", "Fakt 2", "Fakt 3"],\n'
+        '      "conclusion": "Schlusssatz zum Systemversagen",\n'
+        '      "source": "Quellenname und Datum, z.B. Spiegel 22.06.2026 — KEINE Zitationsnummern wie [1]",\n'
+        '      "source_url": "die ECHTE, vollständige URL der Quelle (https://...) — PFLICHTFELD"\n'
+        "    }\n"
+        f"    // genau {len(anchors)} Einträge in dieser Liste, eine je Fall\n"
+        "  ]\n"
         "}"
     )
 
+    # WICHTIG (Bugfix, siehe get_daily_items für die volle Begründung):
+    # Array-Schema statt eines Objekts mit rein numerischen Schlüsseln —
+    # Zuordnung zur richtigen Meldung erfolgt über das Feld "for_entity",
+    # nicht über eine fragile Positions- oder Schlüssel-Zuordnung.
     data = call_api_json(system, prompt, max_tokens=8000) or {}
+    story_list = data.get("stories") if isinstance(data.get("stories"), list) else []
+    stories_by_entity = {}
+    for st in story_list:
+        if isinstance(st, dict) and st.get("for_entity"):
+            stories_by_entity[st["for_entity"].strip().lower()] = st
+
     stories = {}
     today_iso = datetime.date.today().isoformat()
     new_history_entries = []
     for num, anchor in anchors.items():
-        story = data.get(num)
-        if not isinstance(story, dict):
-            log(f"  Meldung {num}: keine verwertbare Story-Antwort erhalten — übersprungen.")
-            continue
         entity = (anchor.get("entity") or "").strip()
+        story = stories_by_entity.get(entity.lower())
+        if not isinstance(story, dict):
+            log(f"  Meldung {num} ({entity!r}): keine verwertbare Story-Antwort "
+                f"erhalten — übersprungen.")
+            continue
         title = (story.get("title") or "").strip()
         if is_recently_used(entity, title, history):
             log(f"  Meldung {num} ({title or entity!r}): bereits in den letzten "

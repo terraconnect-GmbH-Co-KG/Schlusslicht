@@ -381,7 +381,7 @@ def review_and_rewrite_essays(essays: list, date_label: str) -> list:
         return essays
 
     pruefbar = {
-        str(i): {"title": e["title"], "paragraphs": [p.get("text", "") for p in e["paragraphs"]
+        f"essay{i}": {"title": e["title"], "paragraphs": [p.get("text", "") for p in e["paragraphs"]
                                                        if isinstance(p, dict)]}
         for i, e in enumerate(essays)
     }
@@ -407,15 +407,15 @@ def review_and_rewrite_essays(essays: list, date_label: str) -> list:
         "Lass die '_neu'-Felder weg, wenn der Text bereits gut ist.\n\n"
         "WENN UNRETTBAR UNSINNIG: gib 'ok': false mit kurzer 'grund'-Angabe zurück.\n\n"
         f"Essays:\n{json.dumps(pruefbar, ensure_ascii=False, indent=2)}\n\n"
-        "Antworte als JSON, z.B.:\n"
-        '{"0": {"ok": true}, "1": {"ok": true, "title_neu": "...", '
-        '"paragraphs_neu": ["...", "...", "...", "..."]}, "2": {"ok": false, "grund": "..."}}'
+        "Antworte als JSON, mit genau denselben Schlüsseln wie oben (z.B. 'essay0'):\n"
+        '{"essay0": {"ok": true}, "essay1": {"ok": true, "title_neu": "...", '
+        '"paragraphs_neu": ["...", "...", "...", "..."]}, "essay2": {"ok": false, "grund": "..."}}'
     )
     urteil = call_api_json(system, prompt, max_tokens=4000) or {}
 
     ergebnis = []
     for i, e in enumerate(essays):
-        bewertung = urteil.get(str(i), {})
+        bewertung = urteil.get(f"essay{i}", {})
         if bewertung.get("ok") is False:
             log(f"  Essay {e.get('title', '')!r}: Sinnhaftigkeits-Prüfung "
                 f"fehlgeschlagen ({bewertung.get('grund', 'kein Grund')}) "
