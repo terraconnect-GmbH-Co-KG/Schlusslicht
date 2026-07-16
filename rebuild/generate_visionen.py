@@ -813,11 +813,13 @@ def main() -> int:
     build_time = datetime.datetime.now(datetime.timezone.utc).strftime("%d.%m.%Y %H:%M UTC")
     log(f"Visionen-Ausgabe: {date_label}")
 
-    # Redesign-Migrations-Fix (siehe generate.py für die volle Begründung):
-    # OUTPUT wird nur bevorzugt, wenn es bereits die neue 3-Meldungen-
-    # Struktur mit eingebetteten Storys hat — sonst bliebe ein altes
-    # brightside.html (7 Meldungen + separate Story-Vorschau) für immer
-    # die Basis und die neue Struktur würde nie übernommen.
+    # WICHTIG (Architektur-Fix, siehe generate.py für die volle Begründung):
+    # Vorher wurde bei passender Struktur OUTPUT als GANZE Basis verwendet,
+    # wodurch TEMPLATE dauerhaft nie mehr gelesen wurde — jede spätere
+    # Korrektur an rein statischen Bereichen (Nav, Footer, CSS) kam dadurch
+    # nie auf der echten Seite an. Jetzt: TEMPLATE ist immer die Basis, nur
+    # die KI-generierten Inhalte (Good-News-Kacheln + Storys + Spotlight)
+    # werden bei Bedarf aus dem gestrigen OUTPUT übernommen.
     def _hat_neue_struktur(html_text: str) -> bool:
         try:
             probe = BeautifulSoup(html_text, "html.parser")
@@ -826,22 +828,69 @@ def main() -> int:
         return (len(probe.select("article.gn")) == 3
                 and probe.select_one(".stories-grid") is None)
 
-    template_path = TEMPLATE
+    def _carry_over_visionen(template_html: str, output_html: str) -> str:
+        try:
+            neu = BeautifulSoup(template_html, "html.parser")
+            alt = BeautifulSoup(output_html, "html.parser")
+        except Exception as exc:
+            log(f"  WARNUNG: Übernahme der Altdaten übersprungen (Parse-Fehler: {exc}).")
+            return template_html
+
+        def _copy_text(sel):
+            src, dst = alt.select_one(sel), neu.select_one(sel)
+            if src is not None and dst is not None:
+                dst.string = src.get_text()
+
+        def _copy_html(sel):
+            src, dst = alt.select_one(sel), neu.select_one(sel)
+            if src is not None and dst is not None:
+                dst.clear()
+                for child in list(src.children):
+                    dst.append(child.extract() if hasattr(child, "extract") else str(child))
+
+        for sel in ("#spot-tag", "#spot-title", "#spotStand", "#spot-bignum", "#spot-bigcap"):
+            _copy_text(sel)
+        _copy_html("#spot-text")
+        _copy_html("#spot-src")
+
+        for i in range(1, 4):
+            for sel in (f"#gn{i}-dom", f"#gn{i}-badge", f"#gn{i}-icon", f"#gn{i}-title"):
+                _copy_text(sel)
+            _copy_html(f"#gn{i}-text")
+            _copy_html(f"#gn{i}-src")
+            for sel in (f"#vs{i}-modal-cat", f"#vs{i}-modal-title", f"#vs{i}-lead"):
+                _copy_text(sel)
+            _copy_html(f"#vs{i}-intro")
+            for j in range(1, 4):
+                _copy_text(f"#vs{i}-fact{j}")
+            _copy_html(f"#vs{i}-einordnung")
+            _copy_html(f"#vs{i}-modal-src")
+
+        title_alt, title_neu = alt.find("title"), neu.find("title")
+        if title_alt is not None and title_neu is not None:
+            title_neu.string = title_alt.get_text()
+        for sel in ("#meta-description", "#og-title", "#og-description",
+                    "#twitter-title", "#twitter-description"):
+            src, dst = alt.select_one(sel), neu.select_one(sel)
+            if src is not None and dst is not None and src.has_attr("content"):
+                dst["content"] = src["content"]
+        return str(neu)
+
+    with open(TEMPLATE, encoding="utf-8") as fh:
+        html = fh.read()
+
     if os.path.exists(OUTPUT):
         with open(OUTPUT, encoding="utf-8") as fh:
             bestehendes_html = fh.read()
         if _hat_neue_struktur(bestehendes_html):
-            template_path = OUTPUT
+            log(f"Verwende Template als Basis, übernehme dynamische Inhalte aus {OUTPUT}.")
+            html = _carry_over_visionen(html, bestehendes_html)
         else:
             log(f"  {OUTPUT} hat noch die alte Struktur (vor dem Redesign) — "
-                f"verwende stattdessen {TEMPLATE} als Basis (einmaliger "
-                f"Migrationsschritt).")
-    if not os.path.exists(template_path):
-        log("FEHLER: Weder brightside.html noch brightside.template.html gefunden.")
-        return 1
-    log(f"Verwende als Basis: {template_path}")
-    with open(template_path, encoding="utf-8") as fh:
-        html = fh.read()
+                f"keine Altdaten übernommen, reines Template als Basis "
+                f"(einmaliger Migrationsschritt).")
+    else:
+        log("Verwende Template als Basis (kein vorheriges OUTPUT vorhanden).")
 
     data = get_visionen_content(date_label)
     if not data:

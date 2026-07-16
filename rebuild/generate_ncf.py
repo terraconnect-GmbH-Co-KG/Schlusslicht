@@ -496,10 +496,13 @@ def main() -> int:
         log("Keine Essays erzeugt — Seite bleibt unverändert (bestehender Stand).")
         return 0
 
-    # Redesign-Migrations-Fix (siehe generate.py für die volle Begründung):
-    # OUTPUT wird nur bevorzugt, wenn es bereits die neue 3-Essay-Struktur
-    # hat — sonst bliebe ein altes nonconformist.html (5 Essays) für immer
-    # die Basis und die neue Struktur würde nie übernommen.
+    # WICHTIG (Architektur-Fix, siehe generate.py für die volle Begründung):
+    # Vorher wurde bei passender Struktur OUTPUT als GANZE Basis verwendet,
+    # wodurch TEMPLATE dauerhaft nie mehr gelesen wurde — jede spätere
+    # Korrektur an rein statischen Bereichen (Nav, Footer, CSS) kam dadurch
+    # nie auf der echten Seite an. Jetzt: TEMPLATE ist immer die Basis, nur
+    # die KI-generierten Essay-Inhalte werden bei Bedarf aus dem gestrigen
+    # OUTPUT übernommen.
     def _hat_neue_struktur(html_text: str) -> bool:
         try:
             probe = BeautifulSoup(html_text, "html.parser")
@@ -507,17 +510,41 @@ def main() -> int:
             return False
         return len(probe.select("section.essay")) == N_ESSAYS
 
-    base_path = TEMPLATE
+    def _carry_over_essays(template_html: str, output_html: str) -> str:
+        try:
+            neu = BeautifulSoup(template_html, "html.parser")
+            alt = BeautifulSoup(output_html, "html.parser")
+        except Exception as exc:
+            log(f"  WARNUNG: Übernahme der Altdaten übersprungen (Parse-Fehler: {exc}).")
+            return template_html
+        for i in range(1, N_ESSAYS + 1):
+            for sel in (f"#e{i}-title", f"#e{i}-aside"):
+                src, dst = alt.select_one(sel), neu.select_one(sel)
+                if src is not None and dst is not None:
+                    dst.string = src.get_text()
+            body_sel = f"#e{i}-body"
+            src, dst = alt.select_one(body_sel), neu.select_one(body_sel)
+            if src is not None and dst is not None:
+                dst.clear()
+                for p in src.select("p"):
+                    dst.append(p.extract())
+        return str(neu)
+
+    with open(TEMPLATE, encoding="utf-8") as fh:
+        html = fh.read()
+
     if os.path.exists(OUTPUT):
         bestehendes_html = open(OUTPUT, encoding="utf-8").read()
         if _hat_neue_struktur(bestehendes_html):
-            base_path = OUTPUT
+            log(f"Verwende Template als Basis, übernehme dynamische Inhalte aus {OUTPUT}.")
+            html = _carry_over_essays(html, bestehendes_html)
         else:
             log(f"  {OUTPUT} hat noch die alte Struktur (vor dem Redesign) — "
-                f"verwende stattdessen {TEMPLATE} als Basis (einmaliger "
-                f"Migrationsschritt).")
-    log(f"Verwende als Basis: {base_path}")
-    html = open(base_path, encoding="utf-8").read()
+                f"keine Altdaten übernommen, reines Template als Basis "
+                f"(einmaliger Migrationsschritt).")
+    else:
+        log("Verwende Template als Basis (kein vorheriges OUTPUT vorhanden).")
+
     html = inject(html, essays, date_label)
     open(OUTPUT, "w", encoding="utf-8").write(html)
     log(f"{OUTPUT} geschrieben ({len(essays)} Essays).")

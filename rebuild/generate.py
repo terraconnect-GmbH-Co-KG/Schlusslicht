@@ -1184,6 +1184,88 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
 
 
 # ── Hauptprogramm ────────────────────────────────────────────────────────────
+def carry_over_dynamic_content(template_html: str, output_html: str) -> str:
+    """WICHTIG (Fix für einen bislang unsichtbaren Dauerfehler): Vorher wurde
+    bei bestehendem OUTPUT das GESAMTE alte HTML als Basis verwendet und
+    index.template.html damit für IMMER nicht mehr gelesen, sobald die
+    Struktur einmal passte. Jede künftige Änderung an irgendeinem statischen
+    Bereich (Nav-Link, Footer, CSS, Hero-Text, neue Abschnitte) im Template
+    kam dadurch NIE auf der echten Seite an, egal wie oft der Workflow lief
+    — genau das führte dazu, dass ein bereits im Template korrigierter toter
+    Link (#stories) live weiter kaputt blieb.
+
+    Diese Funktion dreht das Prinzip um: das TEMPLATE ist immer die Basis
+    (jede statische Änderung wirkt damit garantiert sofort) — nur die
+    wenigen eindeutig KI-generierten, dynamischen Felder werden aus dem
+    gestrigen OUTPUT in die frische Template-Kopie übertragen, damit ein
+    heutiger Generierungs-Fehlschlag nicht auf Tag-0-Platzhalter zurückfällt."""
+    try:
+        neu = BeautifulSoup(template_html, "html.parser")
+        alt = BeautifulSoup(output_html, "html.parser")
+    except Exception as exc:
+        log(f"  WARNUNG: Übernahme der Altdaten übersprungen (Parse-Fehler: {exc}).")
+        return template_html
+
+    def _copy_text(sel):
+        src = alt.select_one(sel)
+        dst = neu.select_one(sel)
+        if src is not None and dst is not None:
+            dst.string = src.get_text()
+
+    def _copy_html(sel):
+        src = alt.select_one(sel)
+        dst = neu.select_one(sel)
+        if src is not None and dst is not None:
+            dst.clear()
+            for child in list(src.children):
+                dst.append(child.extract() if hasattr(child, "extract") else str(child))
+
+    def _copy_attr(sel, attr):
+        src = alt.select_one(sel)
+        dst = neu.select_one(sel)
+        if src is not None and dst is not None and src.has_attr(attr):
+            dst[attr] = src[attr]
+
+    # Die 3 Rubrik-Karten (per data-slot, positionsstabil) + ihre Modals
+    for slot_i in range(1, N_ITEMS + 1):
+        card_sel = f'article.rub[data-slot="{slot_i}"]'
+        _copy_attr(card_sel, "data-rubrik")
+        for cls in (".rub-ico", ".rnum", ".rtit", ".realsatire", ".rub-stand", ".ai-tag"):
+            _copy_text(f"{card_sel} {cls}")
+        _copy_html(f"{card_sel} .tbl")
+
+        modal_sel = f"#story-slot{slot_i}"
+        _copy_text(f"{modal_sel} .story-modal-cat")
+        _copy_text(f"{modal_sel} .story-modal-hl")
+        _copy_text(f"{modal_sel} .story-modal-lead")
+        _copy_text(f"{modal_sel} .story-source")
+        _copy_html(f"{modal_sel} .story-body")
+
+    # Spotlight ("Tagesausgabe")
+    for sel in ("#ta-cat", "#ta-hl", "#ta-text", "#ta-source"):
+        _copy_text(sel)
+
+    # Ticker (inklusive data-dup-Attribut, damit die Client-JS-Verdopplung
+    # nicht versehentlich erneut anspringt)
+    _copy_html(".ticker-inner")
+    _copy_attr(".ticker-inner", "data-dup")
+
+    # Datum/Zeitstempel
+    _copy_text("#nav-issue-label")
+    _copy_text("#update-time")
+
+    # SEO: Title + Meta-Description/OG/Twitter (täglich mit Spotlight befüllt)
+    title_alt = alt.find("title")
+    title_neu = neu.find("title")
+    if title_alt is not None and title_neu is not None:
+        title_neu.string = title_alt.get_text()
+    for sel in ("#meta-description", "#og-title", "#og-description",
+                "#twitter-title", "#twitter-description"):
+        _copy_attr(sel, "content")
+
+    return str(neu)
+
+
 def main() -> int:
     # Fehlt der API-Key, wird HIER bewusst NICHTS geschrieben (kein Datum-
     # Patch, keine Platzhalter-Logik). Der Workflow (.github/workflows/
@@ -1210,27 +1292,24 @@ def main() -> int:
     log(f"Tagesausgabe: {date_label}")
 
     # WICHTIG (Root-Cause-Fix): OUTPUT (gestriges, echtes Ergebnis) wird
-    # bevorzugt geladen, NICHT das statische TEMPLATE. Das Template enthält
-    # ursprüngliche Platzhalter-Beispielinhalte (u.a. "The Actor", "Dawit
-    # Isaac", "Mars Climate Orbiter" als Storys sowie Eritrea/Afghanistan/
-    # Südsudan/Philadelphia Union im Signature-Widget). Solange TEMPLATE
-    # bevorzugt wurde, fiel JEDER Fehlschlag (nicht verifizierbare Quelle,
-    # Story-Wiederholungssperre, JSON-Parsefehler) nicht auf den echten
-    # Stand von GESTERN zurück, sondern auf diese uralten Tag-0-Platzhalter
-    # — wodurch dieselben veralteten Storys/Kategorien immer wieder
-    # auftauchten, obwohl an anderer Stelle im selben Lauf frische, echte
-    # Inhalte erfolgreich verifiziert wurden.
-    # WICHTIG (Redesign-Migrations-Fix, gefunden nach Live-Meldung): Die
-    # obige "OUTPUT bevorzugen"-Logik schützt zwar vor einem Rückfall auf
-    # uralte Tag-0-Platzhalter bei einem fehlgeschlagenen Lauf — sie hatte
-    # aber einen blinden Fleck: wenn sich die STRUKTUR des Templates ändert
-    # (wie beim Rotations-Redesign: 8 Rubrik-Karten -> 3 feste Slots), bleibt
-    # ein bereits bestehendes, altes index.html für immer die Basis, weil es
-    # ja existiert — die neue Struktur aus dem Template wird NIE übernommen,
-    # egal wie oft der Workflow erfolgreich läuft. Fix: Vor der Verwendung
-    # wird geprüft, ob OUTPUT bereits die erwartete neue Struktur hat (genau
-    # N_ITEMS Slots mit data-slot). Fehlt sie, wird einmalig auf TEMPLATE
-    # zurückgegriffen, um die neue Struktur zu übernehmen.
+    # WICHTIG (Architektur-Fix, gefunden nach Live-Meldung "Template-
+    # Änderungen kommen nie an"): Die vorherige Logik wählte GANZ entweder
+    # OUTPUT oder TEMPLATE als alleinige Basis. Sobald OUTPUT einmal die
+    # richtige Struktur hatte, wurde TEMPLATE dauerhaft NIE MEHR gelesen —
+    # jede spätere Korrektur an rein statischen Bereichen (z.B. ein
+    # kaputter Nav-Link) kam dadurch nie auf der echten Seite an, egal wie
+    # oft der Workflow lief. Jetzt: TEMPLATE ist IMMER die Basis (jede
+    # statische Änderung wirkt damit garantiert sofort); nur die
+    # KI-generierten dynamischen Felder werden bei Bedarf aus dem gestrigen
+    # OUTPUT in die frische Template-Kopie übernommen (siehe
+    # carry_over_dynamic_content), damit ein heutiger Generierungs-
+    # Fehlschlag nicht auf Tag-0-Platzhalter zurückfällt.
+    if not os.path.exists(TEMPLATE):
+        log(f"FEHLER: {TEMPLATE} nicht gefunden.")
+        return 1
+    with open(TEMPLATE, encoding="utf-8") as fh:
+        html = fh.read()
+
     def _hat_neue_struktur(html_text: str) -> bool:
         try:
             probe = BeautifulSoup(html_text, "html.parser")
@@ -1238,22 +1317,18 @@ def main() -> int:
             return False
         return len(probe.select('article.rub[data-slot]')) == N_ITEMS
 
-    template_path = TEMPLATE
     if os.path.exists(OUTPUT):
         with open(OUTPUT, encoding="utf-8") as fh:
             bestehendes_html = fh.read()
         if _hat_neue_struktur(bestehendes_html):
-            template_path = OUTPUT
+            log(f"Verwende Template als Basis, übernehme dynamische Inhalte aus {OUTPUT}.")
+            html = carry_over_dynamic_content(html, bestehendes_html)
         else:
             log(f"  {OUTPUT} hat noch die alte Struktur (vor dem Redesign) — "
-                f"verwende stattdessen {TEMPLATE} als Basis, um die neue "
-                f"3-Slot-Struktur zu übernehmen (einmaliger Migrationsschritt).")
-    if not os.path.exists(template_path):
-        log("FEHLER: Weder index.html noch index.template.html gefunden.")
-        return 1
-    log(f"Verwende als Basis: {template_path}")
-    with open(template_path, encoding="utf-8") as fh:
-        html = fh.read()
+                f"keine Altdaten übernommen, reines Template als Basis "
+                f"(einmaliger Migrationsschritt).")
+    else:
+        log("Verwende Template als Basis (kein vorheriges OUTPUT vorhanden).")
 
     history = load_story_history()
     avoid_entities = sorted({
@@ -1268,6 +1343,14 @@ def main() -> int:
     items = get_daily_items(date_label, avoid_entities)
     stories = get_embedded_stories(date_label, (items or {}).get("items", {}))
 
+    # WICHTIG: Bewusst NUR bei echtem neuen Inhalt schreiben (nicht immer).
+    # Ein unbedingtes Schreiben würde zwar statische Korrekturen an noch
+    # mehr Tagen durchsetzen, aber gleichzeitig #update-time IMMER ändern
+    # — und genau das würde die Gesundheitsprüfung (health_check.py, siehe
+    # dort) aushebeln, die anhand von "hat sich die Datei geändert" erkennt,
+    # ob heute ECHT generiert wurde. Ein Totalausfall soll weiterhin
+    # sichtbar bleiben (siehe GitHub-Issue-Automatik im Workflow), nicht
+    # hinter einem scheinbaren Datums-Update verschwinden.
     if not items and not stories:
         log("Keine Inhalte erzeugt — index.html bleibt unverändert.")
         return 0
