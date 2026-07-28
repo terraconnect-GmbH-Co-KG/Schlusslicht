@@ -483,7 +483,7 @@ _GENERISCHE_PLACEHOLDER_DOMAINS = {
     "domain.com", "website.com",
 }
 _GENERISCHER_PFAD_MUSTER = re.compile(
-    r"^(nachrichten|news|index|aktuell|homepage|startseite|newsblog)[-_a-z0-9]*$",
+    r"^(nachrichten|news|aktuell|newsblog|homepage|startseite)[-_a-z0-9]*$",
     re.IGNORECASE,
 )
 

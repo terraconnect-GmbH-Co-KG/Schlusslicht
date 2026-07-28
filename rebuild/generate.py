@@ -430,7 +430,7 @@ def dedupe_paragraphs(paragraphs, threshold=0.75):
 N_ITEMS = 6
 
 
-def _fetch_fresh_items(date_label: str, avoid_entities: list, count: int):
+def _fetch_fresh_items(date_label: str, avoid_entities: list, count: int, verbotene_urls: list = None, zusatzhinweis: str = ""):
     """Recherchiert 3 frische 'Schlusslicht'-Meldungen aus BELIEBIGEN
     Bereichen in einem Aufruf — inkl. der kompletten Anzeige-Daten (Icon,
     Kategorie-Label, kleine Rangliste), die früher aus 8 fest zugeteilten
@@ -521,6 +521,15 @@ def _fetch_fresh_items(date_label: str, avoid_entities: list, count: int):
             if avoid_entities
             else ""
         )
+        + (
+            "DIESE KONKRETEN URLs SIND DAUERHAFT GESPERRT — HÖCHSTE PRIORITÄT: "
+            "Die folgenden URLs wurden bereits mehrfach fälschlich als "
+            "Sammel-Quelle für mehrere verschiedene Meldungen missbraucht "
+            "und dürfen UNTER KEINEN UMSTÄNDEN erneut verwendet werden, auch "
+            f"nicht für eine einzelne Meldung: {', '.join(verbotene_urls)}.\n\n"
+            if verbotene_urls
+            else ""
+        )
         + "Stil: schwarze Satire mit menschlicher Wärme — nicht kalt-nüchtern, "
         "sondern erkennbar mit Empathie für die Betroffenen geschrieben. Eine "
         "klar erkennbare linke, ökologisch-grüne und gesellschaftskritische "
@@ -541,7 +550,8 @@ def _fetch_fresh_items(date_label: str, avoid_entities: list, count: int):
     prompt = (
         f"Recherchiere {count} eigenständige, thematisch unterschiedliche "
         "Schlusslicht-Meldungen für die heutige Ausgabe. Nutze die Websuche "
-        "mehrfach, auf Deutsch und Englisch.\n\n"
+        "mehrfach, auf Deutsch und Englisch."
+        + zusatzhinweis + "\n\n"
         "Antworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown:\n"
         "{\n"
         '  "items": [\n'
@@ -578,7 +588,7 @@ _GENERISCHE_PLACEHOLDER_DOMAINS = {
     "domain.com", "website.com",
 }
 _GENERISCHER_PFAD_MUSTER = re.compile(
-    r"^(nachrichten|news|index|aktuell|homepage|startseite|newsblog)[-_a-z0-9]*$",
+    r"^(nachrichten|news|aktuell|newsblog|homepage|startseite)[-_a-z0-9]*$",
     re.IGNORECASE,
 )
 
@@ -640,6 +650,48 @@ def _ist_meta_kommentar(text: str) -> bool:
     return any(m in t for m in marker)
 
 
+BAD_URL_HISTORY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bad_url_history.json")
+BAD_URL_KEEP_DAYS = 180  # deutlich länger als die Story-Historie: einmal als
+                         # Feigenblatt erkannte URLs bleiben lange gesperrt
+
+
+def load_bad_urls() -> list:
+    """Liest dauerhaft gesperrte URLs (einmal als Feigenblatt/Duplikat/
+    generische Landingpage erkannt). WICHTIG (Bugfix, gefunden nach
+    wiederholter Live-Meldung): Dieselbe generische URL (z.B.
+    deutschlandfunk.de/nachrichten-100.html) tauchte über mehrere,
+    voneinander unabhängige Tage/Läufe IMMER WIEDER als Feigenblatt-Quelle
+    auf — reine Prompt-Anweisungen ('verwende sowas nicht') reichten nicht,
+    weil das Modell in jedem neuen Aufruf wieder bei null anfängt. Diese
+    Liste merkt sich beobachtete Wiederholungstäter dauerhaft und verbietet
+    sie explizit und NAMENTLICH im nächsten Prompt."""
+    if not os.path.exists(BAD_URL_HISTORY_PATH):
+        return []
+    try:
+        with open(BAD_URL_HISTORY_PATH, encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, list) else []
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+def save_bad_urls(urls: list) -> None:
+    cutoff = datetime.date.today() - datetime.timedelta(days=BAD_URL_KEEP_DAYS)
+    pruned = []
+    for entry in urls:
+        try:
+            d = datetime.date.fromisoformat(entry.get("date", ""))
+        except (ValueError, TypeError, AttributeError):
+            continue
+        if d >= cutoff:
+            pruned.append(entry)
+    try:
+        with open(BAD_URL_HISTORY_PATH, "w", encoding="utf-8") as fh:
+            json.dump(pruned, fh, ensure_ascii=False, indent=2)
+    except OSError as exc:
+        log(f"  Bad-URL-Historie konnte nicht gespeichert werden: {exc}")
+
+
 BATCH_SIZE = 3  # siehe get_daily_items: kleinere Aufrufe recherchieren nachweislich zuverlässiger
 
 
@@ -663,83 +715,147 @@ def get_daily_items(date_label: str, avoid_entities: list):
     überschneiden."""
     all_items = {}
     schon_gewaehlte_entitaeten = list(avoid_entities)
+    bad_url_history = load_bad_urls()
+    verbotene_urls = sorted({
+        (entry.get("url") or "").strip()
+        for entry in bad_url_history
+        if (entry.get("url") or "").strip()
+    })
+    if verbotene_urls:
+        log(f"  {len(verbotene_urls)} dauerhaft gesperrte Feigenblatt-URL(s) "
+            f"werden im Prompt explizit verboten.")
+    neue_bad_urls = []
 
     for batch_start in range(0, N_ITEMS, BATCH_SIZE):
         groesse = min(BATCH_SIZE, N_ITEMS - batch_start)
-        log(f"Recherchiere {groesse} frische Schlusslicht-Meldungen "
-            f"(Gruppe {batch_start // BATCH_SIZE + 1}) …")
 
-        # WICHTIG (Bugfix, gefunden nach Live-Meldung "Startseite
-        # aktualisiert sich nicht"): Das JSON-Schema fragte bisher ein
-        # Objekt mit REIN NUMERISCHEN String-Schlüsseln ab ("1", "2", "3"
-        # als Schlüssel). Manche Modellantworten liefern solche Schlüssel
-        # ohne Anführungszeichen (wie ein Python-Dict statt echtem JSON,
-        # z.B. {1: {...}}) — das ist ungültiges JSON und ließ sich auch
-        # durch die Selbstreparatur nicht zuverlässig retten. Jetzt:
-        # Array-Schema ("items": [...]), Zuordnung zum Slot rein über die
-        # Position in der Liste — exakt dasselbe robuste Muster wie bei
-        # den bereits zuverlässig laufenden Seiten (Insights,
-        # Brightside-Good-News, Nonconformist).
-        items_list = _fetch_fresh_items(date_label, schon_gewaehlte_entitaeten, groesse) or []
+        # WICHTIG (Bugfix, gefunden nach wiederholter Live-Meldung "0 von 6
+        # aktualisiert"): Schlägt eine Gruppe KOMPLETT fehl (0 verwertbare
+        # Meldungen), wird sie EINMAL mit einer verschärften, sehr
+        # konkreten Rückmeldung wiederholt statt sofort aufzugeben — das
+        # gibt dem Modell eine echte zweite Chance mit Kontext darüber, was
+        # beim ersten Versuch schiefging, statt einfach dieselbe Anfrage
+        # (mit demselben Risiko derselben Antwort) kommentarlos zu wiederholen.
+        gefunden = 0
+        letzter_fehlgrund = ""
+        for versuch in range(2):
+            log(f"Recherchiere {groesse} frische Schlusslicht-Meldungen "
+                f"(Gruppe {batch_start // BATCH_SIZE + 1}"
+                f"{', 2. Versuch nach Fehlschlag' if versuch else ''}) …")
 
-        # WICHTIG (Bugfix, gefunden nach Live-Meldung "Meldungen sind
-        # Textbausteine über die eigene Suche"): Wenn 2 oder mehr Meldungen
-        # dieselbe Quellen-URL teilen, ist das ein starkes Signal, dass die
-        # KI eine generische, technisch echte URL (z.B. eine Newsindex-
-        # Startseite) als Feigenblatt wiederverwendet hat, statt für jede
-        # Meldung wirklich zu recherchieren. Betroffene Einträge werden
-        # komplett verworfen statt einzeln toleriert.
-        url_counts = {}
-        for it in items_list:
-            if isinstance(it, dict):
-                url = (it.get("quelle_url") or "").strip().lower()
-                if url:
-                    url_counts[url] = url_counts.get(url, 0) + 1
-        doppelte_urls = {u for u, c in url_counts.items() if c > 1}
-        if doppelte_urls:
-            log(f"  WARNUNG: {len(doppelte_urls)} Quellen-URL(s) werden von "
-                f"mehreren Meldungen gleichzeitig verwendet — starkes "
-                f"Anzeichen für eine Feigenblatt-Quelle statt echter "
-                f"Einzelrecherche. Betroffene Meldungen werden verworfen: "
-                f"{', '.join(doppelte_urls)}")
+            extra_hinweis = ""
+            if versuch == 1 and letzter_fehlgrund:
+                extra_hinweis = (
+                    f"\n\nWICHTIG: Dein letzter Versuch ist komplett gescheitert "
+                    f"({letzter_fehlgrund}). Versuche es diesmal grundlegend "
+                    f"anders: wähle andere, dir noch nicht eingefallene Themen "
+                    f"und recherchiere für jedes einzeln eine ECHTE, "
+                    f"unterschiedliche Quelle. Lieber 1 echte Meldung als 3 "
+                    f"erfundene oder wiederverwendete."
+                )
 
-        for idx in range(groesse):
-            key = str(batch_start + idx + 1)
-            item = items_list[idx] if idx < len(items_list) else None
-            if not isinstance(item, dict):
-                log(f"  Meldung {key}: keine verwertbare Antwort erhalten — übersprungen.")
-                continue
-            headline = (item.get("headline") or "").strip()
-            kommentar = (item.get("kommentar") or "").strip()
-            # WICHTIG (Atomaritäts-Fix, siehe main-Historie): headline UND
-            # kommentar müssen BEIDE vorhanden sein, sonst wird der Eintrag
-            # komplett verworfen. Ein Teil-Update würde sonst zwei Textteile
-            # aus evtl. ganz unterschiedlichen Tagen/Themen kombinieren.
-            if not (headline and kommentar):
-                fehlt = "kommentar" if headline else ("headline" if kommentar else "headline+kommentar")
-                log(f"  Meldung {key}: unvollständiger Eintrag ({fehlt} fehlt) "
-                    f"— komplett übersprungen, bestehender (in sich konsistenter) "
-                    f"Stand bleibt. Kein Teil-Update einzelner Felder.")
-                continue
-            if _ist_meta_kommentar(headline) or _ist_meta_kommentar(kommentar):
-                log(f"  Meldung {key}: Text beschreibt den eigenen Rechercheprozess "
-                    f"statt einer echten Meldung zu sein ({headline!r}) — verworfen, "
-                    f"keine Platzhalter-Texte als Inhalt.")
-                continue
-            url = (item.get("quelle_url") or "").strip().lower()
-            if url and url in doppelte_urls:
-                log(f"  Meldung {key}: teilt sich eine Quellen-URL mit anderen "
-                    f"Meldungen ({url}) — verworfen.")
-                continue
-            if url and _url_ist_zu_generisch(url):
-                log(f"  Meldung {key}: Quellen-URL ist eine generische Landingpage "
-                    f"oder Platzhalter-Domain statt eines konkreten Artikels "
-                    f"({url}) — verworfen.")
-                continue
-            all_items[key] = item
-            entity = (item.get("entity") or "").strip()
-            if entity:
-                schon_gewaehlte_entitaeten.append(entity)
+            # WICHTIG (Bugfix, gefunden nach Live-Meldung "Startseite
+            # aktualisiert sich nicht"): Das JSON-Schema fragte bisher ein
+            # Objekt mit REIN NUMERISCHEN String-Schlüsseln ab ("1", "2",
+            # "3" als Schlüssel). Manche Modellantworten liefern solche
+            # Schlüssel ohne Anführungszeichen (wie ein Python-Dict statt
+            # echtem JSON, z.B. {1: {...}}) — das ist ungültiges JSON und
+            # ließ sich auch durch die Selbstreparatur nicht zuverlässig
+            # retten. Jetzt: Array-Schema ("items": [...]), Zuordnung zum
+            # Slot rein über die Position in der Liste — exakt dasselbe
+            # robuste Muster wie bei den bereits zuverlässig laufenden
+            # Seiten (Insights, Brightside-Good-News, Nonconformist).
+            items_list = _fetch_fresh_items(
+                date_label, schon_gewaehlte_entitaeten, groesse,
+                verbotene_urls + neue_bad_urls, extra_hinweis,
+            ) or []
+
+            # WICHTIG (Bugfix, gefunden nach Live-Meldung "Meldungen sind
+            # Textbausteine über die eigene Suche"): Wenn 2 oder mehr
+            # Meldungen dieselbe Quellen-URL teilen, ist das ein starkes
+            # Signal, dass die KI eine generische, technisch echte URL
+            # (z.B. eine Newsindex-Startseite) als Feigenblatt
+            # wiederverwendet hat, statt für jede Meldung wirklich zu
+            # recherchieren. Betroffene Einträge werden komplett verworfen
+            # statt einzeln toleriert — UND die URL wird dauerhaft gesperrt
+            # (siehe load_bad_urls/save_bad_urls), damit sie in künftigen
+            # Läufen erst gar nicht mehr vorgeschlagen werden kann.
+            url_counts = {}
+            for it in items_list:
+                if isinstance(it, dict):
+                    url = (it.get("quelle_url") or "").strip().lower()
+                    if url:
+                        url_counts[url] = url_counts.get(url, 0) + 1
+            doppelte_urls = {u for u, c in url_counts.items() if c > 1}
+            if doppelte_urls:
+                log(f"  WARNUNG: {len(doppelte_urls)} Quellen-URL(s) werden von "
+                    f"mehreren Meldungen gleichzeitig verwendet — starkes "
+                    f"Anzeichen für eine Feigenblatt-Quelle statt echter "
+                    f"Einzelrecherche. Betroffene Meldungen werden verworfen "
+                    f"und dauerhaft gesperrt: {', '.join(doppelte_urls)}")
+                for u in doppelte_urls:
+                    neue_bad_urls.append(u)
+
+            gruppen_treffer = {}
+            for idx in range(groesse):
+                key = str(batch_start + idx + 1)
+                item = items_list[idx] if idx < len(items_list) else None
+                if not isinstance(item, dict):
+                    log(f"  Meldung {key}: keine verwertbare Antwort erhalten — übersprungen.")
+                    continue
+                headline = (item.get("headline") or "").strip()
+                kommentar = (item.get("kommentar") or "").strip()
+                # WICHTIG (Atomaritäts-Fix, siehe main-Historie): headline
+                # UND kommentar müssen BEIDE vorhanden sein, sonst wird der
+                # Eintrag komplett verworfen. Ein Teil-Update würde sonst
+                # zwei Textteile aus evtl. ganz unterschiedlichen Tagen/
+                # Themen kombinieren.
+                if not (headline and kommentar):
+                    fehlt = "kommentar" if headline else ("headline" if kommentar else "headline+kommentar")
+                    log(f"  Meldung {key}: unvollständiger Eintrag ({fehlt} fehlt) "
+                        f"— komplett übersprungen, bestehender (in sich konsistenter) "
+                        f"Stand bleibt. Kein Teil-Update einzelner Felder.")
+                    continue
+                if _ist_meta_kommentar(headline) or _ist_meta_kommentar(kommentar):
+                    log(f"  Meldung {key}: Text beschreibt den eigenen Rechercheprozess "
+                        f"statt einer echten Meldung zu sein ({headline!r}) — verworfen, "
+                        f"keine Platzhalter-Texte als Inhalt.")
+                    continue
+                url = (item.get("quelle_url") or "").strip().lower()
+                if url and (url in doppelte_urls or url in verbotene_urls or url in neue_bad_urls):
+                    log(f"  Meldung {key}: teilt sich eine Quellen-URL mit anderen "
+                        f"Meldungen oder ist bereits dauerhaft gesperrt ({url}) — verworfen.")
+                    continue
+                if url and _url_ist_zu_generisch(url):
+                    log(f"  Meldung {key}: Quellen-URL ist eine generische Landingpage "
+                        f"oder Platzhalter-Domain statt eines konkreten Artikels "
+                        f"({url}) — verworfen.")
+                    continue
+                gruppen_treffer[key] = item
+
+            gefunden = len(gruppen_treffer)
+            if gefunden > 0:
+                all_items.update(gruppen_treffer)
+                for item in gruppen_treffer.values():
+                    entity = (item.get("entity") or "").strip()
+                    if entity:
+                        schon_gewaehlte_entitaeten.append(entity)
+                break  # Erfolg (auch teilweise) -> kein zweiter Versuch nötig
+
+            letzter_fehlgrund = (
+                f"alle Meldungen teilten sich eine Quelle ({', '.join(doppelte_urls)})"
+                if doppelte_urls else "keine der Meldungen war verwertbar"
+            )
+            if versuch == 0:
+                log(f"  Gruppe komplett fehlgeschlagen ({letzter_fehlgrund}) — "
+                    f"wiederhole einmal mit verschärfter Rückmeldung.")
+
+    if neue_bad_urls:
+        save_bad_urls(bad_url_history + [
+            {"date": datetime.date.today().isoformat(), "url": u} for u in neue_bad_urls
+        ])
+        log(f"  {len(neue_bad_urls)} neue Feigenblatt-URL(s) dauerhaft gesperrt: "
+            f"{', '.join(neue_bad_urls)}")
 
     all_items = dedupe_rubrik_topics(all_items)
     all_items = strip_repeated_boilerplate(all_items)
