@@ -313,6 +313,12 @@ _GEMEINSAME_REGELN = (
     "Ton: sachlich-warm, nüchtern, mit Zahlen belegt — keine Übertreibung, "
     "keine Effekthascherei. Wo eine gute Nachricht ein 'Aber' hat (z. B. "
     "Finanzierungslücke, Restrisiko), nenne es ehrlich, statt es wegzulassen. "
+    "ABSOLUTES VERBOT VON PROZESS-KOMMENTAREN: Findest du partout kein "
+    "geeignetes Thema, wähle ein anderes — schreibe NIEMALS einen Satz über "
+    "die Suche selbst als Titel oder Text (z.B. NIEMALS 'Keine verwertbare "
+    "Meldung gefunden', 'Die Websuche liefert dafür heute zu wenig'). So ein "
+    "Satz ist KEINE Meldung, egal wie grammatikalisch korrekt er klingt, und "
+    "wird automatisch erkannt und verworfen. "
     "Antworte AUSSCHLIESSLICH auf " + ("Englisch (US)" if LANG == "en" else "Deutsch") + " — keine chinesischen, kyrillischen, "
     "arabischen oder anderen nicht-lateinischen Schriftzeichen, auch nicht "
     "einzelne Wörter oder Zeichen davon. Wiederhole niemals denselben Fakt "
@@ -570,6 +576,23 @@ def review_and_rewrite_visionen(data: dict, date_label: str) -> dict:
     return data
 
 
+def _ist_meta_kommentar(text: str) -> bool:
+    """Erkennt, ob ein Text den eigenen Rechercheprozess beschreibt ('ich
+    habe nichts gefunden') statt ein echtes Thema zu behandeln — siehe
+    generate.py für die volle Begründung dieses Bugfixes."""
+    if not text:
+        return False
+    marker = (
+        "suchergebnis", "websuche", "newsindex", "keine verwertbare",
+        "nicht belegbar", "nicht verifizierbar", "recherche liefert",
+        "rechercheergebnis", "keine sechs", "keine drei", "keine fünf",
+        "keine vier", "keine zwei", "keine echte meldung", "kein sauberer treffer",
+        "die suche hat", "die datenlage ist", "zu dünn", "breiter und tiefer",
+    )
+    t = text.lower()
+    return any(m in t for m in marker)
+
+
 def verify_visionen_sources(data: dict) -> dict:
     """Prüft technisch JEDE angegebene Quellen-URL (Spotlight, Good-News-
     Kacheln, Hintergrundstorys). Ohne nachweislich erreichbare, plausible UND
@@ -610,7 +633,14 @@ def verify_visionen_sources(data: dict) -> dict:
         if not isinstance(item, dict):
             log("  Ungültiger Meldungs-Eintrag (kein Objekt) — übersprungen.")
             continue
-        if url_ok(item.get("source_url"), f"Meldung {item.get('title', '(ohne Titel)')!r}"):
+        titel = item.get("title", "")
+        body = BeautifulSoup(item.get("body_html", ""), "html.parser").get_text()
+        if _ist_meta_kommentar(titel) or _ist_meta_kommentar(body):
+            log(f"  Meldung {titel!r}: Text beschreibt den eigenen "
+                f"Rechercheprozess statt ein echtes Thema — verworfen, "
+                f"keine Platzhalter-Texte als Inhalt.")
+            continue
+        if url_ok(item.get("source_url"), f"Meldung {titel!r}"):
             verifizierte_news.append(item)
     data["good_news"] = verifizierte_news
 
@@ -618,6 +648,12 @@ def verify_visionen_sources(data: dict) -> dict:
     for key, st in (data.get("stories") or {}).items():
         if not isinstance(st, dict):
             log("  Ungültiger Story-Eintrag (kein Objekt) — übersprungen.")
+            continue
+        modal_title = st.get("modal_title", "")
+        lead = st.get("lead", "")
+        if _ist_meta_kommentar(modal_title) or _ist_meta_kommentar(lead):
+            log(f"  Story zu Meldung {key} ({modal_title!r}): Text beschreibt "
+                f"den eigenen Rechercheprozess — verworfen.")
             continue
         quellen_ok = [
             s for s in (st.get("sources") or [])

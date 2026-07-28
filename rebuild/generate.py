@@ -485,6 +485,25 @@ def _fetch_fresh_items(date_label: str, avoid_entities: list):
         "stammen, nicht erfunden sein. Findest du keine echte Meldung mit "
         "einer echten, existierenden URL, dann liefere GAR KEINEN Eintrag "
         "für diesen Platz (lass ihn im JSON weg), statt etwas zu erfinden.\n\n"
+        "ABSOLUTES VERBOT VON PROZESS-KOMMENTAREN — GLEICHRANGIG WICHTIG: "
+        "Wenn du für einen Platz keine echte Meldung findest, ist die "
+        "EINZIGE zulässige Reaktion, den Eintrag komplett wegzulassen "
+        "(siehe oben). Es ist STRENG VERBOTEN, stattdessen einen Satz über "
+        "die Suche selbst als Schlagzeile oder Kommentar zu schreiben — "
+        "z.B. NIEMALS Formulierungen wie 'Keine verwertbare Meldung "
+        "gefunden', 'Die Websuche liefert dafür heute zu wenig', 'Keine "
+        "sechs eigenständigen Meldungen aus den Suchergebnissen belegbar' "
+        "oder Ähnliches. Ein Satz über deinen eigenen Rechercheprozess ist "
+        "KEINE Schlusslicht-Meldung, egal wie grammatikalisch korrekt er "
+        "klingt — er wird automatisch erkannt und die gesamte Ausgabe "
+        "verworfen. Schreibe entweder eine echte Meldung mit echten Namen "
+        "und Zahlen, oder lass den Platz frei.\n\n"
+        "JEDE MELDUNG BRAUCHT IHRE EIGENE QUELLE: Verwende NIEMALS dieselbe "
+        f"URL für mehrere der {N_ITEMS} Meldungen — auch nicht eine "
+        "generische Nachrichten-Übersichtsseite (z.B. eine Newsindex- oder "
+        "Startseite) als austauschbares Feigenblatt für mehrere Fälle "
+        "gleichzeitig. Jede Quelle muss spezifisch zu genau dem einen Fall "
+        "gehören, über den sie berichtet.\n\n"
         + (
             f"Diese Fälle/Entitäten wurden in den letzten Tagen bereits "
             f"verwendet — wähle KEINEN davon erneut: "
@@ -543,6 +562,34 @@ def _fetch_fresh_items(date_label: str, avoid_entities: list):
     return items_list if isinstance(items_list, list) else None
 
 
+def _ist_meta_kommentar(text: str) -> bool:
+    """Erkennt, ob ein Text in Wirklichkeit eine Erklärung des Rechercheprozesses
+    ist ('ich habe nichts gefunden') statt einer echten Schlusslicht-Meldung.
+
+    WICHTIG (Bugfix, gefunden nach Live-Meldung "leere/kaputte Meldungen"):
+    Wenn ein Modell partout keine 6 echten Fälle findet, kann es dazu neigen,
+    STATT einen Eintrag einfach weg zu lassen (wie im Prompt verlangt), eine
+    Art Entschuldigung direkt ins headline/kommentar-Feld zu schreiben, z.B.
+    'ZEIT-Newsindex meldet keine verwertbare Schlusslicht-Meldung mit
+    Rangliste' oder 'Keine sechs eigenständigen Meldungen aus den
+    Suchergebnissen belegbar'. Das sieht oberflächlich wie ein Satz aus,
+    besteht aber die Sinnhaftigkeits-Prüfung, weil grammatikalisch korrekt —
+    und wird von einer geteilten, aber technisch echten URL (z.B. eine
+    generische Newsindex-Seite) fälschlich als 'verifiziert' durchgewunken.
+    Diese Funktion fängt das inhaltlich ab, unabhängig von der URL-Prüfung."""
+    if not text:
+        return False
+    marker = (
+        "suchergebnis", "websuche", "newsindex", "keine verwertbare",
+        "nicht belegbar", "nicht verifizierbar", "recherche liefert",
+        "rechercheergebnis", "keine sechs", "keine drei", "keine fünf",
+        "keine vier", "keine zwei", "keine echte meldung", "kein sauberer treffer",
+        "die suche hat", "die datenlage ist", "zu dünn", "breiter und tiefer",
+    )
+    t = text.lower()
+    return any(m in t for m in marker)
+
+
 def get_daily_items(date_label: str, avoid_entities: list):
     """Holt die 3 frei recherchierten Tagesmeldungen (kein Themen-Pool,
     keine Rotation — siehe _fetch_fresh_items)."""
@@ -562,6 +609,28 @@ def get_daily_items(date_label: str, avoid_entities: list):
     # zuverlässig laufenden Seiten (Insights, Brightside-Good-News,
     # Nonconformist).
     items_list = _fetch_fresh_items(date_label, avoid_entities) or []
+
+    # WICHTIG (Bugfix, gefunden nach Live-Meldung "Meldungen sind
+    # Textbausteine über die eigene Suche"): Wenn 2 oder mehr Meldungen
+    # dieselbe Quellen-URL teilen, ist das ein starkes Signal, dass die KI
+    # eine generische, technisch echte URL (z.B. eine Newsindex-Startseite)
+    # als Feigenblatt wiederverwendet hat, statt für jede Meldung wirklich
+    # zu recherchieren — eine echte Redaktion zitiert nie 6 verschiedene
+    # Fälle mit derselben Quelle. Betroffene Einträge werden komplett
+    # verworfen statt einzeln toleriert.
+    url_counts = {}
+    for it in items_list:
+        if isinstance(it, dict):
+            url = (it.get("quelle_url") or "").strip().lower()
+            if url:
+                url_counts[url] = url_counts.get(url, 0) + 1
+    doppelte_urls = {u for u, c in url_counts.items() if c > 1}
+    if doppelte_urls:
+        log(f"  WARNUNG: {len(doppelte_urls)} Quellen-URL(s) werden von "
+            f"mehreren Meldungen gleichzeitig verwendet — starkes Anzeichen "
+            f"für eine Feigenblatt-Quelle statt echter Einzelrecherche. "
+            f"Betroffene Meldungen werden verworfen: {', '.join(doppelte_urls)}")
+
     all_items = {}
     for idx in range(N_ITEMS):
         key = str(idx + 1)
@@ -575,13 +644,23 @@ def get_daily_items(date_label: str, avoid_entities: list):
         # kommentar müssen BEIDE vorhanden sein, sonst wird der Eintrag
         # komplett verworfen. Ein Teil-Update würde sonst zwei Textteile
         # aus evtl. ganz unterschiedlichen Tagen/Themen kombinieren.
-        if headline and kommentar:
-            all_items[key] = item
-        else:
+        if not (headline and kommentar):
             fehlt = "kommentar" if headline else ("headline" if kommentar else "headline+kommentar")
             log(f"  Meldung {key}: unvollständiger Eintrag ({fehlt} fehlt) "
                 f"— komplett übersprungen, bestehender (in sich konsistenter) "
                 f"Stand bleibt. Kein Teil-Update einzelner Felder.")
+            continue
+        if _ist_meta_kommentar(headline) or _ist_meta_kommentar(kommentar):
+            log(f"  Meldung {key}: Text beschreibt den eigenen Rechercheprozess "
+                f"statt einer echten Meldung zu sein ({headline!r}) — verworfen, "
+                f"keine Platzhalter-Texte als Inhalt.")
+            continue
+        url = (item.get("quelle_url") or "").strip().lower()
+        if url and url in doppelte_urls:
+            log(f"  Meldung {key}: teilt sich eine Quellen-URL mit anderen "
+                f"Meldungen ({url}) — verworfen.")
+            continue
+        all_items[key] = item
 
     all_items = dedupe_rubrik_topics(all_items)
     all_items = strip_repeated_boilerplate(all_items)
@@ -688,6 +767,17 @@ def review_and_fix_items(items: dict, date_label: str) -> dict:
         "Grammatik)? Passt der Kommentar inhaltlich zur Schlagzeile? Ist "
         "es KEINE Wiederholung eines Standardsatzes aus einem anderen "
         "Eintrag?\n\n"
+        "BESONDERS WICHTIG — PROZESS-KOMMENTARE ERKENNEN: Manche Einträge "
+        "beschreiben in Wirklichkeit den Rechercheprozess selbst statt "
+        "einer echten Meldung — z.B. 'Keine verwertbare Meldung gefunden', "
+        "'Die Websuche liefert dafür heute zu wenig', 'Keine sechs "
+        "eigenständigen Meldungen aus den Suchergebnissen belegbar'. Das "
+        "klingt grammatikalisch oft einwandfrei, ist aber KEINE echte "
+        "Nachricht über ein reales Ereignis, sondern eine verkappte "
+        "Fehlermeldung. Erkennst du so ein Muster (der Text handelt vom "
+        "Suchen/Finden/Belegen selbst statt von einem konkreten Fall mit "
+        "echten Namen), gib zwingend 'ok': false zurück — NIEMALS "
+        "versuchen, so einen Eintrag nur sprachlich zu 'verbessern'.\n\n"
         "ZUSÄTZLICH — KATEGORIE-KOHÄRENZ (sehr wichtig, häufigster Fehler): "
         "Jeder Eintrag hat ein Feld 'rubrik_soll' — die Kategorie, der er "
         "zugeordnet ist. Prüfe, ob Schlagzeile UND Kommentar TATSÄCHLICH "

@@ -406,6 +406,23 @@ def dedupe_column_paragraphs(paragraphs, threshold=0.75):
 
 
 # ── KI-Aufruf: eigenständige Recherche + Meinungskommentar ──────────────────
+def _ist_meta_kommentar(text: str) -> bool:
+    """Erkennt, ob ein Text den eigenen Rechercheprozess beschreibt ('ich
+    habe nichts gefunden') statt ein echtes Thema zu behandeln — siehe
+    generate.py für die volle Begründung dieses Bugfixes."""
+    if not text:
+        return False
+    marker = (
+        "suchergebnis", "websuche", "newsindex", "keine verwertbare",
+        "nicht belegbar", "nicht verifizierbar", "recherche liefert",
+        "rechercheergebnis", "keine sechs", "keine drei", "keine fünf",
+        "keine vier", "keine zwei", "keine echte meldung", "kein sauberer treffer",
+        "die suche hat", "die datenlage ist", "zu dünn", "breiter und tiefer",
+    )
+    t = text.lower()
+    return any(m in t for m in marker)
+
+
 def get_fresh_columns(date_label: str, avoid_themes: list):
     log(f"Recherchiere {N_COLS} frische politische/gesellschaftliche Themen "
         "samt Zahlen und Quelle …")
@@ -429,6 +446,16 @@ def get_fresh_columns(date_label: str, avoid_themes: list):
         "angeben. Findest du zu einem Thema keine echte Zahl mit einer "
         "echten, existierenden Quelle, wähle ein anderes Thema, aber "
         "erfinde nichts. Wahrheitsgehalt geht immer vor Zuspitzung.\n\n"
+        "ABSOLUTES VERBOT VON PROZESS-KOMMENTAREN: Findest du partout kein "
+        "geeignetes Thema, wähle ein anderes Thema — schreibe NIEMALS einen "
+        "Satz über die Suche selbst als Titel oder Absatz (z.B. NIEMALS "
+        "'Keine verwertbare Meldung gefunden', 'Die Websuche liefert dafür "
+        "heute zu wenig'). So ein Satz ist KEINE Kolumne, egal wie "
+        "grammatikalisch korrekt er klingt, und wird automatisch erkannt "
+        "und verworfen.\n\n"
+        "JEDE KOLUMNE BRAUCHT IHRE EIGENE QUELLE: Verwende NIEMALS dieselbe "
+        f"URL für mehrere der {N_COLS} Kolumnen, auch nicht eine generische "
+        "Nachrichten-Übersichtsseite als austauschbares Feigenblatt.\n\n"
         "STIL (hier darfst und sollst du zuspitzen): pointiert, bissig, "
         "mit trockenem schwarzem Humor und klarer, DEUTLICH benannter "
         "linker, ökologisch-grüner politischer Haltung für die "
@@ -498,94 +525,6 @@ Liefere GENAU dieses JSON-Schema:
 
     data = call_api_json(system, prompt, max_tokens=9000)
     if not data or "columns" not in data or not isinstance(data["columns"], list):
-        log("  Keine verwertbaren Kommentar-Daten erhalten.")
-        return None
-    return data
-    log("Erstelle Meinungskommentare zu vorgegebenen, festen Fakten …")
-
-    system = (
-        "Du bist Kolumnist der Meinungsstrecke 'more from behind' auf "
-        "schlusslicht.de, einem deutschen linkssatirischen Magazin. "
-        "Zielpublikum: belesene Erwachsene zwischen Mitte 40 und 70 (Generation "
-        "X bis Babyboomer) — kein Jugend- oder Social-Media-Slang, keine "
-        "Meme-Sprache, keine Anglizismen-Mischwörter (z. B. NIEMALS "
-        "Konstruktionen wie 'irgendwas-treue' oder deutsch-englische "
-        "Bastelwörter). Schreibe in klarer, druckreifer Sprache, wie es in "
-        "einem gedruckten Satiremagazin (Stil: Titanic, Eulenspiegel, "
-        "klassische Feuilleton-Polemik) stehen könnte — nicht wie eine "
-        "Boulevard-Schlagzeile oder ein Tweet.\n\n"
-        "Du bekommst zu jeder Rubrik FESTE, bereits verifizierte Fakten "
-        "(Zahlen, Quellen) vorgegeben. ABSOLUTE REGEL (nicht verhandelbar): "
-        "Verwende AUSSCHLIESSLICH die dir gegebenen Zahlen und Fakten, "
-        "wortwörtlich übernommen. Erfinde KEINE neuen Statistiken, Studien, "
-        "Prozentsätze oder Vergleichszahlen — auch keine berechneten "
-        "Verhältnisse, die nicht explizit vorgegeben sind. Wahrheitsgehalt "
-        "geht immer vor Zuspitzung.\n\n"
-        "STIL (hier darfst und sollst du zuspitzen): pointiert, bissig, "
-        "mit trockenem schwarzem Humor und klarer, DEUTLICH benannter "
-        "linker, ökologisch-grüner politischer Haltung für die "
-        "Benachteiligten — Satire durch "
-        "Sprachwitz, Ironie und überraschende Bilder, nicht durch "
-        "Ausrufezeichen oder reißerische Effekthascherei. Benenne Ursache "
-        "und Verantwortung direkt und ohne übermäßige Zurückhaltung "
-        "(strukturell: wer profitiert, wer trägt die politische "
-        "Verantwortung, welche Verteilungslogik steckt dahinter) — deutlich "
-        "direkter als eine vorsichtig-relativierende Zeitungsmeldung, aber "
-        "weiterhin NICHT radikal und niemals plump: jede Zuspitzung bleibt "
-        "an die vorgegebenen Fakten gebunden, keine Übertreibung ins "
-        "Unbelegbare. Kurze, klare Sätze wechseln mit einem gelegentlich "
-        "längeren, kunstvoll gebauten Satz. Der 'punch'-Absatz soll die "
-        "pointierteste, bissigste Formulierung der Kolumne enthalten. Der "
-        "Titel darf originell und wortspielerisch sein, aber nicht "
-        "reißerisch wie eine Boulevardzeile klingen. Antworte "
-        "AUSSCHLIESSLICH auf " + ("Englisch (US)" if LANG == "en" else "Deutsch") + " — keine chinesischen, kyrillischen, "
-        "arabischen oder anderen nicht-lateinischen Schriftzeichen, auch "
-        "nicht einzelne Wörter oder Zeichen davon.\n\n"
-        "SPRACHLICHE KLARHEIT: Jeder der 4 Absätze hat eine feste, eigene "
-        "Aufgabe (siehe Schema unten) und darf NICHTS aus einem anderen "
-        "Absatz wiederholen — auch nicht sinngemäß oder mit anderen Worten. "
-        "Prüfe vor der Ausgabe jeden Absatz gegen die vorherigen: Steht der "
-        "Gedanke schon da? Falls ja, streiche ihn. Antworte NUR mit einem "
-        "validen JSON-Objekt, keine Erklärung davor oder danach."
-    )
-
-    prompt = f"""Ausgabe vom {date_label}. Schreibe zu JEDER der folgenden 5 Rubriken
-einen Meinungskommentar, basierend NUR auf den gegebenen Fakten:
-
-{json.dumps(facts_package, ensure_ascii=False, indent=2)}
-
-Liefere GENAU dieses JSON-Schema:
-{{
-  "columns": [
-    {{
-      "rubrik_num": "die Nummer aus der Vorgabe",
-      "tag": "" + ("Standpoint · short topic" if LANG == "en" else "Standpunkt · Kurzthema") + "",
-      "title": "prägnanter Titel wie eine Schlagzeile, max 40 Zeichen. NUR "
-                "vollständige, echte deutsche Wörter — KEINE erfundenen "
-                "Kunstwörter oder abgebrochenen Wortspiele (z.B. NIEMALS "
-                "'Bahnbrech' statt 'bahnbrechend' — entweder das volle, "
-                "korrekte Wort verwenden oder eine andere, unkompliziertere "
-                "Formulierung wählen, notfalls auch nüchtern-sachlich statt "
-                "originell). Im Zweifel lieber sachlich-klar als kreativ-kaputt.",
-      "paragraphs": [
-        {{"text": "Absatz 1 — NUR: Einstieg mit einer der vorgegebenen Zahlen, nüchtern dargestellt. Keine Bewertung.", "punch": false}},
-        {{"text": "Absatz 2 — NUR: der zugespitzte Kernsatz/die Wertung dazu. Die Zahl aus Absatz 1 nicht wiederholen.", "punch": true}},
-        {{"text": "Absatz 3 — NUR: zusätzlicher Kontext oder Gegenargument, das in Absatz 1+2 noch nicht vorkam.", "punch": false}},
-        {{"text": "Absatz 4 — NUR: eine konkrete Schlussfolgerung/Forderung, die nirgends vorher stand.", "punch": false}}
-      ],
-      "bignum_text": "eine der vorgegebenen Zahlen, wortwörtlich, z.B. '204×' oder '~7 %'",
-      "bignum_caption": "1 kurzer Satz, was die Zahl bedeutet",
-      "stat_bullets": [
-        {{"label": "Bezeichnung", "value": "Wert, wortwörtlich aus den Fakten"}}
-        // 2-3 Einträge, alle wortwörtlich aus den vorgegebenen Fakten
-      ]
-    }}
-    // für jede der 5 Rubriken ein Eintrag, in derselben Reihenfolge
-  ]
-}}"""
-
-    data = call_api_json(system, prompt, max_tokens=9000)
-    if not data or "columns" not in data:
         log("  Keine verwertbaren Kommentar-Daten erhalten.")
         return None
     return data
@@ -778,9 +717,36 @@ def main() -> int:
     # Sicherheitsnetz: Spalten mit nicht verifizierbarer Quelle aussortieren
     # (technischer HTTP-Check, dieselbe Logik wie in generate.py).
     log("  Verifiziere Quellen-URLs technisch (HTTP-Check) …")
+
+    # WICHTIG (Bugfix, siehe generate.py get_daily_items für die volle
+    # Begründung): teilen sich 2+ Kolumnen dieselbe Quellen-URL, ist das
+    # ein starkes Anzeichen für eine wiederverwendete Feigenblatt-Quelle
+    # statt echter Einzelrecherche je Thema.
+    url_counts = {}
+    for col in columns:
+        u = (col.get("source_url") or "").strip().lower()
+        if u:
+            url_counts[u] = url_counts.get(u, 0) + 1
+    doppelte_urls = {u for u, c in url_counts.items() if c > 1}
+    if doppelte_urls:
+        log(f"  WARNUNG: {len(doppelte_urls)} Quellen-URL(s) werden von "
+            f"mehreren Kolumnen gleichzeitig verwendet — Feigenblatt-"
+            f"Verdacht, betroffene Kolumnen werden verworfen.")
+
     verified = []
     for col in columns:
+        title = (col.get("title") or "")
+        paras_text = " ".join(p.get("text", "") for p in col.get("paragraphs", []) if isinstance(p, dict))
+        if _ist_meta_kommentar(title) or _ist_meta_kommentar(paras_text):
+            log(f"  Kolumne {title!r}: Text beschreibt den eigenen "
+                f"Rechercheprozess statt ein echtes Thema zu behandeln — "
+                f"verworfen, keine Platzhalter-Texte als Inhalt.")
+            continue
         url = (col.get("source_url") or "").strip()
+        if url.lower() in doppelte_urls:
+            log(f"  Kolumne {title!r}: teilt sich eine Quellen-URL mit "
+                f"anderen Kolumnen ({url}) — verworfen.")
+            continue
         if not verify_url(url):
             log(f"  Kolumne {col.get('title', '(ohne Titel)')!r}: Quellen-URL "
                 f"fehlt oder nicht erreichbar ({url or 'keine URL angegeben'}) "
