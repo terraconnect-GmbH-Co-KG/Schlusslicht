@@ -425,7 +425,7 @@ def dedupe_paragraphs(paragraphs, threshold=0.75):
 
 
 # ── Recherche: 3 frische Meldungen (kein Pool, keine Rotation) ─────────────
-N_ITEMS = 3
+N_ITEMS = 6
 
 
 def _fetch_fresh_items(date_label: str, avoid_entities: list):
@@ -439,20 +439,32 @@ def _fetch_fresh_items(date_label: str, avoid_entities: list):
         f"linkssatirischen Magazin. Heute ist {date_label}.\n\n"
         f"Finde {N_ITEMS} ECHTE, tagesaktuelle oder höchstens 14 Tage alte "
         "'Schlusslicht'-Meldungen via Websuche — jeweils aus einem ANDEREN "
-        "Bereich (z.B. Sport, Niedriglohn, Verkehr, Pressefreiheit, "
-        "Korruption, Klimaschutz, Steuervermeidung, Medien, oder jeder "
-        "andere Bereich, in dem jemand/etwas nachweislich Schlusslicht bzw. "
-        "Tabellenletzter ist). Die Quelle muss NICHT zwingend eine formale "
-        "Ranking-Tabelle oder ein offizieller Index sein (RSF-Index, CPI, "
-        "CCPI o.ä. sind Beispiele, keine Pflicht) — jede echte, relevante "
-        "Meldung aus JEDEM Land der Welt zählt, z.B. auch ein einzelner "
-        "Gerichtsfall, ein Zeitungsartikel über einen konkreten Vorfall, "
-        "eine Studie oder ein parlamentarischer Bericht. Meide KEINE "
+        "Bereich. WICHTIG für die Themenmischung: Bringe eine breite Mischung "
+        "aus (a) Themen, die die BREITE MASSE direkt interessieren und "
+        "leicht zugänglich sind — z.B. Fußball/Bundesliga/Champions League, "
+        "andere Ballsportarten, Fluggesellschaften-Pünktlichkeit, "
+        "Handynetz-/Internet-Qualität, Streaming-Dienste, Restaurant-/"
+        "Fast-Food-Ketten, Mietpreise, Lebensmittelpreise, Verkehrsstaus, "
+        "Krankenkassen, Universitäten-Rankings, Reiseziele/Tourismus, "
+        "Videospiele/Konsolen, Social-Media-Plattformen — UND (b) den "
+        "klassischen strukturkritischen Themen (Niedriglohn, "
+        "Pressefreiheit, Korruption, Klimaschutz, Steuervermeidung, "
+        "Medien, oder jeder andere Bereich, in dem jemand/etwas "
+        "nachweislich Schlusslicht bzw. Tabellenletzter ist). Bei "
+        f"{N_ITEMS} Meldungen sollten mindestens die Hälfte aus Kategorie "
+        "(a) stammen, damit die Seite für ein breites, nicht nur "
+        "politikinteressiertes Publikum unmittelbar attraktiv ist. Die "
+        "Quelle muss NICHT zwingend eine formale Ranking-Tabelle oder ein "
+        "offizieller Index sein (RSF-Index, CPI, CCPI o.ä. sind Beispiele, "
+        "keine Pflicht) — jede echte, relevante Meldung aus JEDEM Land der "
+        "Welt zählt, z.B. auch ein einzelner Gerichtsfall, ein "
+        "Zeitungsartikel über einen konkreten Vorfall, eine Studie, eine "
+        "Verbraucherumfrage oder ein parlamentarischer Bericht. Meide KEINE "
         "Weltregion aus vermeintlicher Vorsicht — auch Nahost/Gaza, "
         "Ukraine/Russland oder andere politisch sensible Weltgegenden sind "
         "ganz normale, gleichberechtigte Themenquellen wie jede andere "
-        "Region, solange die Meldung echt und belegt ist. Die 3 Meldungen "
-        "müssen sich thematisch klar unterscheiden.\n\n"
+        f"Region, solange die Meldung echt und belegt ist. Die {N_ITEMS} "
+        "Meldungen müssen sich thematisch klar unterscheiden.\n\n"
         "ABSOLUTES VERBOT VON PLATZHALTERN: Jede Schlagzeile und jeder "
         "Kommentar muss eine ECHTE, konkrete, recherchierte Meldung mit "
         "echten Eigennamen, Orten und Zahlen sein. Schreibe NIEMALS "
@@ -1163,7 +1175,7 @@ def inject(html: str, items, stories, date_label: str, build_time: str) -> str:
         hl = (sp.get("hl") or "").strip()
         txt = (sp.get("text") or "").strip()
         og_title = f"SCHLUSSLICHT — {hl}" if hl else "SCHLUSSLICHT — Das Magazin der Letzten"
-        og_desc = txt[:155] if txt else "Das Magazin der Letzten. 3 Rubriken täglich aktuell."
+        og_desc = txt[:155] if txt else "Das Magazin der Letzten. 6 Rubriken täglich aktuell."
 
         title_tag = soup.find("title")
         if title_tag:
