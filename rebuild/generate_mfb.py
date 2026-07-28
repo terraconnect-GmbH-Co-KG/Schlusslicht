@@ -118,6 +118,8 @@ def verify_url(url: str, timeout: int = 8) -> bool:
                 f"Server-Fehler, keine echte Nicht-Existenz) — wird trotzdem "
                 f"akzeptiert: {url}")
             return True
+        log(f"  Quelle antwortet mit HTTP {r.status_code} (echte Ablehnung, "
+            f"z.B. Seite nicht mehr vorhanden) — verworfen: {url}")
         return False
     except requests.RequestException as exc:
         msg = str(exc).lower()
@@ -406,6 +408,38 @@ def dedupe_column_paragraphs(paragraphs, threshold=0.75):
 
 
 # ── KI-Aufruf: eigenständige Recherche + Meinungskommentar ──────────────────
+_GENERISCHE_PLACEHOLDER_DOMAINS = {
+    "example.com", "example.org", "example.net", "example.edu",
+    "test.com", "sample.com", "localhost", "127.0.0.1", "yourdomain.com",
+    "domain.com", "website.com",
+}
+_GENERISCHER_PFAD_MUSTER = re.compile(
+    r"^(nachrichten|news|index|aktuell|homepage|startseite|newsblog)[-_a-z0-9]*$",
+    re.IGNORECASE,
+)
+
+
+def _url_ist_zu_generisch(url: str) -> bool:
+    """Erkennt Platzhalter-Domains (z.B. example.com) und generische
+    Nachrichten-Landingpages statt konkreter Artikel — siehe generate.py
+    für die volle Begründung dieses Bugfixes."""
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return True
+    host = (parsed.hostname or "").lower()
+    if host.startswith("www."):
+        host = host[4:]
+    if host in _GENERISCHE_PLACEHOLDER_DOMAINS:
+        return True
+    path = parsed.path.rstrip("/")
+    if not path:
+        return True
+    last = path.rsplit("/", 1)[-1].lower()
+    last_ohne_endung = re.sub(r"\.(html?|php|aspx?)$", "", last)
+    return bool(_GENERISCHER_PFAD_MUSTER.match(last_ohne_endung))
+
+
 def _ist_meta_kommentar(text: str) -> bool:
     """Erkennt, ob ein Text den eigenen Rechercheprozess beschreibt ('ich
     habe nichts gefunden') statt ein echtes Thema zu behandeln — siehe
@@ -455,7 +489,11 @@ def get_fresh_columns(date_label: str, avoid_themes: list):
         "und verworfen.\n\n"
         "JEDE KOLUMNE BRAUCHT IHRE EIGENE QUELLE: Verwende NIEMALS dieselbe "
         f"URL für mehrere der {N_COLS} Kolumnen, auch nicht eine generische "
-        "Nachrichten-Übersichtsseite als austauschbares Feigenblatt.\n\n"
+        "Nachrichten-Übersichtsseite als austauschbares Feigenblatt. Die "
+        "URL muss auf einen konkreten Artikel zu GENAU diesem Thema zeigen, "
+        "nicht auf eine allgemeine Landingpage. Verwende NIEMALS "
+        "Platzhalter-Domains wie 'example.com' — das ist keine echte "
+        "Quelle, auch wenn die Domain technisch existiert.\n\n"
         "STIL (hier darfst und sollst du zuspitzen): pointiert, bissig, "
         "mit trockenem schwarzem Humor und klarer, DEUTLICH benannter "
         "linker, ökologisch-grüner politischer Haltung für die "
@@ -694,14 +732,22 @@ def main() -> int:
         return 1
 
     history = load_history()
-    avoid_themes = sorted({
-        (entry.get("thema") or "").strip()
-        for entry in history
-        if (entry.get("thema") or "").strip()
-    })
+    # WICHTIG (siehe generate.py für die volle Begründung): nur die
+    # neuesten ~35 Themen werden im Prompt gezeigt, um Prompt-Überlastung
+    # zu vermeiden — ein zu langer Ausschluss-Block kann dazu führen, dass
+    # die KI aufgibt und stattdessen Platzhalter-Inhalte produziert.
+    recent_first = list(reversed(history))
+    seen, avoid_themes = set(), []
+    for entry in recent_first:
+        th = (entry.get("thema") or "").strip()
+        if th and th not in seen:
+            seen.add(th)
+            avoid_themes.append(th)
+        if len(avoid_themes) >= 35:
+            break
     if avoid_themes:
-        log(f"  {len(avoid_themes)} Themen aus den letzten {HISTORY_KEEP_DAYS} "
-            f"Tagen bereits verwendet — werden vermieden.")
+        log(f"  {len(avoid_themes)} der neuesten Themen (von {len(seen)}+ in "
+            f"den letzten {HISTORY_KEEP_DAYS} Tagen) werden im Prompt vermieden.")
 
     data = get_fresh_columns(date_label, avoid_themes)
     if not data:
@@ -746,6 +792,11 @@ def main() -> int:
         if url.lower() in doppelte_urls:
             log(f"  Kolumne {title!r}: teilt sich eine Quellen-URL mit "
                 f"anderen Kolumnen ({url}) — verworfen.")
+            continue
+        if url and _url_ist_zu_generisch(url):
+            log(f"  Kolumne {title!r}: Quellen-URL ist eine Platzhalter-Domain "
+                f"oder generische Landingpage statt eines konkreten Artikels "
+                f"({url}) — verworfen.")
             continue
         if not verify_url(url):
             log(f"  Kolumne {col.get('title', '(ohne Titel)')!r}: Quellen-URL "

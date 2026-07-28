@@ -149,6 +149,8 @@ def verify_url(url: str, timeout: int = 8) -> bool:
             return True
         # Echtes 404/410 -> Quelle existiert nachweislich nicht (Beleg
         # gegen genau diesen Pfad, nicht gegen die Domain generell).
+        log(f"  Quelle antwortet mit HTTP {r.status_code} (echte Ablehnung, "
+            f"z.B. Seite nicht mehr vorhanden) — verworfen: {url}")
         return False
     except requests.RequestException as exc:
         msg = str(exc).lower()
@@ -504,6 +506,14 @@ def _fetch_fresh_items(date_label: str, avoid_entities: list):
         "Startseite) als austauschbares Feigenblatt für mehrere Fälle "
         "gleichzeitig. Jede Quelle muss spezifisch zu genau dem einen Fall "
         "gehören, über den sie berichtet.\n\n"
+        "NUR KONKRETE ARTIKEL, KEINE ÜBERSICHTSSEITEN: Die Quellen-URL muss "
+        "auf einen spezifischen Artikel mit eigenem Titel/eigener "
+        "Überschrift zu GENAU diesem Fall zeigen — NIEMALS auf eine "
+        "allgemeine Nachrichten-Startseite wie '.../nachrichten-100.html' "
+        "oder '.../nachrichten/nachrichten-xyz-104.html' oder die "
+        "Domain-Startseite ohne Pfad. Verwende außerdem NIEMALS "
+        "Platzhalter-Domains wie 'example.com' — das sind keine echten "
+        "Quellen, auch wenn die Domain technisch existiert.\n\n"
         + (
             f"Diese Fälle/Entitäten wurden in den letzten Tagen bereits "
             f"verwendet — wähle KEINEN davon erneut: "
@@ -560,6 +570,46 @@ def _fetch_fresh_items(date_label: str, avoid_entities: list):
         return None
     items_list = result.get("items")
     return items_list if isinstance(items_list, list) else None
+
+
+_GENERISCHE_PLACEHOLDER_DOMAINS = {
+    "example.com", "example.org", "example.net", "example.edu",
+    "test.com", "sample.com", "localhost", "127.0.0.1", "yourdomain.com",
+    "domain.com", "website.com",
+}
+_GENERISCHER_PFAD_MUSTER = re.compile(
+    r"^(nachrichten|news|index|aktuell|homepage|startseite|newsblog)[-_a-z0-9]*$",
+    re.IGNORECASE,
+)
+
+
+def _url_ist_zu_generisch(url: str) -> bool:
+    """Erkennt zwei häufige Gaming-Muster, die die technische
+    Erreichbarkeits-Prüfung sonst durchwinkt, weil sie beide auf echte,
+    erreichbare Domains zeigen:
+      1) Bekannte Platzhalter-Domains (example.com etc.) — real
+         registriert und erreichbar, aber niemals eine echte Quelle.
+      2) Generische Nachrichten-Landingpages (z.B. '/nachrichten-100.html'
+         oder '/nachrichten/nachrichten-mdr-104.html') statt eines
+         konkreten Artikels mit eigenem Titel/Slug — das sind
+         Übersichtsseiten, keine Belege für einen bestimmten Einzelfall.
+    Gefunden nach Live-Meldung: die KI hat wiederholt dieselbe generische
+    Landingpage für alle Meldungen gleichzeitig als 'Quelle' angegeben."""
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return True
+    host = (parsed.hostname or "").lower()
+    if host.startswith("www."):
+        host = host[4:]
+    if host in _GENERISCHE_PLACEHOLDER_DOMAINS:
+        return True
+    path = parsed.path.rstrip("/")
+    if not path:
+        return True  # nur Domain-Root, keine konkrete Seite/Artikel
+    last = path.rsplit("/", 1)[-1].lower()
+    last_ohne_endung = re.sub(r"\.(html?|php|aspx?)$", "", last)
+    return bool(_GENERISCHER_PFAD_MUSTER.match(last_ohne_endung))
 
 
 def _ist_meta_kommentar(text: str) -> bool:
@@ -659,6 +709,11 @@ def get_daily_items(date_label: str, avoid_entities: list):
         if url and url in doppelte_urls:
             log(f"  Meldung {key}: teilt sich eine Quellen-URL mit anderen "
                 f"Meldungen ({url}) — verworfen.")
+            continue
+        if url and _url_ist_zu_generisch(url):
+            log(f"  Meldung {key}: Quellen-URL ist eine generische Landingpage "
+                f"oder Platzhalter-Domain statt eines konkreten Artikels "
+                f"({url}) — verworfen.")
             continue
         all_items[key] = item
 
@@ -1433,14 +1488,26 @@ def main() -> int:
         log("Verwende Template als Basis (kein vorheriges OUTPUT vorhanden).")
 
     history = load_story_history()
-    avoid_entities = sorted({
-        (entry.get("entity") or "").strip()
-        for entry in history
-        if (entry.get("entity") or "").strip()
-    })
+    # WICHTIG: Nur die neuesten ~35 Entitäten werden dem Prompt gezeigt (nicht
+    # alle, die je nach Alter der Historie schnell auf 60-100+ anwachsen
+    # können). Ein zu langer Ausschluss-Block überlastet den Prompt und kann
+    # dazu führen, dass die KI aufgibt und stattdessen Platzhalter-Inhalte
+    # oder eine wiederverwendete Feigenblatt-Quelle produziert. Die eigentliche
+    # Wiederholungssperre (is_recently_used) prüft weiterhin gegen die
+    # VOLLSTÄNDIGE Historie, nur die Prompt-Anzeige ist gekappt.
+    recent_first = list(reversed(history))
+    seen, avoid_entities = set(), []
+    for entry in recent_first:
+        ent = (entry.get("entity") or "").strip()
+        if ent and ent not in seen:
+            seen.add(ent)
+            avoid_entities.append(ent)
+        if len(avoid_entities) >= 35:
+            break
     if avoid_entities:
-        log(f"  {len(avoid_entities)} Fälle/Entitäten aus den letzten "
-            f"{STORY_HISTORY_KEEP_DAYS} Tagen bereits verwendet — werden vermieden.")
+        log(f"  {len(avoid_entities)} der neuesten Fälle/Entitäten (von "
+            f"{len(seen)}+ in den letzten {STORY_HISTORY_KEEP_DAYS} Tagen) "
+            f"werden im Prompt vermieden.")
 
     items = get_daily_items(date_label, avoid_entities)
     stories = get_embedded_stories(date_label, (items or {}).get("items", {}))

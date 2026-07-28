@@ -123,6 +123,8 @@ def verify_url(url: str, timeout: int = 8) -> bool:
                 f"Server-Fehler, keine echte Nicht-Existenz) — wird trotzdem "
                 f"akzeptiert: {url}")
             return True
+        log(f"  Quelle antwortet mit HTTP {r.status_code} (echte Ablehnung, "
+            f"z.B. Seite nicht mehr vorhanden) — verworfen: {url}")
         return False
     except requests.RequestException as exc:
         msg = str(exc).lower()
@@ -475,13 +477,42 @@ def get_visionen_content(date_label: str):
 _VERDAECHTIGE_DOMAIN_MUSTER = re.compile(
     r"(neuevisionen|visionen-news|visionennews|schlusslicht-?news)", re.IGNORECASE
 )
+_GENERISCHE_PLACEHOLDER_DOMAINS = {
+    "example.com", "example.org", "example.net", "example.edu",
+    "test.com", "sample.com", "localhost", "127.0.0.1", "yourdomain.com",
+    "domain.com", "website.com",
+}
+_GENERISCHER_PFAD_MUSTER = re.compile(
+    r"^(nachrichten|news|index|aktuell|homepage|startseite|newsblog)[-_a-z0-9]*$",
+    re.IGNORECASE,
+)
 
 
 def _domain_ist_verdaechtig(url: str) -> bool:
     """Erkennt offensichtlich erfundene Fantasie-Domains, die zufällig zum
     Namen der eigenen Rubrik/Website passen (z. B. 'neuevisionen.de') —
-    ein starkes Anzeichen für eine halluzinierte statt echte Quelle."""
-    return bool(_VERDAECHTIGE_DOMAIN_MUSTER.search(url or ""))
+    ein starkes Anzeichen für eine halluzinierte statt echte Quelle. Prüft
+    zusätzlich auf Platzhalter-Domains (example.com) und generische
+    Nachrichten-Landingpages statt konkreter Artikel (siehe generate.py
+    für die volle Begründung dieser beiden zusätzlichen Prüfungen)."""
+    if _VERDAECHTIGE_DOMAIN_MUSTER.search(url or ""):
+        return True
+    try:
+        parsed = urlparse(url or "")
+    except ValueError:
+        return True
+    host = (parsed.hostname or "").lower()
+    if host.startswith("www."):
+        host = host[4:]
+    if host in _GENERISCHE_PLACEHOLDER_DOMAINS:
+        return True
+    path = parsed.path.rstrip("/")
+    if path:
+        last = path.rsplit("/", 1)[-1].lower()
+        last_ohne_endung = re.sub(r"\.(html?|php|aspx?)$", "", last)
+        if _GENERISCHER_PFAD_MUSTER.match(last_ohne_endung):
+            return True
+    return False
 
 
 def review_and_rewrite_visionen(data: dict, date_label: str) -> dict:
