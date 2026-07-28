@@ -430,7 +430,7 @@ def dedupe_paragraphs(paragraphs, threshold=0.75):
 N_ITEMS = 6
 
 
-def _fetch_fresh_items(date_label: str, avoid_entities: list):
+def _fetch_fresh_items(date_label: str, avoid_entities: list, count: int):
     """Recherchiert 3 frische 'Schlusslicht'-Meldungen aus BELIEBIGEN
     Bereichen in einem Aufruf — inkl. der kompletten Anzeige-Daten (Icon,
     Kategorie-Label, kleine Rangliste), die früher aus 8 fest zugeteilten
@@ -439,7 +439,7 @@ def _fetch_fresh_items(date_label: str, avoid_entities: list):
     system = (
         f"Du bist Chefredakteur von schlusslicht.de, einem deutschen "
         f"linkssatirischen Magazin. Heute ist {date_label}.\n\n"
-        f"Finde {N_ITEMS} ECHTE, tagesaktuelle oder höchstens 14 Tage alte "
+        f"Finde {count} ECHTE, tagesaktuelle oder höchstens 14 Tage alte "
         "'Schlusslicht'-Meldungen via Websuche — jeweils aus einem ANDEREN "
         "Bereich. WICHTIG für die Themenmischung: Bringe eine breite Mischung "
         "aus (a) Themen, die die BREITE MASSE direkt interessieren und "
@@ -453,7 +453,7 @@ def _fetch_fresh_items(date_label: str, avoid_entities: list):
         "Pressefreiheit, Korruption, Klimaschutz, Steuervermeidung, "
         "Medien, oder jeder andere Bereich, in dem jemand/etwas "
         "nachweislich Schlusslicht bzw. Tabellenletzter ist). Bei "
-        f"{N_ITEMS} Meldungen sollten mindestens die Hälfte aus Kategorie "
+        f"{count} Meldungen sollten mindestens die Hälfte aus Kategorie "
         "(a) stammen, damit die Seite für ein breites, nicht nur "
         "politikinteressiertes Publikum unmittelbar attraktiv ist. Die "
         "Quelle muss NICHT zwingend eine formale Ranking-Tabelle oder ein "
@@ -465,7 +465,7 @@ def _fetch_fresh_items(date_label: str, avoid_entities: list):
         "Weltregion aus vermeintlicher Vorsicht — auch Nahost/Gaza, "
         "Ukraine/Russland oder andere politisch sensible Weltgegenden sind "
         "ganz normale, gleichberechtigte Themenquellen wie jede andere "
-        f"Region, solange die Meldung echt und belegt ist. Die {N_ITEMS} "
+        f"Region, solange die Meldung echt und belegt ist. Die {count} "
         "Meldungen müssen sich thematisch klar unterscheiden.\n\n"
         "ABSOLUTES VERBOT VON PLATZHALTERN: Jede Schlagzeile und jeder "
         "Kommentar muss eine ECHTE, konkrete, recherchierte Meldung mit "
@@ -501,7 +501,7 @@ def _fetch_fresh_items(date_label: str, avoid_entities: list):
         "verworfen. Schreibe entweder eine echte Meldung mit echten Namen "
         "und Zahlen, oder lass den Platz frei.\n\n"
         "JEDE MELDUNG BRAUCHT IHRE EIGENE QUELLE: Verwende NIEMALS dieselbe "
-        f"URL für mehrere der {N_ITEMS} Meldungen — auch nicht eine "
+        f"URL für mehrere der {count} Meldungen — auch nicht eine "
         "generische Nachrichten-Übersichtsseite (z.B. eine Newsindex- oder "
         "Startseite) als austauschbares Feigenblatt für mehrere Fälle "
         "gleichzeitig. Jede Quelle muss spezifisch zu genau dem einen Fall "
@@ -539,7 +539,7 @@ def _fetch_fresh_items(date_label: str, avoid_entities: list):
     )
 
     prompt = (
-        f"Recherchiere {N_ITEMS} eigenständige, thematisch unterschiedliche "
+        f"Recherchiere {count} eigenständige, thematisch unterschiedliche "
         "Schlusslicht-Meldungen für die heutige Ausgabe. Nutze die Websuche "
         "mehrfach, auf Deutsch und Englisch.\n\n"
         "Antworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown:\n"
@@ -560,7 +560,7 @@ def _fetch_fresh_items(date_label: str, avoid_entities: list):
         '      "quelle": "Quellenname und Datum, z.B. Reuters 22.06.2026 — KEINE Zitationsnummern wie [1]",\n'
         '      "quelle_url": "die ECHTE, vollständige URL der Quelle (https://...) — PFLICHTFELD"\n'
         "    }\n"
-        f"    // genau {N_ITEMS} Einträge in dieser Liste, thematisch unterschiedlich\n"
+        f"    // genau {count} Einträge in dieser Liste, thematisch unterschiedlich\n"
         "  ]\n"
         "}"
     )
@@ -640,82 +640,106 @@ def _ist_meta_kommentar(text: str) -> bool:
     return any(m in t for m in marker)
 
 
+BATCH_SIZE = 3  # siehe get_daily_items: kleinere Aufrufe recherchieren nachweislich zuverlässiger
+
+
 def get_daily_items(date_label: str, avoid_entities: list):
-    """Holt die 3 frei recherchierten Tagesmeldungen (kein Themen-Pool,
-    keine Rotation — siehe _fetch_fresh_items)."""
-    log(f"Recherchiere {N_ITEMS} frische Schlusslicht-Meldungen …")
+    """Holt die frei recherchierten Tagesmeldungen (kein Themen-Pool, keine
+    Rotation — siehe _fetch_fresh_items), aufgeteilt in Gruppen von je
+    BATCH_SIZE.
 
-    # WICHTIG (Bugfix, gefunden nach Live-Meldung "Startseite aktualisiert
-    # sich nicht"): Das JSON-Schema fragte bisher ein Objekt mit REIN
-    # NUMERISCHEN String-Schlüsseln ab ("1", "2", "3" als Schlüssel). Manche
-    # Modellantworten liefern solche Schlüssel ohne Anführungszeichen (wie
-    # ein Python-Dict statt echtem JSON, z.B. {1: {...}}) — das ist
-    # ungültiges JSON und ließ sich auch durch die Selbstreparatur nicht
-    # zuverlässig retten, wodurch die komplette Recherche tagelang immer
-    # wieder scheiterte, während die (Array-basierte) Spotlight/Ticker-
-    # Recherche im selben Lauf ganz normal weiterlief. Jetzt: Array-Schema
-    # ("items": [...]), Zuordnung zu Slot 1..3 rein über die Position in
-    # der Liste — exakt dasselbe robuste Muster wie bei den bereits
-    # zuverlässig laufenden Seiten (Insights, Brightside-Good-News,
-    # Nonconformist).
-    items_list = _fetch_fresh_items(date_label, avoid_entities) or []
-
-    # WICHTIG (Bugfix, gefunden nach Live-Meldung "Meldungen sind
-    # Textbausteine über die eigene Suche"): Wenn 2 oder mehr Meldungen
-    # dieselbe Quellen-URL teilen, ist das ein starkes Signal, dass die KI
-    # eine generische, technisch echte URL (z.B. eine Newsindex-Startseite)
-    # als Feigenblatt wiederverwendet hat, statt für jede Meldung wirklich
-    # zu recherchieren — eine echte Redaktion zitiert nie 6 verschiedene
-    # Fälle mit derselben Quelle. Betroffene Einträge werden komplett
-    # verworfen statt einzeln toleriert.
-    url_counts = {}
-    for it in items_list:
-        if isinstance(it, dict):
-            url = (it.get("quelle_url") or "").strip().lower()
-            if url:
-                url_counts[url] = url_counts.get(url, 0) + 1
-    doppelte_urls = {u for u, c in url_counts.items() if c > 1}
-    if doppelte_urls:
-        log(f"  WARNUNG: {len(doppelte_urls)} Quellen-URL(s) werden von "
-            f"mehreren Meldungen gleichzeitig verwendet — starkes Anzeichen "
-            f"für eine Feigenblatt-Quelle statt echter Einzelrecherche. "
-            f"Betroffene Meldungen werden verworfen: {', '.join(doppelte_urls)}")
-
+    WICHTIG (Bugfix, gefunden nach Live-Meldung "nur 1 von 6 Rubriken
+    aktualisiert"): Ein einzelner Aufruf für alle N_ITEMS Meldungen auf
+    einmal führte messbar häufiger dazu, dass das Modell für mehrere
+    Plätze dieselbe generische Feigenblatt-Quelle wiederverwendete, statt
+    für jeden Fall einzeln zu recherchieren — vermutlich, weil die
+    kombinierte Aufgabe (N_ITEMS unterschiedliche, verifizierbare Fälle
+    UND Themenmischung UND Vermeidungsliste gleichzeitig) zu komplex für
+    einen Durchgang ist. Kleinere Gruppen (3 auf einmal, wie bei Insights/
+    Brightside/dem ursprünglichen 3er-Design) lieferten in der Praxis
+    durchgehend eine deutlich höhere Trefferquote. Die zweite Gruppe
+    bekommt zusätzlich die in der ersten Gruppe bereits gewählten
+    Entitäten als Vermeidungsliste, damit sich beide Gruppen nicht
+    überschneiden."""
     all_items = {}
-    for idx in range(N_ITEMS):
-        key = str(idx + 1)
-        item = items_list[idx] if idx < len(items_list) else None
-        if not isinstance(item, dict):
-            log(f"  Meldung {key}: keine verwertbare Antwort erhalten — übersprungen.")
-            continue
-        headline = (item.get("headline") or "").strip()
-        kommentar = (item.get("kommentar") or "").strip()
-        # WICHTIG (Atomaritäts-Fix, siehe main-Historie): headline UND
-        # kommentar müssen BEIDE vorhanden sein, sonst wird der Eintrag
-        # komplett verworfen. Ein Teil-Update würde sonst zwei Textteile
-        # aus evtl. ganz unterschiedlichen Tagen/Themen kombinieren.
-        if not (headline and kommentar):
-            fehlt = "kommentar" if headline else ("headline" if kommentar else "headline+kommentar")
-            log(f"  Meldung {key}: unvollständiger Eintrag ({fehlt} fehlt) "
-                f"— komplett übersprungen, bestehender (in sich konsistenter) "
-                f"Stand bleibt. Kein Teil-Update einzelner Felder.")
-            continue
-        if _ist_meta_kommentar(headline) or _ist_meta_kommentar(kommentar):
-            log(f"  Meldung {key}: Text beschreibt den eigenen Rechercheprozess "
-                f"statt einer echten Meldung zu sein ({headline!r}) — verworfen, "
-                f"keine Platzhalter-Texte als Inhalt.")
-            continue
-        url = (item.get("quelle_url") or "").strip().lower()
-        if url and url in doppelte_urls:
-            log(f"  Meldung {key}: teilt sich eine Quellen-URL mit anderen "
-                f"Meldungen ({url}) — verworfen.")
-            continue
-        if url and _url_ist_zu_generisch(url):
-            log(f"  Meldung {key}: Quellen-URL ist eine generische Landingpage "
-                f"oder Platzhalter-Domain statt eines konkreten Artikels "
-                f"({url}) — verworfen.")
-            continue
-        all_items[key] = item
+    schon_gewaehlte_entitaeten = list(avoid_entities)
+
+    for batch_start in range(0, N_ITEMS, BATCH_SIZE):
+        groesse = min(BATCH_SIZE, N_ITEMS - batch_start)
+        log(f"Recherchiere {groesse} frische Schlusslicht-Meldungen "
+            f"(Gruppe {batch_start // BATCH_SIZE + 1}) …")
+
+        # WICHTIG (Bugfix, gefunden nach Live-Meldung "Startseite
+        # aktualisiert sich nicht"): Das JSON-Schema fragte bisher ein
+        # Objekt mit REIN NUMERISCHEN String-Schlüsseln ab ("1", "2", "3"
+        # als Schlüssel). Manche Modellantworten liefern solche Schlüssel
+        # ohne Anführungszeichen (wie ein Python-Dict statt echtem JSON,
+        # z.B. {1: {...}}) — das ist ungültiges JSON und ließ sich auch
+        # durch die Selbstreparatur nicht zuverlässig retten. Jetzt:
+        # Array-Schema ("items": [...]), Zuordnung zum Slot rein über die
+        # Position in der Liste — exakt dasselbe robuste Muster wie bei
+        # den bereits zuverlässig laufenden Seiten (Insights,
+        # Brightside-Good-News, Nonconformist).
+        items_list = _fetch_fresh_items(date_label, schon_gewaehlte_entitaeten, groesse) or []
+
+        # WICHTIG (Bugfix, gefunden nach Live-Meldung "Meldungen sind
+        # Textbausteine über die eigene Suche"): Wenn 2 oder mehr Meldungen
+        # dieselbe Quellen-URL teilen, ist das ein starkes Signal, dass die
+        # KI eine generische, technisch echte URL (z.B. eine Newsindex-
+        # Startseite) als Feigenblatt wiederverwendet hat, statt für jede
+        # Meldung wirklich zu recherchieren. Betroffene Einträge werden
+        # komplett verworfen statt einzeln toleriert.
+        url_counts = {}
+        for it in items_list:
+            if isinstance(it, dict):
+                url = (it.get("quelle_url") or "").strip().lower()
+                if url:
+                    url_counts[url] = url_counts.get(url, 0) + 1
+        doppelte_urls = {u for u, c in url_counts.items() if c > 1}
+        if doppelte_urls:
+            log(f"  WARNUNG: {len(doppelte_urls)} Quellen-URL(s) werden von "
+                f"mehreren Meldungen gleichzeitig verwendet — starkes "
+                f"Anzeichen für eine Feigenblatt-Quelle statt echter "
+                f"Einzelrecherche. Betroffene Meldungen werden verworfen: "
+                f"{', '.join(doppelte_urls)}")
+
+        for idx in range(groesse):
+            key = str(batch_start + idx + 1)
+            item = items_list[idx] if idx < len(items_list) else None
+            if not isinstance(item, dict):
+                log(f"  Meldung {key}: keine verwertbare Antwort erhalten — übersprungen.")
+                continue
+            headline = (item.get("headline") or "").strip()
+            kommentar = (item.get("kommentar") or "").strip()
+            # WICHTIG (Atomaritäts-Fix, siehe main-Historie): headline UND
+            # kommentar müssen BEIDE vorhanden sein, sonst wird der Eintrag
+            # komplett verworfen. Ein Teil-Update würde sonst zwei Textteile
+            # aus evtl. ganz unterschiedlichen Tagen/Themen kombinieren.
+            if not (headline and kommentar):
+                fehlt = "kommentar" if headline else ("headline" if kommentar else "headline+kommentar")
+                log(f"  Meldung {key}: unvollständiger Eintrag ({fehlt} fehlt) "
+                    f"— komplett übersprungen, bestehender (in sich konsistenter) "
+                    f"Stand bleibt. Kein Teil-Update einzelner Felder.")
+                continue
+            if _ist_meta_kommentar(headline) or _ist_meta_kommentar(kommentar):
+                log(f"  Meldung {key}: Text beschreibt den eigenen Rechercheprozess "
+                    f"statt einer echten Meldung zu sein ({headline!r}) — verworfen, "
+                    f"keine Platzhalter-Texte als Inhalt.")
+                continue
+            url = (item.get("quelle_url") or "").strip().lower()
+            if url and url in doppelte_urls:
+                log(f"  Meldung {key}: teilt sich eine Quellen-URL mit anderen "
+                    f"Meldungen ({url}) — verworfen.")
+                continue
+            if url and _url_ist_zu_generisch(url):
+                log(f"  Meldung {key}: Quellen-URL ist eine generische Landingpage "
+                    f"oder Platzhalter-Domain statt eines konkreten Artikels "
+                    f"({url}) — verworfen.")
+                continue
+            all_items[key] = item
+            entity = (item.get("entity") or "").strip()
+            if entity:
+                schon_gewaehlte_entitaeten.append(entity)
 
     all_items = dedupe_rubrik_topics(all_items)
     all_items = strip_repeated_boilerplate(all_items)
