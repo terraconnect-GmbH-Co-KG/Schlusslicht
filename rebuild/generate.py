@@ -738,13 +738,13 @@ def get_daily_items(date_label: str, avoid_entities: list):
         # (mit demselben Risiko derselben Antwort) kommentarlos zu wiederholen.
         gefunden = 0
         letzter_fehlgrund = ""
-        for versuch in range(2):
+        for versuch in range(3):
             log(f"Recherchiere {groesse} frische Schlusslicht-Meldungen "
                 f"(Gruppe {batch_start // BATCH_SIZE + 1}"
-                f"{', 2. Versuch nach Fehlschlag' if versuch else ''}) …")
+                f"{f', {versuch + 1}. Versuch nach Fehlschlag' if versuch else ''}) …")
 
             extra_hinweis = ""
-            if versuch == 1 and letzter_fehlgrund:
+            if versuch > 0 and letzter_fehlgrund:
                 extra_hinweis = (
                     f"\n\nWICHTIG: Dein letzter Versuch ist komplett gescheitert "
                     f"({letzter_fehlgrund}). Versuche es diesmal grundlegend "
@@ -794,7 +794,8 @@ def get_daily_items(date_label: str, avoid_entities: list):
                     f"Einzelrecherche. Betroffene Meldungen werden verworfen "
                     f"und dauerhaft gesperrt: {', '.join(doppelte_urls)}")
                 for u in doppelte_urls:
-                    neue_bad_urls.append(u)
+                    if u not in neue_bad_urls:
+                        neue_bad_urls.append(u)
 
             gruppen_treffer = {}
             for idx in range(groesse):
@@ -846,9 +847,9 @@ def get_daily_items(date_label: str, avoid_entities: list):
                 f"alle Meldungen teilten sich eine Quelle ({', '.join(doppelte_urls)})"
                 if doppelte_urls else "keine der Meldungen war verwertbar"
             )
-            if versuch == 0:
+            if versuch < 2:
                 log(f"  Gruppe komplett fehlgeschlagen ({letzter_fehlgrund}) — "
-                    f"wiederhole einmal mit verschärfter Rückmeldung.")
+                    f"wiederhole (Versuch {versuch + 2}/3) mit verschärfter Rückmeldung.")
 
     if neue_bad_urls:
         save_bad_urls(bad_url_history + [
