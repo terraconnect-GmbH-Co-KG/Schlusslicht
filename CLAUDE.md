@@ -75,3 +75,5 @@ Required GitHub secret: `OPENROUTER_API_KEY`. The workflow already has `contents
 - **HTML / JSON / CSS / JS**: Biome (`biome.json`, 2-space indent, LF) — `biome format --write <file>`
 - **Python**: black (4-space, line length 100) — `black rebuild/generate.py`
 - Editor config via `.editorconfig` (picked up natively by VS Code, JetBrains, etc.)
+
+Siehe @docs/chat-verlauf.md für die Vorgeschichte des Redesigns und bereits behobene Bugs.
