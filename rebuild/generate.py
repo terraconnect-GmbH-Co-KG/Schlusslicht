@@ -645,9 +645,52 @@ def _ist_meta_kommentar(text: str) -> bool:
         "rechercheergebnis", "keine sechs", "keine drei", "keine fünf",
         "keine vier", "keine zwei", "keine echte meldung", "kein sauberer treffer",
         "die suche hat", "die datenlage ist", "zu dünn", "breiter und tiefer",
+        # WICHTIG (Bugfix, gefunden nach Live-Meldung "5 von 6 Rubriken leer"):
+        # Diese zusätzlichen Formulierungen wurden live auf schlusslicht.de
+        # gefunden, ohne von der bisherigen Liste erkannt zu werden — derselbe
+        # Fehlertyp (Modell beschreibt den eigenen Rechercheprozess statt
+        # einer echten Meldung), nur mit anderem Wortlaut.
+        "aus der suche", "in der suche", "kein sauberer", "kein echtfall",
+        "echtfall", "keine belastbare meldung", "keine belastbare quelle",
+        "ohne belastbare quelle", "kein belastbarer", "keine geprüfte meldung",
+        "aus der recherche", "der recherche liefert", "die recherche liefert",
+        "keine eigenständigen",
     )
     t = text.lower()
     return any(m in t for m in marker)
+
+
+def _item_kontamination_text(item: dict) -> str:
+    """Sammelt ALLE Text-Felder eines Eintrags, in denen sich ein
+    Prozess-Kommentar verstecken kann — nicht nur headline/kommentar.
+
+    WICHTIG (Bugfix, gefunden nach Live-Meldung "5 von 6 Rubriken zeigen
+    Sätze über die eigene Recherche statt echter Meldungen"): Die bisherige
+    Prüfung sah NUR headline und kommentar an. Live gefunden wurde aber ein
+    Fall, bei dem headline/kommentar (nach einer Umformulierung durch
+    review_and_fix_items) zwar Prozess-Kommentare waren, aber selbst wenn
+    sie es nicht gewesen wären: table_title, foot und quelle enthielten
+    bereits eindeutige Prozess-Kommentare ('Keine Rangliste gefunden',
+    'kein belastbarer Schlusslicht-Fall vor', 'DIE ZEIT Newsindex') — diese
+    Felder wurden aber NIE geprüft und liefen deshalb unbemerkt durch."""
+    teile = [
+        item.get("headline", ""), item.get("kommentar", ""),
+        item.get("table_title", ""), item.get("foot", ""),
+        item.get("quelle", ""),
+    ]
+    for row in item.get("rows") or []:
+        if isinstance(row, dict):
+            teile.append(row.get("name", ""))
+    return " ".join(t for t in teile if t)
+
+
+def _item_ist_kontaminiert(item: dict) -> bool:
+    """Prüft ALLE Textfelder eines Eintrags auf Prozess-Kommentare (siehe
+    _item_kontamination_text/_ist_meta_kommentar). Wird sowohl direkt nach
+    dem Fetch als auch als letzte Instanz nach review_and_fix_items
+    aufgerufen, damit eine Kontamination unabhängig davon erkannt wird, an
+    welcher Stelle im Ablauf sie entstanden ist."""
+    return _ist_meta_kommentar(_item_kontamination_text(item))
 
 
 BAD_URL_HISTORY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bad_url_history.json")
@@ -729,29 +772,38 @@ def get_daily_items(date_label: str, avoid_entities: list):
     for batch_start in range(0, N_ITEMS, BATCH_SIZE):
         groesse = min(BATCH_SIZE, N_ITEMS - batch_start)
 
-        # WICHTIG (Bugfix, gefunden nach wiederholter Live-Meldung "0 von 6
-        # aktualisiert"): Schlägt eine Gruppe KOMPLETT fehl (0 verwertbare
-        # Meldungen), wird sie EINMAL mit einer verschärften, sehr
-        # konkreten Rückmeldung wiederholt statt sofort aufzugeben — das
-        # gibt dem Modell eine echte zweite Chance mit Kontext darüber, was
-        # beim ersten Versuch schiefging, statt einfach dieselbe Anfrage
-        # (mit demselben Risiko derselben Antwort) kommentarlos zu wiederholen.
-        gefunden = 0
+        # WICHTIG (Bugfix, gefunden nach Live-Meldung "5 von 6 Rubriken
+        # bleiben leer"): Die alte Logik brach den Wiederholungsversuch
+        # bereits ab, sobald AUCH NUR EINE einzige der `groesse` Meldungen
+        # verwertbar war ("Erfolg, auch teilweise -> kein zweiter Versuch
+        # nötig") — schaffte eine Gruppe von 3 also nur 1 echten Treffer,
+        # blieben die übrigen 2 Plätze für den ganzen Tag leer (bzw. beim
+        # bestehenden, evtl. bereits kontaminierten Stand), OHNE dass je ein
+        # zweiter Versuch für genau diese fehlenden Plätze unternommen
+        # wurde. Jetzt: gruppen_treffer sammelt über ALLE Versuche hinweg,
+        # jeder weitere Versuch fragt nur noch die tatsächlich NOCH
+        # fehlende Anzahl an, und die Gruppe gilt erst als abgeschlossen,
+        # wenn entweder alle `groesse` Plätze gefüllt sind oder alle 3
+        # Versuche aufgebraucht wurden.
+        gruppen_treffer = {}
         letzter_fehlgrund = ""
         for versuch in range(3):
-            log(f"Recherchiere {groesse} frische Schlusslicht-Meldungen "
+            fehlend = groesse - len(gruppen_treffer)
+            if fehlend <= 0:
+                break
+            log(f"Recherchiere {fehlend} frische Schlusslicht-Meldungen "
                 f"(Gruppe {batch_start // BATCH_SIZE + 1}"
-                f"{f', {versuch + 1}. Versuch nach Fehlschlag' if versuch else ''}) …")
+                f"{f', {versuch + 1}. Versuch, {fehlend} von {groesse} fehlen noch' if versuch else ''}) …")
 
             extra_hinweis = ""
             if versuch > 0 and letzter_fehlgrund:
                 extra_hinweis = (
-                    f"\n\nWICHTIG: Dein letzter Versuch ist komplett gescheitert "
-                    f"({letzter_fehlgrund}). Versuche es diesmal grundlegend "
-                    f"anders: wähle andere, dir noch nicht eingefallene Themen "
-                    f"und recherchiere für jedes einzeln eine ECHTE, "
-                    f"unterschiedliche Quelle. Lieber 1 echte Meldung als 3 "
-                    f"erfundene oder wiederverwendete."
+                    f"\n\nWICHTIG: Dein letzter Versuch hat nicht genug echte "
+                    f"Meldungen geliefert ({letzter_fehlgrund}). Versuche es "
+                    f"diesmal grundlegend anders: wähle andere, dir noch nicht "
+                    f"eingefallene Themen und recherchiere für jedes einzeln "
+                    f"eine ECHTE, unterschiedliche Quelle. Lieber 1 echte "
+                    f"Meldung als 3 erfundene oder wiederverwendete."
                 )
 
             # WICHTIG (Bugfix, gefunden nach Live-Meldung "Startseite
@@ -766,7 +818,7 @@ def get_daily_items(date_label: str, avoid_entities: list):
             # robuste Muster wie bei den bereits zuverlässig laufenden
             # Seiten (Insights, Brightside-Good-News, Nonconformist).
             items_list = _fetch_fresh_items(
-                date_label, schon_gewaehlte_entitaeten, groesse,
+                date_label, schon_gewaehlte_entitaeten, fehlend,
                 verbotene_urls + neue_bad_urls, extra_hinweis,
             ) or []
 
@@ -797,9 +849,14 @@ def get_daily_items(date_label: str, avoid_entities: list):
                     if u not in neue_bad_urls:
                         neue_bad_urls.append(u)
 
-            gruppen_treffer = {}
-            for idx in range(groesse):
-                key = str(batch_start + idx + 1)
+            neue_treffer = {}
+            # Freie Slot-Nummern dieser Gruppe, die noch keinen Treffer haben —
+            # neue Ergebnisse werden der Reihe nach genau diesen zugewiesen.
+            offene_keys = [
+                str(batch_start + idx + 1) for idx in range(groesse)
+                if str(batch_start + idx + 1) not in gruppen_treffer
+            ]
+            for idx, key in enumerate(offene_keys):
                 item = items_list[idx] if idx < len(items_list) else None
                 if not isinstance(item, dict):
                     log(f"  Meldung {key}: keine verwertbare Antwort erhalten — übersprungen.")
@@ -817,10 +874,11 @@ def get_daily_items(date_label: str, avoid_entities: list):
                         f"— komplett übersprungen, bestehender (in sich konsistenter) "
                         f"Stand bleibt. Kein Teil-Update einzelner Felder.")
                     continue
-                if _ist_meta_kommentar(headline) or _ist_meta_kommentar(kommentar):
-                    log(f"  Meldung {key}: Text beschreibt den eigenen Rechercheprozess "
-                        f"statt einer echten Meldung zu sein ({headline!r}) — verworfen, "
-                        f"keine Platzhalter-Texte als Inhalt.")
+                if _item_ist_kontaminiert(item):
+                    log(f"  Meldung {key}: Text (Schlagzeile, Kommentar, Tabelle, "
+                        f"Quelle oder Rangliste) beschreibt den eigenen "
+                        f"Rechercheprozess statt einer echten Meldung zu sein "
+                        f"({headline!r}) — verworfen, keine Platzhalter-Texte als Inhalt.")
                     continue
                 url = (item.get("quelle_url") or "").strip().lower()
                 if url and (url in doppelte_urls or url in verbotene_urls or url in neue_bad_urls):
@@ -832,24 +890,29 @@ def get_daily_items(date_label: str, avoid_entities: list):
                         f"oder Platzhalter-Domain statt eines konkreten Artikels "
                         f"({url}) — verworfen.")
                     continue
-                gruppen_treffer[key] = item
+                neue_treffer[key] = item
 
-            gefunden = len(gruppen_treffer)
-            if gefunden > 0:
-                all_items.update(gruppen_treffer)
-                for item in gruppen_treffer.values():
+            if neue_treffer:
+                gruppen_treffer.update(neue_treffer)
+                for item in neue_treffer.values():
                     entity = (item.get("entity") or "").strip()
                     if entity:
                         schon_gewaehlte_entitaeten.append(entity)
-                break  # Erfolg (auch teilweise) -> kein zweiter Versuch nötig
+
+            if len(gruppen_treffer) >= groesse:
+                break  # Gruppe komplett gefüllt -> kein weiterer Versuch nötig
 
             letzter_fehlgrund = (
                 f"alle Meldungen teilten sich eine Quelle ({', '.join(doppelte_urls)})"
-                if doppelte_urls else "keine der Meldungen war verwertbar"
+                if doppelte_urls else
+                f"nur {len(neue_treffer)} von {fehlend} angeforderten Meldungen war(en) verwertbar"
             )
             if versuch < 2:
-                log(f"  Gruppe komplett fehlgeschlagen ({letzter_fehlgrund}) — "
-                    f"wiederhole (Versuch {versuch + 2}/3) mit verschärfter Rückmeldung.")
+                log(f"  Gruppe noch nicht vollständig ({len(gruppen_treffer)}/{groesse}, "
+                    f"{letzter_fehlgrund}) — wiederhole für die fehlenden "
+                    f"{groesse - len(gruppen_treffer)} Plätze (Versuch {versuch + 2}/3).")
+
+        all_items.update(gruppen_treffer)
 
     if neue_bad_urls:
         save_bad_urls(bad_url_history + [
@@ -994,6 +1057,14 @@ def review_and_fix_items(items: dict, date_label: str) -> dict:
         "Platzhalter, Widerspruch zwischen Schlagzeile und Kommentar, "
         "unrettbar unsinnig): gib 'ok': false mit kurzer 'grund'-Angabe "
         "zurück — das kann NICHT durch Umformulieren behoben werden.\n\n"
+        "ABSOLUT VERBOTEN — GILT AUCH FÜR DEINE EIGENE ANTWORT: Schreibe "
+        "NIEMALS selbst einen Satz über deinen eigenen Prüf- oder "
+        "Rechercheprozess in 'headline_neu' oder 'kommentar_neu' (z.B. "
+        "'keine verwertbare Meldung gefunden', 'aus der Suche', 'die "
+        "Datenlage ist zu dünn', 'kein sauberer Treffer'). Kannst du einen "
+        "Eintrag nicht mit Sicherheit bestätigen oder wirkt er dir "
+        "unbelegt, ist die EINZIG zulässige Reaktion 'ok': false mit "
+        "'grund' — NIEMALS ein Ersatztext, der den Ausfall selbst beschreibt.\n\n"
         f"Einträge:\n{json.dumps({f'slot{num}': {**it, 'rubrik_soll': it.get('kicker', '')} for num, it in echte_items.items()}, ensure_ascii=False, indent=2)}\n\n"
         "Antworte als JSON, mit genau denselben Schlüsseln wie oben (z.B. 'slot1'):\n"
         '{"slot1": {"ok": true}, '
@@ -1015,11 +1086,28 @@ def review_and_fix_items(items: dict, date_label: str) -> dict:
 
         # Umformulierung anwenden, aber NUR wenn dabei keine neuen Zahlen
         # auftauchen, die im Original nicht vorhanden waren (Schutz gegen
-        # Fakten-Drift während der sprachlichen Überarbeitung).
+        # Fakten-Drift während der sprachlichen Überarbeitung) UND die neue
+        # Formulierung selbst KEIN Prozess-Kommentar ist.
+        #
+        # WICHTIG (Bugfix, gefunden nach Live-Meldung "5 von 6 Rubriken
+        # zeigen Sätze über die eigene Recherche"): Der eigentliche Fehler
+        # saß genau hier — der Reviewer darf headline/kommentar sprachlich
+        # überarbeiten, aber diese Überarbeitung wurde NIE gegen
+        # _ist_meta_kommentar geprüft. Konnte der Reviewer einen Fall nicht
+        # bestätigen, hat er (statt korrekt 'ok': false zu setzen) manchmal
+        # selbst einen Satz über den fehlgeschlagenen Rechercheprozess als
+        # 'headline_neu'/'kommentar_neu' geliefert — und dieser lief am
+        # Filter komplett vorbei, weil der nur auf die ORIGINAL-Fetch-Daten
+        # angewendet wurde, nie auf das Ergebnis der Umformulierung selbst.
         original = items[num]
         for feld, feld_neu in (("headline", "headline_neu"), ("kommentar", "kommentar_neu")):
             neu = (bewertung.get(feld_neu) or "").strip()
             if not neu:
+                continue
+            if _ist_meta_kommentar(neu):
+                log(f"  Rubrik {num}: Umformulierung von '{feld}' ist selbst ein "
+                    f"Prozess-Kommentar ({neu!r}) — Umformulierung verworfen, "
+                    f"Original bleibt unverändert.")
                 continue
             alte_zahlen = _zahlen(original.get(feld, ""))
             neue_zahlen = _zahlen(neu)
@@ -1031,6 +1119,18 @@ def review_and_fix_items(items: dict, date_label: str) -> dict:
             log(f"  Rubrik {num}: '{feld}' sprachlich überarbeitet "
                 f"({original.get(feld, '')!r} -> {neu!r}).")
             items[num][feld] = neu
+
+    # Schritt 1b: Letzte, umfassende Kontaminations-Prüfung über ALLE
+    # Textfelder (siehe _item_ist_kontaminiert) — unabhängig davon, ob die
+    # Kontamination aus dem ursprünglichen Fetch oder erst aus der
+    # Umformulierung oben stammt. Das ist die letzte Instanz vor der
+    # technischen URL-Prüfung und fängt jede Kontamination ab, egal an
+    # welcher Stelle im Ablauf sie entstanden ist.
+    for num, item in list(items.items()):
+        if item and _item_ist_kontaminiert(item):
+            log(f"  Rubrik {num}: finale Kontaminations-Prüfung schlägt an "
+                f"({item.get('headline', '')!r}) — Meldung verworfen.")
+            items[num] = {}
 
     # Schritt 2: Technische URL-Verifikation — UNABHÄNGIG von der KI-Bewertung,
     # das ist die eigentliche Absicherung gegen halluzinierte Quellen.
@@ -1524,6 +1624,72 @@ def carry_over_dynamic_content(template_html: str, output_html: str) -> str:
         if src is not None and dst is not None and src.has_attr(attr):
             dst[attr] = src[attr]
 
+    def _sanitize_contaminated_slot(card_sel: str, slot_i: int) -> None:
+        """Selbstheilung gegen dauerhaft weitergetragene Kontamination.
+
+        WICHTIG (Bugfix, gefunden nach Live-Meldung "5 von 6 Rubriken zeigen
+        Sätze über die eigene Recherche statt echter Meldungen"): Diese
+        Funktion übernahm bisher BLIND jeden bestehenden Stand, egal ob er
+        selbst schon ein Prozess-Kommentar war. Da ein fehlgeschlagener
+        Fetch-Tag einen Slot einfach unverändert lässt (siehe inject()),
+        wurde einmal kontaminierter Inhalt dadurch Tag für Tag identisch
+        weiterkopiert — potenziell für immer, unabhängig davon, wie oft der
+        Workflow seither lief. Diese Prüfung erkennt genau diesen Zustand
+        NACH dem Kopieren und ersetzt ihn durch einen ehrlichen, klar
+        erkennbaren Platzhalter statt ihn weiter zu übernehmen. Der nächste
+        erfolgreiche Fetch für diesen Slot überschreibt den Platzhalter
+        automatisch mit einer echten Meldung."""
+        card = neu.select_one(card_sel)
+        if card is None:
+            return
+        rtit = card.select_one(".rtit")
+        realsatire = card.select_one(".realsatire")
+        tbl = card.select_one(".tbl")
+        kombiniert = " ".join(
+            el.get_text() for el in (rtit, realsatire, tbl) if el is not None
+        )
+        if not _ist_meta_kommentar(kombiniert):
+            return
+        log(f"  Slot {slot_i}: bestehender Stand ist bereits kontaminiert "
+            f"(Prozess-Kommentar statt echter Meldung, vermutlich aus einem "
+            f"früheren fehlerhaften Lauf) — wird NICHT weiter übernommen, "
+            f"stattdessen auf ehrlichen Platzhalter zurückgesetzt.")
+        placeholder_title = "Will be updated on the next run." if LANG == "en" else "Wird beim nächsten Lauf aktualisiert."
+        placeholder_quip = "…" if LANG == "en" else "…"
+        if rtit is not None:
+            rtit.string = placeholder_title
+        if realsatire is not None:
+            realsatire.string = f"„{placeholder_quip}“"
+        ai_tag = card.select_one(".ai-tag")
+        if ai_tag is not None:
+            ai_tag.string = "✦ Wird aktualisiert" if LANG != "en" else "✦ Updating"
+        stand = card.select_one(".rub-stand")
+        if stand is not None:
+            stand.string = "Stand: wird nachgereicht" if LANG != "en" else "As of: pending"
+        if tbl is not None:
+            tbl.clear()
+            # Leeres .tbl würde die Kartenlayout-CSS (tbl-head/cols/row)
+            # sichtbar kaputt aussehen lassen — stattdessen eine ebenso
+            # ehrliche, aber strukturell intakte Platzhalter-Tabelle.
+            platzhalter_tbl = (
+                '<div class="tbl-head"><span class="tt">No data yet</span>'
+                '<span class="tag">pending</span></div>'
+                '<div class="cols c3"><span>#</span><span class="l">Name</span><span>Value</span></div>'
+                '<div class="row c3 is-last"><span class="rk">—</span>'
+                '<span class="nm"><span class="lamp"></span>pending</span>'
+                '<span class="v">—</span></div>'
+                '<div class="tbl-foot">This category will be updated on the next successful run.</div>'
+                if LANG == "en" else
+                '<div class="tbl-head"><span class="tt">Noch keine Daten</span>'
+                '<span class="tag">wird nachgereicht</span></div>'
+                '<div class="cols c3"><span>#</span><span class="l">Name</span><span>Wert</span></div>'
+                '<div class="row c3 is-last"><span class="rk">—</span>'
+                '<span class="nm"><span class="lamp"></span>wird nachgereicht</span>'
+                '<span class="v">—</span></div>'
+                '<div class="tbl-foot">Diese Rubrik wird beim nächsten erfolgreichen Lauf aktualisiert.</div>'
+            )
+            tbl.append(BeautifulSoup(platzhalter_tbl, "html.parser"))
+
     # Die 3 Rubrik-Karten (per data-slot, positionsstabil) + ihre Modals
     for slot_i in range(1, N_ITEMS + 1):
         card_sel = f'article.rub[data-slot="{slot_i}"]'
@@ -1531,6 +1697,7 @@ def carry_over_dynamic_content(template_html: str, output_html: str) -> str:
         for cls in (".rub-ico", ".rnum", ".rtit", ".realsatire", ".rub-stand", ".ai-tag"):
             _copy_text(f"{card_sel} {cls}")
         _copy_html(f"{card_sel} .tbl")
+        _sanitize_contaminated_slot(card_sel, slot_i)
 
         modal_sel = f"#story-slot{slot_i}"
         _copy_text(f"{modal_sel} .story-modal-cat")
