@@ -894,9 +894,9 @@
     if(ti&&ti.dataset.dup!=="1"){ti.innerHTML+=ti.innerHTML;ti.dataset.dup="1";}
     if(ti){
       var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if(!reduceMotion){
-        var singleWidth = ti.scrollWidth/2;
-        if(singleWidth>0){
+      var singleWidth = ti.scrollWidth/2;
+      if(singleWidth>0){
+        if(!reduceMotion){
           var speed = singleWidth/60000;
           var pos = 0, last = null;
           function tickerStep(ts){
@@ -909,6 +909,26 @@
             requestAnimationFrame(tickerStep);
           }
           requestAnimationFrame(tickerStep);
+        } else {
+          // Bugfix: siehe index.template.html — Windows-Systeme mit
+          // deaktivierten Animationseffekten melden beiden Browsern
+          // identisch 'prefers-reduced-motion: reduce', wodurch der Ticker
+          // bisher komplett eingefroren blieb. Diskrete, kurze Schritte
+          // statt durchgehendem Scrollen.
+          var pos = 0;
+          ti.style.transition = "transform .5s ease";
+          setInterval(function(){
+            pos -= 160;
+            if(pos <= -singleWidth){
+              ti.style.transition = "none";
+              pos += singleWidth;
+              ti.style.transform = "translateX("+pos+"px)";
+              void ti.offsetWidth;
+              ti.style.transition = "transform .5s ease";
+            } else {
+              ti.style.transform = "translateX("+pos+"px)";
+            }
+          }, 3500);
         }
       }
     }

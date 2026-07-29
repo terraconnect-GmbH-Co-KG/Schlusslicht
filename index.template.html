@@ -963,9 +963,9 @@
     if(ti&&ti.dataset.dup!=="1"){ti.innerHTML+=ti.innerHTML;ti.dataset.dup="1";}
     if(ti){
       var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if(!reduceMotion){
-        var singleWidth = ti.scrollWidth/2;
-        if(singleWidth>0){
+      var singleWidth = ti.scrollWidth/2;
+      if(singleWidth>0){
+        if(!reduceMotion){
           var speed = singleWidth/60000; // px/ms -> voller Umlauf in ~60s
           var pos = 0, last = null;
           function tickerStep(ts){
@@ -978,6 +978,34 @@
             requestAnimationFrame(tickerStep);
           }
           requestAnimationFrame(tickerStep);
+        } else {
+          // WICHTIG (Bugfix, gefunden nach Live-Meldung "Ticker läuft nicht in
+          // Firefox/Chrome unter Windows"): Windows-Systeme mit deaktivierten
+          // Animationseffekten (Einstellungen > Barrierefreiheit > Visuelle
+          // Effekte) melden beiden Browsern gleichermassen
+          // 'prefers-reduced-motion: reduce' — das ist kein Browser-Bug,
+          // sondern eine echte, browserübergreifend identische System-
+          // Einstellung. Die bisherige Logik hat die Animation dafür
+          // KOMPLETT abgeschaltet, wodurch der Ticker auf jedem so
+          // konfigurierten Rechner für immer eingefroren blieb, egal welcher
+          // Browser. Statt durchgehendem Scrollen (das reduced-motion
+          // vermeiden soll) rückt der Ticker jetzt in kurzen, diskreten
+          // Schritten weiter — sichtbar aktiv, aber ohne die kontinuierliche
+          // Bewegung, die die Systemeinstellung vermeiden möchte.
+          var pos = 0;
+          ti.style.transition = "transform .5s ease";
+          setInterval(function(){
+            pos -= 160;
+            if(pos <= -singleWidth){
+              ti.style.transition = "none";
+              pos += singleWidth;
+              ti.style.transform = "translateX("+pos+"px)";
+              void ti.offsetWidth; // Reflow erzwingen, damit die Transition wieder greift
+              ti.style.transition = "transform .5s ease";
+            } else {
+              ti.style.transform = "translateX("+pos+"px)";
+            }
+          }, 3500);
         }
       }
     }
