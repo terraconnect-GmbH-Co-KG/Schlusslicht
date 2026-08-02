@@ -441,32 +441,82 @@ def _fetch_fresh_items(date_label: str, avoid_entities: list, count: int, verbot
         f"linkssatirischen Magazin. Heute ist {date_label}.\n\n"
         f"Finde {count} ECHTE, tagesaktuelle oder höchstens 14 Tage alte "
         "'Schlusslicht'-Meldungen via Websuche — jeweils aus einem ANDEREN "
-        "Bereich. WICHTIG für die Themenmischung: Bringe eine breite Mischung "
+        "Bereich. GRUNDSATZ (gilt für JEDE Meldung, keine Ausnahme): Es muss "
+        "sich um einen echten VERGLEICHS- bzw. RANKING-FALL handeln — jemand "
+        "oder etwas ist nachweislich Schlusslicht, Tabellenletzter oder "
+        "schlechtester Wert in einem Vergleich mit anderen (Liga-Tabelle, "
+        "Index, Statistik, Studie mit Ranking, Verbraucherumfrage mit "
+        "Vergleichswerten, parlamentarischer Bericht mit Ländervergleich). "
+        "Die Rangliste (rows) muss ein ECHTER Vergleich mehrerer "
+        "Fälle/Orte/Teams/Länder sein, keine bloße Auflistung von Fakten zu "
+        "einem einzelnen Ereignis.\n\n"
+        "WICHTIG für die Themenmischung: Bringe eine breite Mischung "
         "aus (a) Themen, die die BREITE MASSE direkt interessieren und "
         "leicht zugänglich sind — z.B. Fußball/Bundesliga/Champions League, "
         "andere Ballsportarten, Fluggesellschaften-Pünktlichkeit, "
         "Handynetz-/Internet-Qualität, Streaming-Dienste, Restaurant-/"
         "Fast-Food-Ketten, Mietpreise, Lebensmittelpreise, Verkehrsstaus, "
         "Krankenkassen, Universitäten-Rankings, Reiseziele/Tourismus, "
-        "Videospiele/Konsolen, Social-Media-Plattformen — UND (b) den "
-        "klassischen strukturkritischen Themen (Niedriglohn, "
-        "Pressefreiheit, Korruption, Klimaschutz, Steuervermeidung, "
-        "Medien, oder jeder andere Bereich, in dem jemand/etwas "
-        "nachweislich Schlusslicht bzw. Tabellenletzter ist). Bei "
-        f"{count} Meldungen sollten mindestens die Hälfte aus Kategorie "
-        "(a) stammen, damit die Seite für ein breites, nicht nur "
-        "politikinteressiertes Publikum unmittelbar attraktiv ist. Die "
-        "Quelle muss NICHT zwingend eine formale Ranking-Tabelle oder ein "
-        "offizieller Index sein (RSF-Index, CPI, CCPI o.ä. sind Beispiele, "
-        "keine Pflicht) — jede echte, relevante Meldung aus JEDEM Land der "
-        "Welt zählt, z.B. auch ein einzelner Gerichtsfall, ein "
-        "Zeitungsartikel über einen konkreten Vorfall, eine Studie, eine "
-        "Verbraucherumfrage oder ein parlamentarischer Bericht. Meide KEINE "
-        "Weltregion aus vermeintlicher Vorsicht — auch Nahost/Gaza, "
+        "Videospiele/Konsolen, Social-Media-Plattformen — UND (b) sozialen "
+        "bzw. politisch-linken, strukturkritischen Themen: Niedriglohn und "
+        "prekäre Beschäftigung, Mietpreise/Wohnungsnot, Gewerkschafts- und "
+        "Arbeitnehmerrechte, Pressefreiheit, Korruption, Konzernmacht und "
+        "Lobbyismus, Klimaschutz und Klimagerechtigkeit, Steuervermeidung "
+        "und Steuergerechtigkeit, soziale Ungleichheit, Kinderarmut, "
+        "Bildungsungleichheit, Diskriminierung, Gleichstellung/Gender Pay "
+        "Gap, Sozialabbau, Rüstungsexporte, oder jeder andere Bereich, in "
+        f"dem eine Struktur/Institution/Politik nachweislich Schlusslicht "
+        f"ist. Bei {count} Meldungen sollten mindestens die Hälfte aus "
+        "Kategorie (a) stammen, damit die Seite für ein breites, nicht nur "
+        "politikinteressiertes Publikum unmittelbar attraktiv ist — aber "
+        "auch Kategorie (a) braucht IMMER den echten Vergleichs-/Ranking-"
+        "bezug von oben (z.B. Ligatabelle, Preisvergleich, Pünktlichkeits-"
+        "Statistik), nie eine reine Einzelmeldung ohne Vergleichswert. Meide "
+        "KEINE Weltregion aus vermeintlicher Vorsicht — auch Nahost/Gaza, "
         "Ukraine/Russland oder andere politisch sensible Weltgegenden sind "
         "ganz normale, gleichberechtigte Themenquellen wie jede andere "
-        f"Region, solange die Meldung echt und belegt ist. Die {count} "
-        "Meldungen müssen sich thematisch klar unterscheiden.\n\n"
+        f"Region, solange die Meldung echt, belegt UND ein echter "
+        f"Vergleichs-/Rankingfall ist. Die {count} Meldungen müssen sich "
+        "thematisch klar unterscheiden.\n\n"
+        "ABSOLUTES VERBOT VON EINZELNEN KRIMINAL- UND UNGLÜCKSMELDUNGEN — "
+        "HÖCHSTE PRIORITÄT: Wähle NIEMALS eine einzelne Kriminalmeldung "
+        "(Gewalttat, Streit, Diebstahl, Mord, Prozess gegen eine "
+        "Privatperson), einen einzelnen Unfall oder ein einzelnes Unglück "
+        "(Flugzeugabsturz, Verkehrsunfall, Brand, Naturkatastrophe) als "
+        "Thema — auch dann nicht, wenn eine echte, verifizierbare Quelle "
+        "dafür existiert. Das war für schlusslicht.de NIE vorgesehen: die "
+        "Seite ist ein Vergleichs-/Ranking-Magazin ('Wer ist Tabellenletzter "
+        "in einem echten Vergleich'), keine allgemeine Polizei- oder "
+        "Unfallmeldungs-Seite. Ausnahme: ein Kriminalitäts- oder "
+        "Sicherheitsthema ist erlaubt, wenn es GENERELL bzw. POLITISCH ist "
+        "und einen echten Vergleichswert hat — z.B. 'Land X hat die "
+        "niedrigste Aufklärungsquote bei häuslicher Gewalt in der EU "
+        "(Statistik/Studie)' oder 'Stadt Y hat die höchste Kriminalitäts-"
+        "rate im Bundesländervergleich' — NIEMALS aber ein Bericht über "
+        "einen einzelnen Vorfall mit konkreten Privatpersonen ohne "
+        "Vergleichsdaten. Wenn du unsicher bist, ob ein Fall ein "
+        "Einzelvorfall oder ein echter Vergleichsfall ist: wähle im "
+        "Zweifel ein anderes Thema.\n\n"
+        "KONKRETE, TATSÄCHLICH VORGEKOMMENE FEHLBEISPIELE — GENAU SO NICHT: "
+        "'In Überlingen ergaunert ein Unbekannter mit Gutscheincodes rund "
+        "1.500 Euro' (Einzelfall-Betrug, kein Vergleichswert), 'Im "
+        "Ostallgäu findet eine Frau eine tote Kuh auf der Weide – die "
+        "Polizei geht von gezielter Tötung aus' (Einzelfall-Tierquälerei/"
+        "Kriminalität), 'Oberkassel: Mann und Frau bei Streit schwer "
+        "verletzt' (Einzelfall-Gewalttat), 'Russisches Passagierflugzeug "
+        "mit 49 Menschen an Bord abgestürzt' (Einzelfall-Unglück). Wähle "
+        "NIEMALS etwas in dieser Art, auch nicht in abgewandelter Form oder "
+        "mit anderem Ort/Namen — das Muster selbst (ein einzelner Vorfall "
+        "mit Privatpersonen, ohne Vergleichswert) ist das Problem, nicht "
+        "der konkrete Fall.\n\n"
+        "KEINE GENERISCHEN LOKAL-/BOULEVARD-RUBRIKEN: Vergib NIEMALS ein "
+        "kicker-Label wie 'Alltag', 'Lokales', 'Region · [Bundesland/Stadt]', "
+        "'Vermischtes', 'Boulevard' oder 'Panorama' — diese Label selbst "
+        "sind ein Warnsignal für eine Einzelfall-/Boulevardmeldung ohne "
+        "echten Themenbezug. Jedes kicker-Label muss ein KONKRETES Thema "
+        "benennen (z.B. 'EU · Geldpolitik', 'Fußball · Bundesliga', "
+        "'Pressefreiheit', 'Niedriglohn'), nie eine bloße Orts- oder "
+        "Rubriken-Bezeichnung ohne inhaltlichen Themenbezug.\n\n"
         "ABSOLUTES VERBOT VON PLATZHALTERN: Jede Schlagzeile und jeder "
         "Kommentar muss eine ECHTE, konkrete, recherchierte Meldung mit "
         "echten Eigennamen, Orten und Zahlen sein. Schreibe NIEMALS "
@@ -693,6 +743,68 @@ def _item_ist_kontaminiert(item: dict) -> bool:
     return _ist_meta_kommentar(_item_kontamination_text(item))
 
 
+# WICHTIG (Bugfix, gefunden nach Live-Meldung "Kriminalität statt sozialer/
+# linker Themen, Redundanz durch Einzelfall-Meldungen wie 'Oberkassel'"):
+# Trotz Prompt-Anweisung wählte das Modell wiederholt einzelne Kriminal-
+# oder Unglücksmeldungen (Straftat, Unfall, Flugzeugabsturz) ohne echten
+# Vergleichs-/Rankingbezug — nie als 'Schlusslicht' vorgesehen.
+#
+# ERWEITERUNG (Bugfix, gefunden nach WEITERER Live-Meldung: 'Alltag ·
+# Betrug' [Gutschein-Betrug], 'Region · Bayern' [mutmaßlich getötete Kuh],
+# 'Lokales · Düsseldorf' [Oberkassel, drittes Mal]): Ein reiner
+# Kicker-Marker ('Kriminalität', 'Blaulicht') reicht NICHT — das Modell
+# versteckt dieselbe Art Einzelfall-Meldung auch unter unauffälligen,
+# generischen Lokal-/Boulevard-Kickern ('Alltag', 'Lokales', 'Region ·
+# X', 'Vermischtes'), die für sich genommen kein Warnsignal sind. Zwei
+# zusätzliche, robustere Signale:
+#  (1) Generische Lokal-/Boulevard-Rubriken-Label — echte strukturkritische
+#      oder massentaugliche Themen dieser Seite haben immer ein KONKRETES
+#      Themen-Label (z.B. 'EU · Geldpolitik', 'Fußball · Bundesliga',
+#      'Pressefreiheit'), nie ein bloßes Regional-/Boulevard-Schlagwort
+#      ohne Themenbezug.
+#  (2) Konkrete Tatbestands-/Ermittlungssprache in Schlagzeile/Kommentar
+#      (Betrug, Tötung, Festnahme, Ermittlungen gegen eine Privatperson),
+#      die auf einen Einzelfall statt einen Strukturvergleich hindeutet.
+_VERBOTENE_KICKER_MARKER = (
+    "kriminal", "blaulicht", "unfall", "vermisst", "unglück", "unglueck",
+    "katastrophe", "mordfall", "gewaltverbrechen",
+    # generische Lokal-/Boulevard-Label ohne eigenen Themenbezug (Signal 1)
+    "alltag", "lokales", "vermischtes", "boulevard", "region ·", "region -",
+    "panorama",
+    # dieselben Signale auf Englisch (LANG=en-Ausgabe, siehe index.en.html)
+    "crime", "accident", "disaster", "missing person", "breaking news",
+    "local news", "human interest",
+)
+
+_VERBOTENE_TATBESTAND_MARKER = (
+    "ergaunert", "erschlichen", "betrug", "betrüger", "diebstahl", "einbruch",
+    "überfall", "raubüberfall", "tatverdächtig", "festgenommen", "verhaftet",
+    "unbekannter täter", "unbekannte täter", "angeklagt", "prozess gegen",
+    "geht von einer straftat aus", "geht von einer gezielten tötung aus",
+    "mutmaßlich getötet", "ermittlungen laufen seit", "die polizei ermittelt",
+    "polizei geht von", "abgestürzt", "flugzeugabsturz", "brand ausgebrochen",
+    # dieselben Signale auf Englisch
+    "scammed", "swindled", "conned", "defrauded", "fraudster", "burglary",
+    "robbery", "arrested", "charged with", "suspect", "unknown assailant",
+    "shot dead", "stabbed to death", "found dead", "crash killed",
+    "were killed when", "dead after a fire", "killed in a fire",
+    "died after a fire", "died in a fire", "dead in a fire", "dead in fire",
+    "plane crash", "car crash",
+)
+
+
+def _ist_einzelfall_kriminalitaet_oder_unglueck(item: dict) -> bool:
+    """Erkennt Einzelfall-Kriminal-/Unglücksmeldungen: über das Kicker-/
+    Thema-Label (inkl. generischer Lokal-/Boulevard-Label ohne eigenen
+    Themenbezug) UND über konkrete Tatbestands-/Ermittlungssprache in
+    Schlagzeile/Kommentar (siehe Kommentar oben für Details/Beispiele)."""
+    kicker_text = f"{item.get('kicker', '')} {item.get('thema', '')}".lower()
+    if any(m in kicker_text for m in _VERBOTENE_KICKER_MARKER):
+        return True
+    inhalt_text = f"{item.get('headline', '')} {item.get('kommentar', '')}".lower()
+    return any(m in inhalt_text for m in _VERBOTENE_TATBESTAND_MARKER)
+
+
 BAD_URL_HISTORY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bad_url_history.json")
 BAD_URL_KEEP_DAYS = 180  # deutlich länger als die Story-Historie: einmal als
                          # Feigenblatt erkannte URLs bleiben lange gesperrt
@@ -735,10 +847,57 @@ def save_bad_urls(urls: list) -> None:
         log(f"  Bad-URL-Historie konnte nicht gespeichert werden: {exc}")
 
 
+DAILY_ITEMS_HISTORY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "daily_items_history.json")
+DAILY_ITEMS_HISTORY_KEEP_DAYS = 30  # siehe load_daily_items_history/save_daily_items_history
+
+# WICHTIG (Bugfix, gefunden nach Live-Meldung "Redundanz: 'Oberkassel: Mann
+# und Frau bei Streit verletzt' UND 'In Oberkassel werden bei Streit zwei
+# Menschen schwer verletzt' gleichzeitig auf der Startseite"): avoid_entities
+# wurde bisher NUR aus story_history.json gespeist — das erfasst nur Fälle,
+# zu denen je eine Hintergrundstory erfolgreich veröffentlicht wurde. Ein
+# Tagesmeldungs-Slot, der (wie hier) über mehrere Tage einfach nie neu
+# recherchiert wurde, blieb tagelang sichtbar stehen, ohne je in dieser
+# Liste aufzutauchen — eine spätere, unabhängige Recherche konnte denselben
+# realen Fall daher erneut auswählen und parallel zur alten, noch stehenden
+# Meldung zeigen. Diese Historie merkt sich JEDE tatsächlich veröffentlichte
+# Tagesmeldung (nicht nur die mit Hintergrundstory) und verhindert damit
+# dauerhaft, dass derselbe reale Fall doppelt bzw. erneut auftaucht, solange
+# er (oder eine noch nicht aktualisierte alte Fassung davon) noch sichtbar
+# sein könnte.
+
+
+def load_daily_items_history() -> list:
+    if not os.path.exists(DAILY_ITEMS_HISTORY_PATH):
+        return []
+    try:
+        with open(DAILY_ITEMS_HISTORY_PATH, encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, list) else []
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+def save_daily_items_history(history: list) -> None:
+    cutoff = datetime.date.today() - datetime.timedelta(days=DAILY_ITEMS_HISTORY_KEEP_DAYS)
+    pruned = []
+    for entry in history:
+        try:
+            d = datetime.date.fromisoformat(entry.get("date", ""))
+        except (ValueError, TypeError, AttributeError):
+            continue
+        if d >= cutoff:
+            pruned.append(entry)
+    try:
+        with open(DAILY_ITEMS_HISTORY_PATH, "w", encoding="utf-8") as fh:
+            json.dump(pruned, fh, ensure_ascii=False, indent=2)
+    except OSError as exc:
+        log(f"  Tagesmeldungs-Historie konnte nicht gespeichert werden: {exc}")
+
+
 BATCH_SIZE = 3  # siehe get_daily_items: kleinere Aufrufe recherchieren nachweislich zuverlässiger
 
 
-def get_daily_items(date_label: str, avoid_entities: list):
+def get_daily_items(date_label: str, avoid_entities: list, vorhandene_ueberschriften: list = None):
     """Holt die frei recherchierten Tagesmeldungen (kein Themen-Pool, keine
     Rotation — siehe _fetch_fresh_items), aufgeteilt in Gruppen von je
     BATCH_SIZE.
@@ -787,7 +946,12 @@ def get_daily_items(date_label: str, avoid_entities: list):
         # Versuche aufgebraucht wurden.
         gruppen_treffer = {}
         letzter_fehlgrund = ""
-        for versuch in range(3):
+        # WICHTIG: 4 statt 3 Versuche — seit der strengeren Themenpolitik
+        # (keine Einzelfall-Kriminalität/-Unglücke mehr, siehe
+        # _ist_einzelfall_kriminalitaet_oder_unglueck) sind vorher leicht
+        # zu findende, aber unzulässige Kandidaten häufiger zu ersetzen;
+        # ein zusätzlicher Versuch federt das ab.
+        for versuch in range(4):
             fehlend = groesse - len(gruppen_treffer)
             if fehlend <= 0:
                 break
@@ -850,6 +1014,7 @@ def get_daily_items(date_label: str, avoid_entities: list):
                         neue_bad_urls.append(u)
 
             neue_treffer = {}
+            einzelfall_verworfen = [False]
             # Freie Slot-Nummern dieser Gruppe, die noch keinen Treffer haben —
             # neue Ergebnisse werden der Reihe nach genau diesen zugewiesen.
             offene_keys = [
@@ -880,6 +1045,13 @@ def get_daily_items(date_label: str, avoid_entities: list):
                         f"Rechercheprozess statt einer echten Meldung zu sein "
                         f"({headline!r}) — verworfen, keine Platzhalter-Texte als Inhalt.")
                     continue
+                if _ist_einzelfall_kriminalitaet_oder_unglueck(item):
+                    log(f"  Meldung {key}: Einzelfall-Kriminal-/Unglücksmeldung ohne "
+                        f"Vergleichs-/Rankingbezug ({item.get('kicker', '')!r}, "
+                        f"{headline!r}) — verworfen, war für schlusslicht.de nie "
+                        f"vorgesehen.")
+                    einzelfall_verworfen[0] = True
+                    continue
                 url = (item.get("quelle_url") or "").strip().lower()
                 if url and (url in doppelte_urls or url in verbotene_urls or url in neue_bad_urls):
                     log(f"  Meldung {key}: teilt sich eine Quellen-URL mit anderen "
@@ -902,15 +1074,21 @@ def get_daily_items(date_label: str, avoid_entities: list):
             if len(gruppen_treffer) >= groesse:
                 break  # Gruppe komplett gefüllt -> kein weiterer Versuch nötig
 
-            letzter_fehlgrund = (
-                f"alle Meldungen teilten sich eine Quelle ({', '.join(doppelte_urls)})"
-                if doppelte_urls else
-                f"nur {len(neue_treffer)} von {fehlend} angeforderten Meldungen war(en) verwertbar"
-            )
-            if versuch < 2:
+            if doppelte_urls:
+                letzter_fehlgrund = f"alle Meldungen teilten sich eine Quelle ({', '.join(doppelte_urls)})"
+            elif einzelfall_verworfen[0]:
+                letzter_fehlgrund = (
+                    "mindestens eine Meldung war eine einzelne Kriminal-/"
+                    "Unglücksmeldung ohne Vergleichs-/Rankingbezug — das ist "
+                    "für schlusslicht.de NICHT erlaubt, egal wie echt die "
+                    "Quelle ist"
+                )
+            else:
+                letzter_fehlgrund = f"nur {len(neue_treffer)} von {fehlend} angeforderten Meldungen war(en) verwertbar"
+            if versuch < 3:
                 log(f"  Gruppe noch nicht vollständig ({len(gruppen_treffer)}/{groesse}, "
                     f"{letzter_fehlgrund}) — wiederhole für die fehlenden "
-                    f"{groesse - len(gruppen_treffer)} Plätze (Versuch {versuch + 2}/3).")
+                    f"{groesse - len(gruppen_treffer)} Plätze (Versuch {versuch + 2}/4).")
 
         all_items.update(gruppen_treffer)
 
@@ -921,9 +1099,22 @@ def get_daily_items(date_label: str, avoid_entities: list):
         log(f"  {len(neue_bad_urls)} neue Feigenblatt-URL(s) dauerhaft gesperrt: "
             f"{', '.join(neue_bad_urls)}")
 
-    all_items = dedupe_rubrik_topics(all_items)
+    all_items = dedupe_rubrik_topics(all_items, vorhandene_ueberschriften)
     all_items = strip_repeated_boilerplate(all_items)
     all_items = review_and_fix_items(all_items, date_label)
+
+    neue_daily_history_eintraege = [
+        {
+            "date": datetime.date.today().isoformat(),
+            "entity": (it.get("entity") or "").strip(),
+            "thema": (it.get("thema") or "").strip(),
+            "headline": (it.get("headline") or "").strip(),
+        }
+        for it in all_items.values()
+        if it and (it.get("entity") or "").strip()
+    ]
+    if neue_daily_history_eintraege:
+        save_daily_items_history(load_daily_items_history() + neue_daily_history_eintraege)
 
     spotlight_ticker = get_spotlight_and_ticker(date_label, all_items)
 
@@ -1150,35 +1341,63 @@ def review_and_fix_items(items: dict, date_label: str) -> dict:
     return items
 
 
-def dedupe_rubrik_topics(items: dict) -> dict:
+def dedupe_rubrik_topics(items: dict, vorhandene_ueberschriften: list = None) -> dict:
     """Erkennt, wenn zwei verschiedene Rubriken heute dasselbe Themen-
     Schlagwort tragen (z. B. zweimal 'Fußball' in fachfremden Rubriken —
     auch wenn es um unterschiedliche Vereine/Ligen geht), und verwirft die
     später einsortierte Duplikat-Meldung. Diese Rubrik behält dann ihren
     bestehenden Stand aus der Vorlage statt einer doppelten Meldung.
-    Fällt zusätzlich auf einen Wortüberlappungs-Vergleich zurück, falls das
-    Modell kein 'thema'-Feld liefert."""
+    Prüft zusätzlich IMMER (nicht nur als Rückfall bei fehlendem 'thema')
+    per Wortüberlappung gegen bereits behaltene Texte innerhalb der
+    heutigen Ausgabe.
+
+    WICHTIG (Bugfix, gefunden nach Live-Meldung "Oberkassel"-Redundanz:
+    'Oberkassel: Mann und Frau bei Streit verletzt' UND 'In Oberkassel
+    werden bei Streit zwei Menschen schwer verletzt' gleichzeitig sichtbar):
+    Der Wortüberlappungs-Vergleich lief bisher NUR, wenn 'thema' komplett
+    fehlte — lieferte das Modell (wie fast immer) ein thema-Feld, das sich
+    zufällig nicht exakt mit einem anderen deckte, wurde die inhaltliche
+    Überlappung nie geprüft. Jetzt läuft der Wortüberlappungs-Vergleich
+    IMMER zusätzlich zum thema-Abgleich.
+
+    Über `vorhandene_ueberschriften` können zudem bereits sichtbare, heute
+    NICHT aktualisierte Bestandsmeldungen hier mit hineingegeben werden,
+    damit eine frische Meldung nicht denselben realen Fall wie eine noch
+    stehende alte Karte doppelt zeigt. WICHTIG dabei: Dieser Vergleich läuft
+    NUR über die reine Schlagzeile, nicht über Schlagzeile+Kommentar —
+    gemessen am echten Live-Fall überlappten die vollen Kommentar-Texte
+    (unterschiedlich formulierte Empörung/Einordnung zum selben Ereignis)
+    nur zu ~33%, obwohl es sich nachweislich um denselben Fall handelte;
+    die Schlagzeilen allein (kurz, faktenbasiert: Ort, Beteiligte, Tat)
+    überlappten dagegen zu 60% — ein deutlich zuverlässigeres Signal für
+    'derselbe reale Fall', da Kommentartext viel mehr variable, stilistische
+    Füllwörter beisteuert, die die Wortüberlappungs-Quote verwässern."""
+    vorhandene_ueberschriften = [h.strip() for h in (vorhandene_ueberschriften or []) if (h or "").strip()]
     seen_themen = {}
     kept_texts = {}
+
     for num in sorted(items.keys()):
         item = items.get(num) or {}
-        combined = f"{item.get('headline', '')} {item.get('kommentar', '')}".strip()
+        headline = (item.get("headline") or "").strip()
+        combined = f"{headline} {item.get('kommentar', '')}".strip()
         if not combined:
             continue
         thema = (item.get("thema") or "").strip().lower()
         thema_norm = re.sub(r"[^a-zäöüß ]", "", thema)
 
-        is_dup = False
-        if thema_norm and thema_norm in seen_themen:
-            is_dup = True
-        elif not thema_norm:
-            # Kein Themen-Schlagwort geliefert -> Rückfallprüfung per Wortüberlappung
+        is_dup = bool(thema_norm and thema_norm in seen_themen)
+        if not is_dup:
             is_dup = any(_paragraphs_content_overlap(combined, prev, 0.5) for prev in kept_texts.values())
+        grund = "anderen, heute bereits vergebenen Rubrik"
+        if not is_dup and headline:
+            is_dup = any(_paragraphs_content_overlap(headline, alt_hl, 0.5) for alt_hl in vorhandene_ueberschriften)
+            if is_dup:
+                grund = "bereits (unaktualisiert) angezeigten Bestandskarte"
 
         if is_dup:
             quelle_info = f"Thema '{thema}'" if thema_norm else combined[:70]
             log(f"  Rubrik {num}: {quelle_info} überschneidet sich mit einer "
-                f"anderen Rubrik heute — Meldung verworfen, bestehender Stand bleibt.")
+                f"{grund} — Meldung verworfen, bestehender Stand bleibt.")
             items[num] = {}
             continue
 
@@ -1624,36 +1843,18 @@ def carry_over_dynamic_content(template_html: str, output_html: str) -> str:
         if src is not None and dst is not None and src.has_attr(attr):
             dst[attr] = src[attr]
 
-    def _sanitize_contaminated_slot(card_sel: str, slot_i: int) -> None:
-        """Selbstheilung gegen dauerhaft weitergetragene Kontamination.
-
-        WICHTIG (Bugfix, gefunden nach Live-Meldung "5 von 6 Rubriken zeigen
-        Sätze über die eigene Recherche statt echter Meldungen"): Diese
-        Funktion übernahm bisher BLIND jeden bestehenden Stand, egal ob er
-        selbst schon ein Prozess-Kommentar war. Da ein fehlgeschlagener
-        Fetch-Tag einen Slot einfach unverändert lässt (siehe inject()),
-        wurde einmal kontaminierter Inhalt dadurch Tag für Tag identisch
-        weiterkopiert — potenziell für immer, unabhängig davon, wie oft der
-        Workflow seither lief. Diese Prüfung erkennt genau diesen Zustand
-        NACH dem Kopieren und ersetzt ihn durch einen ehrlichen, klar
-        erkennbaren Platzhalter statt ihn weiter zu übernehmen. Der nächste
-        erfolgreiche Fetch für diesen Slot überschreibt den Platzhalter
-        automatisch mit einer echten Meldung."""
-        card = neu.select_one(card_sel)
-        if card is None:
-            return
+    def _reset_card_to_placeholder(card, slot_i: int, grund: str) -> None:
+        """Setzt eine Rubrik-Karte auf einen ehrlichen, strukturell intakten
+        Platzhalter zurück (siehe _sanitize_contaminated_slot für den
+        Hauptanwendungsfall). Ausgelagert, damit auch die slot-übergreifende
+        Redundanz-Prüfung unten dieselbe Reset-Logik wiederverwenden kann."""
         rtit = card.select_one(".rtit")
         realsatire = card.select_one(".realsatire")
         tbl = card.select_one(".tbl")
-        kombiniert = " ".join(
-            el.get_text() for el in (rtit, realsatire, tbl) if el is not None
-        )
-        if not _ist_meta_kommentar(kombiniert):
-            return
         log(f"  Slot {slot_i}: bestehender Stand ist bereits kontaminiert "
-            f"(Prozess-Kommentar statt echter Meldung, vermutlich aus einem "
-            f"früheren fehlerhaften Lauf) — wird NICHT weiter übernommen, "
-            f"stattdessen auf ehrlichen Platzhalter zurückgesetzt.")
+            f"({grund}, vermutlich aus einem früheren fehlerhaften Lauf) — "
+            f"wird NICHT weiter übernommen, stattdessen auf ehrlichen "
+            f"Platzhalter zurückgesetzt.")
         placeholder_title = "Will be updated on the next run." if LANG == "en" else "Wird beim nächsten Lauf aktualisiert."
         placeholder_quip = "…" if LANG == "en" else "…"
         if rtit is not None:
@@ -1690,6 +1891,56 @@ def carry_over_dynamic_content(template_html: str, output_html: str) -> str:
             )
             tbl.append(BeautifulSoup(platzhalter_tbl, "html.parser"))
 
+    def _sanitize_contaminated_slot(card_sel: str, slot_i: int) -> None:
+        """Selbstheilung gegen dauerhaft weitergetragene Kontamination.
+
+        WICHTIG (Bugfix, gefunden nach Live-Meldung "5 von 6 Rubriken zeigen
+        Sätze über die eigene Recherche statt echter Meldungen"): Diese
+        Funktion übernahm bisher BLIND jeden bestehenden Stand, egal ob er
+        selbst schon ein Prozess-Kommentar war. Da ein fehlgeschlagener
+        Fetch-Tag einen Slot einfach unverändert lässt (siehe inject()),
+        wurde einmal kontaminierter Inhalt dadurch Tag für Tag identisch
+        weiterkopiert — potenziell für immer, unabhängig davon, wie oft der
+        Workflow seither lief. Diese Prüfung erkennt genau diesen Zustand
+        NACH dem Kopieren und ersetzt ihn durch einen ehrlichen, klar
+        erkennbaren Platzhalter statt ihn weiter zu übernehmen. Der nächste
+        erfolgreiche Fetch für diesen Slot überschreibt den Platzhalter
+        automatisch mit einer echten Meldung.
+
+        WICHTIG (Bugfix, gefunden nach WEITERER Live-Meldung: "Alltag ·
+        Betrug", "Region · Bayern" [tote Kuh], "Oberkassel" x3 dauerhaft
+        sichtbar): Ein bereits veröffentlichter Einzelfall-Kriminalitäts-/
+        Boulevard-Eintrag ist KEIN Prozess-Kommentar (er besteht die
+        _ist_meta_kommentar-Prüfung), verstößt aber genauso gegen die
+        inhaltliche Ausrichtung der Seite und würde sonst über Tage/Wochen
+        unverändert weiterkopiert, bis zufällig ein neuer Fetch für genau
+        diesen Slot gelingt. Dieselbe Selbstheilung greift daher jetzt auch
+        hier — unabhängig davon, wie lange der Eintrag schon steht."""
+        card = neu.select_one(card_sel)
+        if card is None:
+            return
+        rtit = card.select_one(".rtit")
+        realsatire = card.select_one(".realsatire")
+        rnum = card.select_one(".rnum")
+        tbl = card.select_one(".tbl")
+        kombiniert = " ".join(
+            el.get_text() for el in (rtit, realsatire, tbl) if el is not None
+        )
+        pseudo_item = {
+            "kicker": rnum.get_text() if rnum is not None else "",
+            "headline": rtit.get_text() if rtit is not None else "",
+            "kommentar": realsatire.get_text() if realsatire is not None else "",
+        }
+        ist_kontaminiert = _ist_meta_kommentar(kombiniert)
+        ist_einzelfall = _ist_einzelfall_kriminalitaet_oder_unglueck(pseudo_item)
+        if not (ist_kontaminiert or ist_einzelfall):
+            return
+        grund = (
+            "Prozess-Kommentar statt echter Meldung" if ist_kontaminiert else
+            "Einzelfall-Kriminalitäts-/Boulevardmeldung ohne Vergleichs-/Rankingbezug"
+        )
+        _reset_card_to_placeholder(card, slot_i, grund)
+
     # Die 3 Rubrik-Karten (per data-slot, positionsstabil) + ihre Modals
     for slot_i in range(1, N_ITEMS + 1):
         card_sel = f'article.rub[data-slot="{slot_i}"]'
@@ -1705,6 +1956,35 @@ def carry_over_dynamic_content(template_html: str, output_html: str) -> str:
         _copy_text(f"{modal_sel} .story-modal-lead")
         _copy_text(f"{modal_sel} .story-source")
         _copy_html(f"{modal_sel} .story-body")
+
+    # WICHTIG (Bugfix, gefunden nach Live-Meldung "Oberkassel"-Redundanz,
+    # bestätigt auch auf der EN-Startseite mit zwei verschieden formulierten
+    # Meldungen zu demselben Zugchaos): Ein bereits veröffentlichter, für
+    # sich genommen unauffälliger Bestandseintrag kann trotzdem denselben
+    # realen Fall wie eine ANDERE, ebenfalls schon veröffentlichte Karte
+    # zeigen — z.B. weil beide an unterschiedlichen Tagen unabhängig
+    # voneinander recherchiert wurden, bevor die Cross-Tage-Prüfung in
+    # get_daily_items (vorhandene_ueberschriften) eingeführt wurde. Diese
+    # abschließende Prüfung vergleicht ALLE Slot-Schlagzeilen paarweise;
+    # bei Überlappung bleibt die niedrigere Slot-Nummer stehen, die höhere
+    # wird auf den ehrlichen Platzhalter zurückgesetzt (der nächste
+    # erfolgreiche Fetch für diesen Slot ersetzt ihn wieder).
+    _slot_headlines = []
+    for slot_i in range(1, N_ITEMS + 1):
+        card = neu.select_one(f'article.rub[data-slot="{slot_i}"]')
+        rtit = card.select_one(".rtit") if card is not None else None
+        headline = rtit.get_text().strip() if rtit is not None else ""
+        if headline and not _ist_meta_kommentar(headline):
+            _slot_headlines.append((slot_i, card, headline))
+
+    for i, (slot_i, card, headline) in enumerate(_slot_headlines):
+        for other_slot_i, _, other_headline in _slot_headlines[:i]:
+            if _paragraphs_content_overlap(headline, other_headline, 0.5):
+                _reset_card_to_placeholder(
+                    card, slot_i,
+                    f"überschneidet sich mit der bereits angezeigten Rubrik {other_slot_i}",
+                )
+                break
 
     # Spotlight ("Tagesausgabe")
     for sel in ("#ta-cat", "#ta-hl", "#ta-text", "#ta-source"):
@@ -1796,6 +2076,15 @@ def main() -> int:
         log("Verwende Template als Basis (kein vorheriges OUTPUT vorhanden).")
 
     history = load_story_history()
+    # WICHTIG (Bugfix, gefunden nach Live-Meldung "Oberkassel"-Redundanz):
+    # Neben der Hintergrundstory-Historie fließt jetzt zusätzlich JEDE
+    # tatsächlich veröffentlichte Tagesmeldung ein (daily_items_history,
+    # siehe get_daily_items) — nicht nur Fälle, zu denen je eine
+    # Hintergrundstory geschrieben wurde. Damit wird auch ein Slot, der über
+    # mehrere Tage unverändert stehen bleibt, zuverlässig ausgeschlossen,
+    # statt dass eine spätere Recherche denselben realen Fall ein zweites
+    # Mal parallel zur alten, noch sichtbaren Meldung auswählt.
+    daily_items_history = load_daily_items_history()
     # WICHTIG: Nur die neuesten ~35 Entitäten werden dem Prompt gezeigt (nicht
     # alle, die je nach Alter der Historie schnell auf 60-100+ anwachsen
     # können). Ein zu langer Ausschluss-Block überlastet den Prompt und kann
@@ -1803,7 +2092,8 @@ def main() -> int:
     # oder eine wiederverwendete Feigenblatt-Quelle produziert. Die eigentliche
     # Wiederholungssperre (is_recently_used) prüft weiterhin gegen die
     # VOLLSTÄNDIGE Historie, nur die Prompt-Anzeige ist gekappt.
-    recent_first = list(reversed(history))
+    combined_history = list(history) + list(daily_items_history)
+    recent_first = sorted(combined_history, key=lambda e: e.get("date") or "", reverse=True)
     seen, avoid_entities = set(), []
     for entry in recent_first:
         ent = (entry.get("entity") or "").strip()
@@ -1814,10 +2104,30 @@ def main() -> int:
             break
     if avoid_entities:
         log(f"  {len(avoid_entities)} der neuesten Fälle/Entitäten (von "
-            f"{len(seen)}+ in den letzten {STORY_HISTORY_KEEP_DAYS} Tagen) "
+            f"{len(seen)}+ aus Hintergrundstory- und Tagesmeldungs-Historie) "
             f"werden im Prompt vermieden.")
 
-    items = get_daily_items(date_label, avoid_entities)
+    # WICHTIG (Bugfix, gefunden nach Live-Meldung "Oberkassel"-Redundanz):
+    # Die aktuell sichtbaren Schlagzeilen ALLER Slots (inkl. der heute evtl.
+    # gar nicht aktualisierten) werden hier ausgelesen und an
+    # dedupe_rubrik_topics durchgereicht, damit eine frisch recherchierte
+    # Meldung nicht denselben realen Fall wie eine noch stehende, alte
+    # Karte zeigt — unabhängig davon, ob das Modell dieselbe Entität als
+    # 'schon verwendet' erkennt (siehe dedupe_rubrik_topics/avoid_entities).
+    # Bewusst NUR die Schlagzeile (nicht zusätzlich der Kommentar) — siehe
+    # Begründung im Docstring von dedupe_rubrik_topics.
+    try:
+        _bestand_soup = BeautifulSoup(html, "html.parser")
+        vorhandene_ueberschriften = [
+            c.select_one(".rtit").get_text()
+            for c in _bestand_soup.select("article.rub[data-slot]")
+            if c.select_one(".rtit")
+        ]
+    except Exception as exc:  # noqa: BLE001
+        log(f"  WARNUNG: Bestehende Rubrik-Schlagzeilen konnten nicht gelesen werden ({exc}).")
+        vorhandene_ueberschriften = []
+
+    items = get_daily_items(date_label, avoid_entities, vorhandene_ueberschriften)
     stories = get_embedded_stories(date_label, (items or {}).get("items", {}))
 
     # WICHTIG: Bewusst NUR bei echtem neuen Inhalt schreiben (nicht immer).
