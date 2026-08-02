@@ -349,7 +349,8 @@ Liefere GENAU dieses JSON-Schema:
     return call_api_json(system, prompt, max_tokens=1200)
 
 
-def get_good_news_batch(date_label: str, anzahl: int, bereiche: str, ausgeschlossene_urls: list):
+def get_good_news_batch(date_label: str, anzahl: int, bereiche: str, ausgeschlossene_urls: list,
+                         zusatzhinweis: str = ""):
     system = f"Du bist Redakteur der Rubrik 'Visionen' auf schlusslicht.de.\n\n{_GEMEINSAME_REGELN}"
     ausschluss = (
         f"\n\nDiese URLs sind bereits für andere Meldungen vergeben — verwende "
@@ -358,7 +359,7 @@ def get_good_news_batch(date_label: str, anzahl: int, bereiche: str, ausgeschlos
         else ""
     )
     prompt = f"""Finde {anzahl} positive, gut belegte Nachrichten für die Ausgabe {date_label}.
-Bevorzugte Themenbereiche für diese Gruppe: {bereiche}.{ausschluss}
+Bevorzugte Themenbereiche für diese Gruppe: {bereiche}.{ausschluss}{zusatzhinweis}
 
 Liefere GENAU dieses JSON-Schema:
 {{
@@ -380,15 +381,133 @@ Liefere GENAU dieses JSON-Schema:
     return (result or {}).get("good_news", [])
 
 
-def get_embedded_stories(date_label: str, good_news: list):
-    """Schreibt für JEDES der (jetzt 3) Good-News-Elemente eine EINGEBETTETE
-    Hintergrundstory zum selben Thema (statt 3 unabhängig recherchierter
-    Storys zu beliebigen anderen Themen). Rückgabe ist ein dict, das den
-    1-basierten Index des Good-News-Elements auf seine Story abbildet, damit
-    inject() Story und Kachel 1:1 zusammenhalten kann."""
+VISIONEN_HISTORY_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "visionen_history_en.json" if LANG == "en" else "visionen_history.json",
+)
+VISIONEN_HISTORY_KEEP_DAYS = 45
+
+
+def load_visionen_history() -> list:
+    """WICHTIG (Bugfix, gefunden bei gründlicher Nachprüfung nach dem "viele
+    Kategorien bleiben leer"-Fehler in generate.py): Für Visionen/Brightside
+    existierte bislang GAR KEINE persistente Historie — dieselbe reale
+    Meldung (bzw. dasselbe Thema/dieselbe Entität) konnte dadurch an
+    verschiedenen, unabhängigen Tagen erneut ausgewählt werden, ohne dass
+    das je erkannt worden wäre (siehe generate.py daily_items_history für
+    dasselbe Muster und dieselbe Behebung)."""
+    if not os.path.exists(VISIONEN_HISTORY_PATH):
+        return []
+    try:
+        with open(VISIONEN_HISTORY_PATH, encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, list) else []
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+def save_visionen_history(history: list) -> None:
+    cutoff = datetime.date.today() - datetime.timedelta(days=VISIONEN_HISTORY_KEEP_DAYS)
+    pruned = []
+    for entry in history:
+        try:
+            d = datetime.date.fromisoformat(entry.get("date", ""))
+        except (ValueError, TypeError, AttributeError):
+            continue
+        if d >= cutoff:
+            pruned.append(entry)
+    try:
+        with open(VISIONEN_HISTORY_PATH, "w", encoding="utf-8") as fh:
+            json.dump(pruned, fh, ensure_ascii=False, indent=2)
+    except OSError as exc:
+        log(f"  Visionen-Historie konnte nicht gespeichert werden: {exc}")
+
+
+def get_daily_good_news(date_label: str, avoid_entities: list) -> dict:
+    """Holt bis zu 3 Good-News-Meldungen, verteilt auf feste Slot-Nummern
+    (1..3), mit Retry NUR für tatsächlich noch fehlende Slots.
+
+    WICHTIG (Bugfix, siehe get_daily_columns in generate_mfb.py für dasselbe
+    Muster): Ersetzt die alte Logik, die GENAU EINMAL alle 3 Meldungen auf
+    einmal anfragte. Schlug die einmalige Anfrage komplett oder teilweise
+    fehl, gab es KEINEN zweiten Versuch. Zusätzlich verhinderte diese
+    Version das Verrutschen von Kacheln/Storys in den falschen Slot, das
+    entstand, wenn verify_visionen_sources/review_and_rewrite_visionen eine
+    Meldung verwarfen und die Liste dabei neu durchnummeriert wurde."""
+    slots = {}
+    schon_gewaehlte_entitaeten = list(avoid_entities)
+    letzter_fehlgrund = ""
+    bereiche = "Gesundheit, Klima & Energie, Natur & Artenschutz, Gesellschaft, Wissenschaft & Technik"
+    for versuch in range(4):
+        fehlend = 3 - len(slots)
+        if fehlend <= 0:
+            break
+        log(f"  Hole {fehlend} Good News"
+            f"{f' (Versuch {versuch + 1}, {fehlend} von 3 fehlen noch)' if versuch else ''} …")
+
+        extra_hinweis = ""
+        if versuch > 0 and letzter_fehlgrund:
+            extra_hinweis = (
+                f"\n\nWICHTIG: Dein letzter Versuch hat nicht genug verwertbare "
+                f"Meldungen geliefert ({letzter_fehlgrund}). Wähle diesmal andere, "
+                f"dir noch nicht eingefallene Themen mit je einer echten, "
+                f"unterschiedlichen Quelle."
+            )
+        kandidaten = get_good_news_batch(date_label, fehlend, bereiche, [], extra_hinweis)
+        kandidaten = [c for c in (kandidaten or [])[:fehlend] if isinstance(c, dict)]
+
+        offene_keys = [i for i in range(1, 4) if i not in slots]
+        neue = {}
+        for idx, key in enumerate(offene_keys):
+            if idx >= len(kandidaten):
+                log(f"  Meldung {key}: keine verwertbare Antwort erhalten — übersprungen.")
+                continue
+            item = kandidaten[idx]
+            title = (item.get("title") or "").strip()
+            body = BeautifulSoup(item.get("body_html") or "", "html.parser").get_text()
+            if not title or not body:
+                log(f"  Meldung {key}: unvollständiger Eintrag — übersprungen.")
+                continue
+            if _ist_meta_kommentar(title) or _ist_meta_kommentar(body):
+                log(f"  Meldung {key} ({title!r}): Text beschreibt den eigenen "
+                    f"Rechercheprozess statt ein echtes Thema — verworfen.")
+                continue
+            neue[key] = item
+
+        if neue:
+            slots.update(neue)
+            for item in neue.values():
+                titel = (item.get("title") or "").strip()
+                if titel:
+                    schon_gewaehlte_entitaeten.append(titel)
+
+        if len(slots) >= 3:
+            break
+
+        letzter_fehlgrund = f"nur {len(neue)} von {fehlend} angeforderten Meldungen war(en) verwertbar"
+        if versuch < 3:
+            log(f"  Noch nicht vollständig ({len(slots)}/3, {letzter_fehlgrund}) "
+                f"— wiederhole für die fehlenden {3 - len(slots)} Plätze "
+                f"(Versuch {versuch + 2}/4).")
+
+    return slots
+
+
+def get_embedded_stories(date_label: str, good_news: dict):
+    """Schreibt für JEDES Good-News-Element eine EINGEBETTETE Hintergrundstory
+    zum selben Thema (statt 3 unabhängig recherchierter Storys zu beliebigen
+    anderen Themen). Rückgabe ist ein dict, das dieselbe Slot-Nummer wie
+    good_news auf seine Story abbildet, damit inject() Story und Kachel 1:1
+    zusammenhalten kann.
+
+    WICHTIG: good_news ist jetzt ein dict {slot_nummer: item} (siehe
+    get_daily_good_news), keine Liste mehr — die Slot-Nummer bleibt dadurch
+    über den gesamten Ablauf (Fetch, Verifikation, Review) hinweg stabil,
+    statt sich bei jedem Verwerfen eines Eintrags durch Listen-Neuindizierung
+    zu verschieben."""
     log("  Hole eingebettete Hintergrundstorys (je Meldung) …")
     anchors = {
-        i: item for i, item in enumerate(good_news, start=1)
+        i: item for i, item in good_news.items()
         if item and item.get("title")
     }
     if not anchors:
@@ -445,17 +564,12 @@ Antworte AUSSCHLIESSLICH mit gültigem JSON:
     return stories
 
 
-def get_visionen_content(date_label: str):
+def get_visionen_content(date_label: str, avoid_entities: list = None):
     log("Recherchiere positive, belegte Nachrichten für brightside.html …")
 
     spotlight = get_spotlight(date_label)
 
-    log("  Hole Good News (3, mit gemischten Themenbereichen) …")
-    good_news = get_good_news_batch(
-        date_label, 3,
-        "Gesundheit, Klima & Energie, Natur & Artenschutz, Gesellschaft, Wissenschaft & Technik",
-        [],
-    )
+    good_news = get_daily_good_news(date_label, avoid_entities or [])
 
     stories = get_embedded_stories(date_label, good_news)
 
@@ -523,7 +637,7 @@ def review_and_rewrite_visionen(data: dict, date_label: str) -> dict:
     generate.py. Läuft NACH der URL-Verifikation, damit nur bereits
     quellen-geprüfte Einträge die (kostenpflichtige) KI-Prüfung durchlaufen."""
     pruefbar = {}
-    for i, item in enumerate(data.get("good_news", [])):
+    for i, item in (data.get("good_news") or {}).items():
         if item.get("title") and item.get("body_html"):
             pruefbar[f"gn{i}"] = {"title": item["title"], "body_html": item["body_html"]}
     for key, st in (data.get("stories") or {}).items():
@@ -578,17 +692,21 @@ def review_and_rewrite_visionen(data: dict, date_label: str) -> dict:
         log(f"  {label}: '{feld}' sprachlich überarbeitet.")
         obj[feld] = neu
 
-    neue_good_news = []
-    for i, item in enumerate(data.get("good_news", [])):
+    # WICHTIG (Bugfix, siehe get_daily_good_news/verify_visionen_sources):
+    # good_news bleibt ein dict {slot_nummer: item} — ein verworfener Slot
+    # wird zum leeren Schlüssel, statt die übrigen Einträge in einer neu
+    # durchnummerierten Liste zu verschieben.
+    neue_good_news = {}
+    for i, item in (data.get("good_news") or {}).items():
         bewertung = urteil.get(f"gn{i}", {})
         if bewertung.get("ok") is False:
-            log(f"  Good-News {item.get('title', '(ohne Titel)')!r}: "
+            log(f"  Good-News {item.get('title', '(ohne Titel)')!r} (Slot {i}): "
                 f"Sinnhaftigkeits-Prüfung fehlgeschlagen "
                 f"({bewertung.get('grund', 'kein Grund')}) — verworfen.")
             continue
         _anwenden(item, f"gn{i}", "title", "title_neu", bewertung, f"Good-News {i}")
         _anwenden(item, f"gn{i}", "body_html", "body_html_neu", bewertung, f"Good-News {i}")
-        neue_good_news.append(item)
+        neue_good_news[i] = item
     data["good_news"] = neue_good_news
 
     neue_stories = {}
@@ -659,20 +777,24 @@ def verify_visionen_sources(data: dict) -> dict:
     if sp and not url_ok(sp.get("source_url"), "Spotlight"):
         data["spotlight"] = None
 
-    verifizierte_news = []
-    for item in data.get("good_news", []):
+    # WICHTIG (Bugfix, siehe get_daily_good_news): good_news ist ein dict
+    # {slot_nummer: item} — beim Verwerfen bleibt der Slot einfach LEER
+    # (Schlüssel fehlt), statt dass die übrigen Meldungen in einer neu
+    # durchnummerierten Liste in den falschen Slot rutschen.
+    verifizierte_news = {}
+    for key, item in (data.get("good_news") or {}).items():
         if not isinstance(item, dict):
-            log("  Ungültiger Meldungs-Eintrag (kein Objekt) — übersprungen.")
+            log(f"  Meldung {key}: ungültiger Eintrag (kein Objekt) — übersprungen.")
             continue
         titel = item.get("title", "")
         body = BeautifulSoup(item.get("body_html", ""), "html.parser").get_text()
         if _ist_meta_kommentar(titel) or _ist_meta_kommentar(body):
-            log(f"  Meldung {titel!r}: Text beschreibt den eigenen "
+            log(f"  Meldung {key} ({titel!r}): Text beschreibt den eigenen "
                 f"Rechercheprozess statt ein echtes Thema — verworfen, "
                 f"keine Platzhalter-Texte als Inhalt.")
             continue
-        if url_ok(item.get("source_url"), f"Meldung {titel!r}"):
-            verifizierte_news.append(item)
+        if url_ok(item.get("source_url"), f"Meldung {key} ({titel!r})"):
+            verifizierte_news[key] = item
     data["good_news"] = verifizierte_news
 
     verifizierte_storys = {}
@@ -751,7 +873,13 @@ def inject(html: str, data, date_label: str, build_time: str) -> str:
     # zentralen Felder (Titel + Text) BEIDE vorhanden sind — sonst bleibt
     # die GESAMTE Kachel unverändert, statt z.B. einen neuen Titel neben
     # einem alten, thematisch nicht mehr passenden Text stehen zu lassen.
-    for i, item in enumerate(data.get("good_news", [])[:3], start=1):
+    #
+    # WICHTIG (Bugfix, siehe get_daily_good_news): good_news ist ein dict
+    # {slot_nummer: item} — jede Kachel landet garantiert im Slot, für den
+    # sie recherchiert wurde, statt anhand ihrer Position in einer nach
+    # Filterung verkürzten Liste (Slot-Verschiebung, dieselbe Fehlerklasse
+    # wie in generate_mfb.py gefunden und behoben).
+    for i, item in (data.get("good_news") or {}).items():
         title = (item.get("title") or "").strip()
         body_html = (item.get("body_html") or "").strip()
         if not (title and body_html):
@@ -861,6 +989,95 @@ def inject(html: str, data, date_label: str, build_time: str) -> str:
 
 
 # ── Hauptprogramm ─────────────────────────────────────────────────────────────
+def _hat_neue_struktur(html_text: str) -> bool:
+    try:
+        probe = BeautifulSoup(html_text, "html.parser")
+    except Exception:
+        return False
+    return (len(probe.select("article.gn")) == 3
+            and probe.select_one(".stories-grid") is None)
+
+
+def _carry_over_visionen(template_html: str, output_html: str) -> str:
+    """WICHTIG: modulweite Funktion (nicht mehr in main() verschachtelt),
+    damit die Selbstheilung unten unabhängig testbar ist — dieselbe
+    Überlegung wie bei carry_over_dynamic_content in generate.py."""
+    try:
+        neu = BeautifulSoup(template_html, "html.parser")
+        alt = BeautifulSoup(output_html, "html.parser")
+    except Exception as exc:
+        log(f"  WARNUNG: Übernahme der Altdaten übersprungen (Parse-Fehler: {exc}).")
+        return template_html
+
+    def _copy_text(sel):
+        src, dst = alt.select_one(sel), neu.select_one(sel)
+        if src is not None and dst is not None:
+            dst.string = src.get_text()
+
+    def _copy_html(sel):
+        src, dst = alt.select_one(sel), neu.select_one(sel)
+        if src is not None and dst is not None:
+            dst.clear()
+            for child in list(src.children):
+                dst.append(child.extract() if hasattr(child, "extract") else str(child))
+
+    for sel in ("#spot-tag", "#spot-title", "#spotStand", "#spot-bignum", "#spot-bigcap"):
+        _copy_text(sel)
+    _copy_html("#spot-text")
+    _copy_html("#spot-src")
+
+    for i in range(1, 4):
+        for sel in (f"#gn{i}-dom", f"#gn{i}-badge", f"#gn{i}-icon", f"#gn{i}-title"):
+            _copy_text(sel)
+        _copy_html(f"#gn{i}-text")
+        _copy_html(f"#gn{i}-src")
+        for sel in (f"#vs{i}-modal-cat", f"#vs{i}-modal-title", f"#vs{i}-lead"):
+            _copy_text(sel)
+        _copy_html(f"#vs{i}-intro")
+        for j in range(1, 4):
+            _copy_text(f"#vs{i}-fact{j}")
+        _copy_html(f"#vs{i}-einordnung")
+        _copy_html(f"#vs{i}-modal-src")
+
+        # WICHTIG (Bugfix, gefunden bei gründlicher Nachprüfung nach dem
+        # "viele Kategorien bleiben leer"-Fehler in generate.py): Ein
+        # fehlgeschlagener Tag lässt eine Good-News-Kachel unverändert
+        # (siehe inject()/get_daily_good_news) — war der ÜBERNOMMENE
+        # Bestand selbst schon ein Prozess-Kommentar, würde er sonst für
+        # immer identisch weiterkopiert. Nach dem Kopieren wird deshalb
+        # geprüft, ob der jetzt in neu stehende Text schon kontaminiert
+        # ist, und bei Bedarf auf einen ehrlichen Platzhalter zurückgesetzt.
+        title_el = neu.select_one(f"#gn{i}-title")
+        text_el = neu.select_one(f"#gn{i}-text")
+        titel_text = title_el.get_text() if title_el is not None else ""
+        body_text = text_el.get_text() if text_el is not None else ""
+        if _ist_meta_kommentar(titel_text) or _ist_meta_kommentar(body_text):
+            log(f"  Good-News-Kachel {i}: bestehender Stand ist bereits ein "
+                f"Prozess-Kommentar (vermutlich aus einem früheren "
+                f"fehlerhaften Lauf) — wird NICHT weiter übernommen, "
+                f"stattdessen auf ehrlichen Platzhalter zurückgesetzt.")
+            placeholder = "Will be updated on the next run." if LANG == "en" else "Wird beim nächsten Lauf aktualisiert."
+            if title_el is not None:
+                title_el.string = placeholder
+            if text_el is not None:
+                text_el.clear()
+                text_el.append("…")
+            src_el = neu.select_one(f"#gn{i}-src")
+            if src_el is not None:
+                src_el.clear()
+                src_el.append("Source: pending" if LANG == "en" else "Quelle: wird nachgereicht")
+
+    title_alt, title_neu = alt.find("title"), neu.find("title")
+    if title_alt is not None and title_neu is not None:
+        title_neu.string = title_alt.get_text()
+    for sel in ("#meta-description", "#og-title", "#og-description",
+                "#twitter-title", "#twitter-description"):
+        src, dst = alt.select_one(sel), neu.select_one(sel)
+        if src is not None and dst is not None and src.has_attr("content"):
+            dst["content"] = src["content"]
+    return str(neu)
+
+
 def main() -> int:
     # Fehlt der API-Key, wird bewusst NICHTS geschrieben. Der Workflow
     # erkennt über 'git diff', dass diese Datei unverändert blieb, und
@@ -886,63 +1103,8 @@ def main() -> int:
     # Korrektur an rein statischen Bereichen (Nav, Footer, CSS) kam dadurch
     # nie auf der echten Seite an. Jetzt: TEMPLATE ist immer die Basis, nur
     # die KI-generierten Inhalte (Good-News-Kacheln + Storys + Spotlight)
-    # werden bei Bedarf aus dem gestrigen OUTPUT übernommen.
-    def _hat_neue_struktur(html_text: str) -> bool:
-        try:
-            probe = BeautifulSoup(html_text, "html.parser")
-        except Exception:
-            return False
-        return (len(probe.select("article.gn")) == 3
-                and probe.select_one(".stories-grid") is None)
-
-    def _carry_over_visionen(template_html: str, output_html: str) -> str:
-        try:
-            neu = BeautifulSoup(template_html, "html.parser")
-            alt = BeautifulSoup(output_html, "html.parser")
-        except Exception as exc:
-            log(f"  WARNUNG: Übernahme der Altdaten übersprungen (Parse-Fehler: {exc}).")
-            return template_html
-
-        def _copy_text(sel):
-            src, dst = alt.select_one(sel), neu.select_one(sel)
-            if src is not None and dst is not None:
-                dst.string = src.get_text()
-
-        def _copy_html(sel):
-            src, dst = alt.select_one(sel), neu.select_one(sel)
-            if src is not None and dst is not None:
-                dst.clear()
-                for child in list(src.children):
-                    dst.append(child.extract() if hasattr(child, "extract") else str(child))
-
-        for sel in ("#spot-tag", "#spot-title", "#spotStand", "#spot-bignum", "#spot-bigcap"):
-            _copy_text(sel)
-        _copy_html("#spot-text")
-        _copy_html("#spot-src")
-
-        for i in range(1, 4):
-            for sel in (f"#gn{i}-dom", f"#gn{i}-badge", f"#gn{i}-icon", f"#gn{i}-title"):
-                _copy_text(sel)
-            _copy_html(f"#gn{i}-text")
-            _copy_html(f"#gn{i}-src")
-            for sel in (f"#vs{i}-modal-cat", f"#vs{i}-modal-title", f"#vs{i}-lead"):
-                _copy_text(sel)
-            _copy_html(f"#vs{i}-intro")
-            for j in range(1, 4):
-                _copy_text(f"#vs{i}-fact{j}")
-            _copy_html(f"#vs{i}-einordnung")
-            _copy_html(f"#vs{i}-modal-src")
-
-        title_alt, title_neu = alt.find("title"), neu.find("title")
-        if title_alt is not None and title_neu is not None:
-            title_neu.string = title_alt.get_text()
-        for sel in ("#meta-description", "#og-title", "#og-description",
-                    "#twitter-title", "#twitter-description"):
-            src, dst = alt.select_one(sel), neu.select_one(sel)
-            if src is not None and dst is not None and src.has_attr("content"):
-                dst["content"] = src["content"]
-        return str(neu)
-
+    # werden bei Bedarf aus dem gestrigen OUTPUT übernommen (siehe
+    # _hat_neue_struktur/_carry_over_visionen, jetzt modulweite Funktionen).
     with open(TEMPLATE, encoding="utf-8") as fh:
         html = fh.read()
 
@@ -959,12 +1121,35 @@ def main() -> int:
     else:
         log("Verwende Template als Basis (kein vorheriges OUTPUT vorhanden).")
 
-    data = get_visionen_content(date_label)
+    # WICHTIG (Bugfix, siehe get_daily_good_news/load_visionen_history): nur
+    # die neuesten ~35 Titel werden dem Prompt gezeigt, um Prompt-Überlastung
+    # zu vermeiden (siehe generate.py für die volle Begründung).
+    history = load_visionen_history()
+    recent_first = sorted(history, key=lambda e: e.get("date") or "", reverse=True)
+    seen, avoid_entities = set(), []
+    for entry in recent_first:
+        titel = (entry.get("titel") or "").strip()
+        if titel and titel not in seen:
+            seen.add(titel)
+            avoid_entities.append(titel)
+        if len(avoid_entities) >= 35:
+            break
+    if avoid_entities:
+        log(f"  {len(avoid_entities)} der neuesten Meldungen (von {len(seen)}+ in "
+            f"den letzten {VISIONEN_HISTORY_KEEP_DAYS} Tagen) werden im Prompt vermieden.")
+
+    data = get_visionen_content(date_label, avoid_entities)
     if not data:
         log("Keine Inhalte erzeugt — brightside.html bleibt unverändert.")
         return 0
 
     html = inject(html, data, date_label, build_time)
+
+    neue_titel = [item.get("title", "").strip() for item in (data.get("good_news") or {}).values() if item.get("title")]
+    if neue_titel:
+        today_iso = datetime.date.today().isoformat()
+        save_visionen_history(history + [{"date": today_iso, "titel": t} for t in neue_titel])
+        log(f"Visionen-Historie aktualisiert: {', '.join(neue_titel)}")
 
     with open(OUTPUT, "w", encoding="utf-8") as fh:
         fh.write(html)

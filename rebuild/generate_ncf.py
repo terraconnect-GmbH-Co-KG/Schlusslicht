@@ -89,6 +89,30 @@ def _wirkt_deutsch(obj) -> bool:
     return (treffer / len(woerter)) > 0.08
 
 
+def _ist_meta_kommentar(text: str) -> bool:
+    """Erkennt, ob ein Text den eigenen Rechercheprozess beschreibt ('ich
+    habe kein Thema gefunden') statt einen echten Essay zu liefern — siehe
+    generate.py für die volle Begründung dieses Bugfixes.
+
+    WICHTIG (Bugfix, gefunden bei gründlicher Nachprüfung nach dem "viele
+    Kategorien bleiben leer"-Fehler in generate.py): Dieser Filter fehlte in
+    generate_ncf.py bisher KOMPLETT — anders als bei den anderen drei
+    Generatoren (generate.py, generate_mfb.py, generate_visionen.py) gab es
+    hier keinerlei Schutz gegen einen Essay, der in Wirklichkeit nur eine
+    Erklärung des gescheiterten Rechercheprozesses ist."""
+    if not text:
+        return False
+    marker = (
+        "suchergebnis", "websuche", "newsindex", "keine verwertbare",
+        "nicht belegbar", "nicht verifizierbar", "recherche liefert",
+        "rechercheergebnis", "kein passendes thema", "kein geeignetes thema",
+        "die datenlage ist", "zu dünn", "kein sauberer treffer",
+        "no usable result", "no suitable topic", "insufficient search results",
+    )
+    t = text.lower()
+    return any(m in t for m in marker)
+
+
 def sanitize(obj):
     """Entfernt nicht-lateinische Schriftzeichen aus allen Strings."""
     if isinstance(obj, str):
@@ -240,16 +264,16 @@ def call_api_json(system: str, prompt: str, max_tokens: int, repair_retries: int
     return data
 
 
-def get_essays(date_label: str, history: list):
-    log(f"Erzeuge {N_ESSAYS} Nonconformist-Essays ({LANG}) …")
+_VERBOTENE_AUFRUF_MUSTER = re.compile(
+    r"\b(boykott\w*|sabot\w*|blockier\w*|besetz\w*|verweigert die Steuer|"
+    r"zerstör\w*|gewalt gegen|greift .{0,20} an|refuse to pay|"
+    r"occupy the|smash|burn down)", re.IGNORECASE)
 
-    # Statt Kernthesen NUR für vorab feststehende Themen nachzuschlagen
-    # (ging vorher, weil die Themen schon feststanden), geben wir der KI
-    # jetzt eine Zusammenfassung ALLER kürzlich behandelten Themen+Kernthesen
-    # mit — sie wählt ihre 3 Themen selbst und muss dabei selbst prüfen, ob
-    # eines davon kürzlich (mit welcher These) behandelt wurde.
-    recent = [e for e in history if e.get("theme") and e.get("kernthese")]
 
+def _fetch_essays_batch(date_label: str, recent: list, count: int, zusatzhinweis: str = ""):
+    """Rohe Fetch-Funktion (ohne Filter/Retry) — liefert bis zu `count`
+    frisch verfasste Essay-Kandidaten. `recent` sind die kürzlich
+    behandelten Themen+Kernthesen (siehe get_daily_essays)."""
     system = (
         "Du bist Essayist der Seite 'Nonconformist' auf schlusslicht.de — einer "
         "ausdrücklich als Meinung gekennzeichneten, philosophischen Strecke. "
@@ -265,6 +289,12 @@ def get_essays(date_label: str, history: list):
         "Der einzige zulässige Aufruf ist der zum Selberdenken und zu legalem, "
         "demokratischem Engagement.\n"
         "- KEINE Verschwörungserzählungen, keine Herabwürdigung von Gruppen.\n\n"
+        "ABSOLUTES VERBOT VON PROZESS-KOMMENTAREN: Findest du partout kein "
+        "geeignetes Thema, wähle ein anderes Thema aus derselben "
+        "Denkrichtung — schreibe NIEMALS einen Satz über die Suche/dein "
+        "eigenes Zögern selbst als Titel oder Absatz. So ein Satz ist KEIN "
+        "Essay, egal wie druckreif er klingt, und wird automatisch erkannt "
+        "und verworfen.\n\n"
         "Stil: druckreif, pointiert, philosophisch fundiert (Bezüge auf Denker "
         "wie Arendt, Gramsci, Bloch, Fisher, Raworth sind erwünscht — als "
         "Denkrichtung, nicht als Zitat). Keine Phrasen, keine Wiederholungen. "
@@ -290,12 +320,12 @@ def get_essays(date_label: str, history: list):
             blickwinkel_block += f"- {e['theme']}: {e['kernthese']}\n"
 
     prompt = (
-        f"Wähle selbst {N_ESSAYS} eigenständige, thematisch klar unterschiedliche "
+        f"Wähle selbst {count} eigenständige, thematisch klar unterschiedliche "
         f"philosophische/strukturkritische Themen (Beispiele: {BEISPIEL_THEMEN} — "
         f"oder ein anderes Thema aus derselben Denkrichtung) und schreibe zu "
         f"jedem einen eigenständigen philosophischen Kurzessay für die Ausgabe "
         f"vom {date_label}."
-        + blickwinkel_block +
+        + blickwinkel_block + zusatzhinweis +
         "\n\nJeder Essay: 4 Absätze à 2-4 Sätze. Genau EINER der Absätze "
         "(Position 2 oder 3) ist der Zuspitzungs-Absatz: maximal 2 Sätze, "
         "aphoristisch, merkbar.\n\n"
@@ -316,48 +346,100 @@ def get_essays(date_label: str, history: list):
         '      "aside": "' + ("Lines of thought: " if LANG == "en" else "Denkrichtung: ")
         + '2-3 Denker/Konzepte, kommagetrennt"\n'
         "    }\n"
-        f"    // genau {N_ESSAYS} Essays, thematisch unterschiedlich\n"
+        f"    // genau {count} Essays, thematisch unterschiedlich\n"
         "  ]\n"
         "}"
     )
     data = call_api_json(system, prompt, max_tokens=7000)
     if not data or not isinstance(data.get("essays"), list):
+        return None
+    return data["essays"]
+
+
+def get_daily_essays(date_label: str, history: list) -> dict:
+    """Holt bis zu N_ESSAYS Essays, verteilt auf feste Slot-Nummern
+    (1..N_ESSAYS), mit Retry NUR für tatsächlich noch fehlende Slots.
+
+    WICHTIG (Bugfix, gefunden bei gründlicher Nachprüfung nach dem "viele
+    Kategorien bleiben leer"-Fehler in generate.py): Ersetzt die alte
+    Logik, die GENAU EINMAL alle N_ESSAYS Essays auf einmal anfragte und
+    Ablehnungen (juristische Leitplanke, jetzt auch Prozess-Kommentare)
+    einfach in Kauf nahm ('Rest behält Alt-Stand', ohne je einen zweiten
+    Versuch zu unternehmen). Verhindert außerdem, dass ein Essay beim
+    Verwerfen eines anderen in den falschen Slot rutscht (dieselbe
+    Fehlerklasse wie in generate_mfb.py/generate_visionen.py gefunden und
+    behoben) — jeder Essay behält seine Slot-Nummer über den gesamten
+    Ablauf hinweg."""
+    recent = [e for e in history if e.get("theme") and e.get("kernthese")]
+    slots = {}
+    letzter_fehlgrund = ""
+    for versuch in range(4):
+        fehlend = N_ESSAYS - len(slots)
+        if fehlend <= 0:
+            break
+        log(f"Erzeuge {fehlend} Nonconformist-Essay(s) ({LANG})"
+            f"{f' (Versuch {versuch + 1}, {fehlend} von {N_ESSAYS} fehlen noch)' if versuch else ''} …")
+
+        extra_hinweis = ""
+        if versuch > 0 and letzter_fehlgrund:
+            extra_hinweis = (
+                f"\n\nWICHTIG: Dein letzter Versuch hat nicht genug verwertbare "
+                f"Essays geliefert ({letzter_fehlgrund}). Wähle diesmal andere "
+                f"Themen aus derselben Denkrichtung."
+            )
+
+        kandidaten = _fetch_essays_batch(date_label, recent, fehlend, extra_hinweis) or []
+        kandidaten = [e for e in kandidaten[:fehlend] if isinstance(e, dict) and e.get("title")
+                      and isinstance(e.get("paragraphs"), list) and len(e["paragraphs"]) >= 3]
+
+        offene_keys = [i for i in range(1, N_ESSAYS + 1) if i not in slots]
+        neue = {}
+        for idx, key in enumerate(offene_keys):
+            if idx >= len(kandidaten):
+                log(f"  Essay {key}: keine verwertbare Antwort erhalten — übersprungen.")
+                continue
+            e = kandidaten[idx]
+            if e.get("theme"):
+                e["_theme"] = e["theme"]
+            titel = (e.get("title") or "").strip()
+            gesamt = " ".join(p.get("text", "") for p in e["paragraphs"] if isinstance(p, dict))
+            if _ist_meta_kommentar(titel) or _ist_meta_kommentar(gesamt):
+                log(f"  Essay {key} ({titel!r}): Text beschreibt den eigenen "
+                    f"Rechercheprozess statt ein echtes Thema — verworfen.")
+                continue
+            if _VERBOTENE_AUFRUF_MUSTER.search(gesamt):
+                log(f"  Essay {key} ({titel!r}): verdächtige Aufruf-Formulierung "
+                    f"— verworfen (juristische Leitplanke).")
+                continue
+            neue[key] = e
+
+        if neue:
+            slots.update(neue)
+
+        if len(slots) >= N_ESSAYS:
+            break
+
+        letzter_fehlgrund = f"nur {len(neue)} von {fehlend} angeforderten Essays war(en) verwertbar"
+        if versuch < 3:
+            log(f"  Noch nicht vollständig ({len(slots)}/{N_ESSAYS}, {letzter_fehlgrund}) "
+                f"— wiederhole für die fehlenden {N_ESSAYS - len(slots)} Plätze "
+                f"(Versuch {versuch + 2}/4).")
+
+    return slots
+
+
+def get_essays(date_label: str, history: list):
+    slots = get_daily_essays(date_label, history)
+    if not slots:
         log("  Keine verwertbaren Essays erhalten.")
         return None
 
-    essays = [e for e in data["essays"] if isinstance(e, dict) and e.get("title")
-              and isinstance(e.get("paragraphs"), list) and len(e["paragraphs"]) >= 3]
+    slots = review_and_rewrite_essays(slots, date_label)
 
-    # Thema pro Essay kommt jetzt direkt aus der KI-Antwort selbst (kein
-    # Pool/keine Rotation mehr, also keine positionsbasierte Zuordnung nötig).
-    for e in data["essays"]:
-        if isinstance(e, dict) and e.get("theme"):
-            e["_theme"] = e["theme"]
-
-    # Juristische Nachkontrolle: verdächtige Aufruf-Formulierungen aussortieren
-    verboten = re.compile(
-        r"\b(boykott\w*|sabot\w*|blockier\w*|besetz\w*|verweigert die Steuer|"
-        r"zerstör\w*|gewalt gegen|greift .{0,20} an|refuse to pay|"
-        r"occupy the|smash|burn down)", re.IGNORECASE)
-    geprueft = []
-    for e in essays:
-        gesamt = " ".join(p.get("text", "") for p in e["paragraphs"] if isinstance(p, dict))
-        if verboten.search(gesamt):
-            log(f"  Essay {e.get('title', '')!r}: verdächtige Aufruf-Formulierung "
-                f"— verworfen (juristische Leitplanke).")
-            continue
-        geprueft.append(e)
-
-    if len(geprueft) < N_ESSAYS:
-        log(f"  Nur {len(geprueft)}/{N_ESSAYS} Essays bestanden — "
-            f"vorhandene werden verwendet, Rest behält Alt-Stand.")
-
-    geprueft = review_and_rewrite_essays(geprueft, date_label)
-
-    if geprueft:
+    if slots:
         today_iso = datetime.date.today().isoformat()
         neue_eintraege = []
-        for e in geprueft:
+        for e in slots.values():
             thema = e.get("_theme")
             kernthese = (e.get("kernthese") or "").strip()
             if thema and kernthese:
@@ -368,22 +450,29 @@ def get_essays(date_label: str, history: list):
             log(f"  Blickwinkel-Historie aktualisiert (+{len(neue_eintraege)} Einträge, "
                 f"{ESSAY_HISTORY_KEEP_DAYS} Tage Wiederholungssperre je Thema).")
 
-    return geprueft or None
+    return slots or None
 
 
-def review_and_rewrite_essays(essays: list, date_label: str) -> list:
+def review_and_rewrite_essays(essays: dict, date_label: str) -> dict:
     """NEUER Zwischenschritt vor der Veröffentlichung: Prüft Sinnhaftigkeit
     der Essays (Grammatik, Klarheit, Kohärenz zwischen den Absätzen) und
     formuliert bei Bedarf sprachlich um — OHNE dabei neue Behauptungen,
     Namen oder Ereignisse hinzuzufügen (juristische Leitplanken bleiben
-    unberührt, die 'verboten'-Prüfung lief bereits vorher)."""
+    unberührt, die 'verboten'-Prüfung lief bereits vorher).
+
+    WICHTIG: essays ist ein dict {slot_nummer: essay} (siehe
+    get_daily_essays), keine Liste mehr — ein verworfener Essay hinterlässt
+    einen leeren Slot, statt dass die übrigen Essays in einer neu
+    durchnummerierten Liste in den falschen Slot rutschen (dieselbe
+    Fehlerklasse wie in generate_mfb.py/generate_visionen.py gefunden und
+    behoben)."""
     if not essays:
         return essays
 
     pruefbar = {
         f"essay{i}": {"title": e["title"], "paragraphs": [p.get("text", "") for p in e["paragraphs"]
                                                        if isinstance(p, dict)]}
-        for i, e in enumerate(essays)
+        for i, e in essays.items()
     }
 
     log("  Prüfe Nonconformist-Essays auf Sinnhaftigkeit vor Veröffentlichung …")
@@ -413,34 +502,52 @@ def review_and_rewrite_essays(essays: list, date_label: str) -> list:
     )
     urteil = call_api_json(system, prompt, max_tokens=4000) or {}
 
-    ergebnis = []
-    for i, e in enumerate(essays):
+    ergebnis = {}
+    for i, e in essays.items():
         bewertung = urteil.get(f"essay{i}", {})
         if bewertung.get("ok") is False:
-            log(f"  Essay {e.get('title', '')!r}: Sinnhaftigkeits-Prüfung "
-                f"fehlgeschlagen ({bewertung.get('grund', 'kein Grund')}) "
+            log(f"  Essay {e.get('title', '')!r} (Slot {i}): Sinnhaftigkeits-"
+                f"Prüfung fehlgeschlagen ({bewertung.get('grund', 'kein Grund')}) "
                 f"— verworfen, bestehender Stand für diesen Essay-Slot bleibt.")
             continue
 
+        # WICHTIG (Bugfix, siehe generate.py review_and_fix_items für die
+        # volle Begründung): die Umformulierung selbst muss ebenfalls gegen
+        # _ist_meta_kommentar geprüft werden — sonst könnte der Reviewer bei
+        # einem unsicheren Fall einen Prozess-Kommentar statt 'ok: false'
+        # in title_neu/paragraphs_neu schreiben, unbemerkt vom Filter oben.
         title_neu = (bewertung.get("title_neu") or "").strip()
-        if title_neu:
+        if title_neu and not _ist_meta_kommentar(title_neu):
             log(f"  Essay {i}: Titel sprachlich überarbeitet.")
             e["title"] = title_neu
+        elif title_neu:
+            log(f"  Essay {i}: Umformulierung des Titels ist selbst ein "
+                f"Prozess-Kommentar — verworfen, Original bleibt.")
 
         paras_neu = bewertung.get("paragraphs_neu")
         if isinstance(paras_neu, list) and len(paras_neu) == len(e["paragraphs"]):
-            for p_obj, neuer_text in zip(e["paragraphs"], paras_neu):
-                if isinstance(p_obj, dict) and str(neuer_text).strip():
-                    p_obj["text"] = str(neuer_text).strip()
-            log(f"  Essay {i}: Absätze sprachlich überarbeitet.")
-        ergebnis.append(e)
+            if _ist_meta_kommentar(" ".join(str(p) for p in paras_neu)):
+                log(f"  Essay {i}: Umformulierung der Absätze ist selbst ein "
+                    f"Prozess-Kommentar — verworfen, Original bleibt.")
+            else:
+                for p_obj, neuer_text in zip(e["paragraphs"], paras_neu):
+                    if isinstance(p_obj, dict) and str(neuer_text).strip():
+                        p_obj["text"] = str(neuer_text).strip()
+                log(f"  Essay {i}: Absätze sprachlich überarbeitet.")
+        ergebnis[i] = e
 
     return ergebnis
 
 
-def inject(html: str, essays: list, date_label: str) -> str:
+def inject(html: str, essays: dict, date_label: str) -> str:
+    """WICHTIG (Bugfix, siehe get_daily_essays): essays ist ein dict
+    {slot_nummer: essay}, keine Liste mehr — jeder Essay landet garantiert
+    im Slot, für den er verfasst wurde, statt anhand seiner Position in
+    einer nach Filterung verkürzten Liste (Slot-Verschiebung, dieselbe
+    Fehlerklasse wie in generate_mfb.py/generate_visionen.py gefunden und
+    behoben)."""
     soup = BeautifulSoup(html, "html.parser")
-    for i, essay in enumerate(essays[:N_ESSAYS], start=1):
+    for i, essay in essays.items():
         t = soup.select_one(f"#e{i}-title")
         if t is not None:
             t.string = essay["title"]
@@ -464,6 +571,65 @@ def inject(html: str, essays: list, date_label: str) -> str:
         suffix = " · automatically generated" if LANG == "en" else " · automatisch erstellt"
         stand.string = prefix + date_label + suffix
     return str(soup)
+
+
+def _hat_neue_struktur(html_text: str) -> bool:
+    try:
+        probe = BeautifulSoup(html_text, "html.parser")
+    except Exception:
+        return False
+    return len(probe.select("section.essay")) == N_ESSAYS
+
+
+def _carry_over_essays(template_html: str, output_html: str) -> str:
+    """WICHTIG: modulweite Funktion (nicht mehr in main() verschachtelt),
+    damit die Selbstheilung unten unabhängig testbar ist — dieselbe
+    Überlegung wie bei carry_over_dynamic_content in generate.py."""
+    try:
+        neu = BeautifulSoup(template_html, "html.parser")
+        alt = BeautifulSoup(output_html, "html.parser")
+    except Exception as exc:
+        log(f"  WARNUNG: Übernahme der Altdaten übersprungen (Parse-Fehler: {exc}).")
+        return template_html
+    for i in range(1, N_ESSAYS + 1):
+        for sel in (f"#e{i}-title", f"#e{i}-aside"):
+            src, dst = alt.select_one(sel), neu.select_one(sel)
+            if src is not None and dst is not None:
+                dst.string = src.get_text()
+        body_sel = f"#e{i}-body"
+        src, dst = alt.select_one(body_sel), neu.select_one(body_sel)
+        if src is not None and dst is not None:
+            dst.clear()
+            for p in src.select("p"):
+                dst.append(p.extract())
+
+        # WICHTIG (Bugfix, gefunden bei gründlicher Nachprüfung nach dem
+        # "viele Kategorien bleiben leer"-Fehler in generate.py): Ein
+        # fehlgeschlagener Tag lässt einen Essay unverändert (siehe
+        # inject()/get_daily_essays) — war der ÜBERNOMMENE Bestand selbst
+        # schon ein Prozess-Kommentar (möglich, da dieser Filter hier bis
+        # eben komplett fehlte, siehe _ist_meta_kommentar), würde er sonst
+        # für immer identisch weiterkopiert. Nach dem Kopieren wird deshalb
+        # geprüft, ob der jetzt in neu stehende Text schon kontaminiert
+        # ist, und bei Bedarf auf einen ehrlichen Platzhalter zurückgesetzt.
+        title_el = neu.select_one(f"#e{i}-title")
+        body_el = neu.select_one(body_sel)
+        titel_text = title_el.get_text() if title_el is not None else ""
+        body_text = body_el.get_text() if body_el is not None else ""
+        if _ist_meta_kommentar(titel_text) or _ist_meta_kommentar(body_text):
+            log(f"  Essay {i}: bestehender Stand ist bereits ein "
+                f"Prozess-Kommentar (vermutlich aus einem früheren "
+                f"fehlerhaften Lauf) — wird NICHT weiter übernommen, "
+                f"stattdessen auf ehrlichen Platzhalter zurückgesetzt.")
+            placeholder = "Will be updated on the next run." if LANG == "en" else "Wird beim nächsten Lauf aktualisiert."
+            if title_el is not None:
+                title_el.string = placeholder
+            if body_el is not None:
+                body_el.clear()
+                p = neu.new_tag("p")
+                p.string = "…"
+                body_el.append(p)
+    return str(neu)
 
 
 def main() -> int:
@@ -502,34 +668,8 @@ def main() -> int:
     # Korrektur an rein statischen Bereichen (Nav, Footer, CSS) kam dadurch
     # nie auf der echten Seite an. Jetzt: TEMPLATE ist immer die Basis, nur
     # die KI-generierten Essay-Inhalte werden bei Bedarf aus dem gestrigen
-    # OUTPUT übernommen.
-    def _hat_neue_struktur(html_text: str) -> bool:
-        try:
-            probe = BeautifulSoup(html_text, "html.parser")
-        except Exception:
-            return False
-        return len(probe.select("section.essay")) == N_ESSAYS
-
-    def _carry_over_essays(template_html: str, output_html: str) -> str:
-        try:
-            neu = BeautifulSoup(template_html, "html.parser")
-            alt = BeautifulSoup(output_html, "html.parser")
-        except Exception as exc:
-            log(f"  WARNUNG: Übernahme der Altdaten übersprungen (Parse-Fehler: {exc}).")
-            return template_html
-        for i in range(1, N_ESSAYS + 1):
-            for sel in (f"#e{i}-title", f"#e{i}-aside"):
-                src, dst = alt.select_one(sel), neu.select_one(sel)
-                if src is not None and dst is not None:
-                    dst.string = src.get_text()
-            body_sel = f"#e{i}-body"
-            src, dst = alt.select_one(body_sel), neu.select_one(body_sel)
-            if src is not None and dst is not None:
-                dst.clear()
-                for p in src.select("p"):
-                    dst.append(p.extract())
-        return str(neu)
-
+    # OUTPUT übernommen (siehe _hat_neue_struktur/_carry_over_essays, jetzt
+    # modulweite Funktionen oben).
     with open(TEMPLATE, encoding="utf-8") as fh:
         html = fh.read()
 

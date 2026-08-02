@@ -457,8 +457,8 @@ def _ist_meta_kommentar(text: str) -> bool:
     return any(m in t for m in marker)
 
 
-def get_fresh_columns(date_label: str, avoid_themes: list):
-    log(f"Recherchiere {N_COLS} frische politische/gesellschaftliche Themen "
+def get_fresh_columns(date_label: str, avoid_themes: list, count: int = N_COLS, zusatzhinweis: str = ""):
+    log(f"Recherchiere {count} frische politische/gesellschaftliche Themen "
         "samt Zahlen und Quelle …")
 
     system = (
@@ -531,8 +531,8 @@ def get_fresh_columns(date_label: str, avoid_themes: list):
         f"wähle KEINES davon erneut: {', '.join(avoid_themes)}."
         if avoid_themes else ""
     )
-    prompt = f"""Ausgabe vom {date_label}. Recherchiere und schreibe {N_COLS} eigenständige,
-thematisch unterschiedliche politische/gesellschaftliche Meinungskolumnen.{avoid_hinweis}
+    prompt = f"""Ausgabe vom {date_label}. Recherchiere und schreibe {count} eigenständige,
+thematisch unterschiedliche politische/gesellschaftliche Meinungskolumnen.{avoid_hinweis}{zusatzhinweis}
 
 Liefere GENAU dieses JSON-Schema:
 {{
@@ -557,7 +557,7 @@ Liefere GENAU dieses JSON-Schema:
       "source_url": "https://echte-existierende-url, die exakt zu source_name passt",
       "source_date": "Datum/Zeitraum der Quelle, z.B. '2025'"
     }}
-    // genau {N_COLS} Einträge, thematisch unterschiedlich
+    // genau {count} Einträge, thematisch unterschiedlich
   ]
 }}"""
 
@@ -566,6 +566,115 @@ Liefere GENAU dieses JSON-Schema:
         log("  Keine verwertbaren Kommentar-Daten erhalten.")
         return None
     return data
+
+
+def get_daily_columns(date_label: str, avoid_themes: list) -> dict:
+    """Holt bis zu N_COLS Kolumnen, verteilt auf feste Slot-Nummern (1..N_COLS),
+    mit Retry NUR für tatsächlich noch fehlende Slots.
+
+    WICHTIG (Bugfix, gefunden bei einer Live-Prüfung des Fehlers "viele
+    Kategorien bleiben nach dem ersten Lauf leer" auf generate.py): Diese
+    Funktion ersetzt die alte Logik in main(), die GENAU EINMAL alle N_COLS
+    Kolumnen auf einmal anfragte und danach nacheinander mehrere Listen
+    filterte (columns -> verified). Zwei unabhängige Probleme dabei:
+    (1) Schlug die einmalige Anfrage komplett oder teilweise fehl, gab es
+    KEINEN zweiten Versuch — betroffene Slots blieben für den ganzen Tag
+    leer bzw. beim alten Stand, obwohl ein erneuter, enger gefasster
+    Versuch oft erfolgreich gewesen wäre (siehe generate.py get_daily_items
+    für dasselbe Muster und dieselbe Behebung).
+    (2) SCHWERWIEGENDER: Wurde EINE von mehreren Kolumnen durch einen der
+    Filter (Prozess-Kommentar, geteilte URL, generische Domain, technische
+    Quellen-Prüfung) verworfen, RUTSCHTEN die verbleibenden Kolumnen in
+    der gefilterten Liste nach vorne — inject() schrieb sie dadurch anhand
+    ihrer neuen LISTENPOSITION in den FALSCHEN Slot (#col1/#col2/#col3
+    statt ihres ursprünglich recherchierten Slots). Diese Funktion ordnet
+    jede Kolumne von Anfang an einer festen Slot-Nummer zu (dict statt
+    Liste) — ein verworfener Slot bleibt schlicht LEER (der bestehende
+    Stand bleibt unverändert), statt dass sich alles nachrückt."""
+    spalten = {}
+    schon_gewaehlte_themen = list(avoid_themes)
+    letzter_fehlgrund = ""
+    for versuch in range(4):
+        fehlend = N_COLS - len(spalten)
+        if fehlend <= 0:
+            break
+        log(f"Recherchiere {fehlend} frische Kolumne(n)"
+            f"{f' (Versuch {versuch + 1}, {fehlend} von {N_COLS} fehlen noch)' if versuch else ''} …")
+
+        extra_hinweis = ""
+        if versuch > 0 and letzter_fehlgrund:
+            extra_hinweis = (
+                f"\n\nWICHTIG: Dein letzter Versuch hat nicht genug verwertbare "
+                f"Kolumnen geliefert ({letzter_fehlgrund}). Wähle diesmal andere, "
+                f"dir noch nicht eingefallene Themen mit je einer echten, "
+                f"unterschiedlichen Quelle."
+            )
+
+        data = get_fresh_columns(date_label, schon_gewaehlte_themen, fehlend, extra_hinweis)
+        kandidaten = [c for c in (data or {}).get("columns", [])[:fehlend] if isinstance(c, dict)]
+        for col in kandidaten:
+            col["paragraphs"] = dedupe_column_paragraphs(col.get("paragraphs"))
+
+        url_counts = {}
+        for col in kandidaten:
+            u = (col.get("source_url") or "").strip().lower()
+            if u:
+                url_counts[u] = url_counts.get(u, 0) + 1
+        doppelte_urls = {u for u, c in url_counts.items() if c > 1}
+        if doppelte_urls:
+            log(f"  WARNUNG: {len(doppelte_urls)} Quellen-URL(s) werden von "
+                f"mehreren Kolumnen gleichzeitig verwendet — Feigenblatt-"
+                f"Verdacht, betroffene Kolumnen werden verworfen.")
+
+        offene_keys = [i for i in range(1, N_COLS + 1) if i not in spalten]
+        neue = {}
+        for idx, key in enumerate(offene_keys):
+            if idx >= len(kandidaten):
+                log(f"  Kolumne {key}: keine verwertbare Antwort erhalten — übersprungen.")
+                continue
+            col = kandidaten[idx]
+            title = (col.get("title") or "").strip()
+            paras_text = " ".join(p.get("text", "") for p in col.get("paragraphs", []) if isinstance(p, dict))
+            if not title or not paras_text:
+                log(f"  Kolumne {key}: unvollständiger Eintrag — übersprungen.")
+                continue
+            if _ist_meta_kommentar(title) or _ist_meta_kommentar(paras_text):
+                log(f"  Kolumne {key} ({title!r}): Text beschreibt den eigenen "
+                    f"Rechercheprozess statt ein echtes Thema zu behandeln — "
+                    f"verworfen, keine Platzhalter-Texte als Inhalt.")
+                continue
+            url = (col.get("source_url") or "").strip().lower()
+            if url and url in doppelte_urls:
+                log(f"  Kolumne {key} ({title!r}): teilt sich eine Quellen-URL "
+                    f"mit anderen Kolumnen — verworfen.")
+                continue
+            if url and _url_ist_zu_generisch(url):
+                log(f"  Kolumne {key} ({title!r}): Quellen-URL ist eine "
+                    f"generische Landingpage oder Platzhalter-Domain — verworfen.")
+                continue
+            neue[key] = col
+
+        if neue:
+            spalten.update(neue)
+            for col in neue.values():
+                th = (col.get("thema") or "").strip()
+                if th:
+                    schon_gewaehlte_themen.append(th)
+
+        if len(spalten) >= N_COLS:
+            break
+
+        letzter_fehlgrund = (
+            f"alle Kolumnen teilten sich eine Quelle ({', '.join(doppelte_urls)})"
+            if doppelte_urls else
+            f"nur {len(neue)} von {fehlend} angeforderten Kolumnen war(en) verwertbar"
+        )
+        if versuch < 3:
+            log(f"  Noch nicht vollständig ({len(spalten)}/{N_COLS}, {letzter_fehlgrund}) "
+                f"— wiederhole für die fehlenden {N_COLS - len(spalten)} Plätze "
+                f"(Versuch {versuch + 2}/4).")
+
+    return spalten
 
 
 def review_and_rewrite_columns(columns: list, date_label: str) -> list:
@@ -664,10 +773,14 @@ def set_text(node, value):
         node.append(str(value))
 
 
-def inject(html: str, columns: list) -> str:
+def inject(html: str, columns: dict) -> str:
+    """WICHTIG (Bugfix, siehe get_daily_columns): columns ist jetzt ein
+    dict {slot_nummer: kolumne}, KEINE Liste mehr — jede Kolumne landet
+    garantiert im Slot, für den sie recherchiert wurde, statt anhand ihrer
+    Position in einer nach Filterung verkürzten Liste."""
     soup = BeautifulSoup(html, "html.parser")
 
-    for i, col in enumerate(columns, start=1):
+    for i, col in columns.items():
         set_text(soup.select_one(f"#col{i}-tag"), col.get("tag"))
         set_text(soup.select_one(f"#col{i}-h2"), col.get("title"))
 
@@ -706,6 +819,79 @@ def inject(html: str, columns: list) -> str:
         set_text(soup.select_one(f"#col{i}-src"), src_text)
 
     return str(soup)
+
+
+def _hat_neue_struktur(html_text: str) -> bool:
+    try:
+        probe = BeautifulSoup(html_text, "html.parser")
+    except Exception:
+        return False
+    return len(probe.select("article.col")) == N_COLS and probe.select_one("#col4") is None
+
+
+def _carry_over_columns(template_html: str, output_html: str) -> str:
+    """WICHTIG: modulweite Funktion (nicht mehr in main() verschachtelt),
+    damit die Selbstheilung unten unabhängig testbar ist — dieselbe
+    Überlegung wie bei carry_over_dynamic_content in generate.py."""
+    try:
+        neu = BeautifulSoup(template_html, "html.parser")
+        alt = BeautifulSoup(output_html, "html.parser")
+    except Exception as exc:
+        log(f"  WARNUNG: Übernahme der Altdaten übersprungen (Parse-Fehler: {exc}).")
+        return template_html
+    for i in range(1, N_COLS + 1):
+        for sel in (f"#col{i}-tag", f"#col{i}-h2", f"#col{i}-bignum-text",
+                    f"#col{i}-bigcap", f"#col{i}-src"):
+            src, dst = alt.select_one(sel), neu.select_one(sel)
+            if src is not None and dst is not None:
+                dst.string = src.get_text()
+        for j in range(1, 4):
+            sel = f"#col{i}-stat{j}"
+            src, dst = alt.select_one(sel), neu.select_one(sel)
+            if src is not None and dst is not None:
+                dst.clear()
+                for child in list(src.children):
+                    dst.append(child.extract() if hasattr(child, "extract") else str(child))
+        body_sel = f"#col{i}-body"
+        src, dst = alt.select_one(body_sel), neu.select_one(body_sel)
+        if src is not None and dst is not None:
+            for old_p in dst.select("p.gen-para"):
+                old_p.decompose()
+            for p in src.select("p.gen-para"):
+                dst.append(p.extract())
+
+        # WICHTIG (Bugfix, gefunden bei gründlicher Nachprüfung nach dem
+        # "viele Kategorien bleiben leer"-Fehler in generate.py): Ein
+        # fehlgeschlagener Tag lässt eine Kolumne unverändert (siehe
+        # inject()/get_daily_columns) — war der ÜBERNOMMENE Bestand
+        # selbst schon ein Prozess-Kommentar (z.B. aus einem früheren
+        # fehlerhaften Lauf, bevor dieser Filter existierte), würde er
+        # sonst für immer identisch weiterkopiert. Nach dem Kopieren
+        # wird deshalb geprüft, ob der jetzt in neu stehende Text schon
+        # kontaminiert ist, und bei Bedarf auf einen ehrlichen
+        # Platzhalter zurückgesetzt.
+        h2 = neu.select_one(f"#col{i}-h2")
+        body_now = neu.select_one(body_sel)
+        titel_text = h2.get_text() if h2 is not None else ""
+        body_text = body_now.get_text() if body_now is not None else ""
+        if _ist_meta_kommentar(titel_text) or _ist_meta_kommentar(body_text):
+            log(f"  Kolumne {i}: bestehender Stand ist bereits ein "
+                f"Prozess-Kommentar (vermutlich aus einem früheren "
+                f"fehlerhaften Lauf) — wird NICHT weiter übernommen, "
+                f"stattdessen auf ehrlichen Platzhalter zurückgesetzt.")
+            placeholder = "Will be updated on the next run." if LANG == "en" else "Wird beim nächsten Lauf aktualisiert."
+            if h2 is not None:
+                h2.string = placeholder
+            if body_now is not None:
+                for old_p in body_now.select("p.gen-para"):
+                    old_p.decompose()
+                p = neu.new_tag("p", attrs={"class": "gen-para"})
+                p.string = "…"
+                body_now.append(p)
+            src_el = neu.select_one(f"#col{i}-src")
+            if src_el is not None:
+                src_el.string = "Source: pending" if LANG == "en" else "Quelle: wird nachgereicht"
+    return str(neu)
 
 
 # ── Hauptprogramm ─────────────────────────────────────────────────────────────
@@ -749,62 +935,36 @@ def main() -> int:
         log(f"  {len(avoid_themes)} der neuesten Themen (von {len(seen)}+ in "
             f"den letzten {HISTORY_KEEP_DAYS} Tagen) werden im Prompt vermieden.")
 
-    data = get_fresh_columns(date_label, avoid_themes)
-    if not data:
+    spalten = get_daily_columns(date_label, avoid_themes)
+    if not spalten:
         log("Keine Inhalte erzeugt — insights.html bleibt unverändert.")
         return 0
 
-    columns = [c for c in data.get("columns", [])[:N_COLS] if isinstance(c, dict)]
-    for col in columns:
-        col["paragraphs"] = dedupe_column_paragraphs(col.get("paragraphs"))
-
-    columns = review_and_rewrite_columns(columns, date_label)
+    # WICHTIG (Bugfix, siehe get_daily_columns): review_and_rewrite_columns
+    # erwartet/liefert eine Liste gleicher Länge/Reihenfolge (mutiert jede
+    # Kolumne in place) — wir übergeben sie in fester Slot-Reihenfolge und
+    # ordnen das Ergebnis 1:1 denselben Slot-Nummern wieder zu, statt danach
+    # erneut positionsbasiert weiterzuverarbeiten.
+    geordnete_keys = sorted(spalten.keys())
+    kol_liste = review_and_rewrite_columns([spalten[k] for k in geordnete_keys], date_label)
+    for k, col in zip(geordnete_keys, kol_liste):
+        spalten[k] = col
 
     # Sicherheitsnetz: Spalten mit nicht verifizierbarer Quelle aussortieren
-    # (technischer HTTP-Check, dieselbe Logik wie in generate.py).
+    # (technischer HTTP-Check, dieselbe Logik wie in generate.py) — bleibt
+    # slot-treu (dict), statt in eine neue, ggf. verkürzte Liste zu wandern.
     log("  Verifiziere Quellen-URLs technisch (HTTP-Check) …")
-
-    # WICHTIG (Bugfix, siehe generate.py get_daily_items für die volle
-    # Begründung): teilen sich 2+ Kolumnen dieselbe Quellen-URL, ist das
-    # ein starkes Anzeichen für eine wiederverwendete Feigenblatt-Quelle
-    # statt echter Einzelrecherche je Thema.
-    url_counts = {}
-    for col in columns:
-        u = (col.get("source_url") or "").strip().lower()
-        if u:
-            url_counts[u] = url_counts.get(u, 0) + 1
-    doppelte_urls = {u for u, c in url_counts.items() if c > 1}
-    if doppelte_urls:
-        log(f"  WARNUNG: {len(doppelte_urls)} Quellen-URL(s) werden von "
-            f"mehreren Kolumnen gleichzeitig verwendet — Feigenblatt-"
-            f"Verdacht, betroffene Kolumnen werden verworfen.")
-
-    verified = []
-    for col in columns:
-        title = (col.get("title") or "")
-        paras_text = " ".join(p.get("text", "") for p in col.get("paragraphs", []) if isinstance(p, dict))
-        if _ist_meta_kommentar(title) or _ist_meta_kommentar(paras_text):
-            log(f"  Kolumne {title!r}: Text beschreibt den eigenen "
-                f"Rechercheprozess statt ein echtes Thema zu behandeln — "
-                f"verworfen, keine Platzhalter-Texte als Inhalt.")
-            continue
+    verified = {}
+    for key, col in spalten.items():
         url = (col.get("source_url") or "").strip()
-        if url.lower() in doppelte_urls:
-            log(f"  Kolumne {title!r}: teilt sich eine Quellen-URL mit "
-                f"anderen Kolumnen ({url}) — verworfen.")
-            continue
-        if url and _url_ist_zu_generisch(url):
-            log(f"  Kolumne {title!r}: Quellen-URL ist eine Platzhalter-Domain "
-                f"oder generische Landingpage statt eines konkreten Artikels "
-                f"({url}) — verworfen.")
-            continue
         if not verify_url(url):
-            log(f"  Kolumne {col.get('title', '(ohne Titel)')!r}: Quellen-URL "
-                f"fehlt oder nicht erreichbar ({url or 'keine URL angegeben'}) "
-                f"— komplett verworfen, keine Halluzinationen ohne Beleg.")
+            log(f"  Kolumne {key} ({col.get('title', '(ohne Titel)')!r}): "
+                f"Quellen-URL fehlt oder nicht erreichbar "
+                f"({url or 'keine URL angegeben'}) — komplett verworfen, "
+                f"keine Halluzinationen ohne Beleg.")
             continue
-        log(f"  Kolumne {col.get('title', '')!r}: Quelle verifiziert ({url})")
-        verified.append(col)
+        log(f"  Kolumne {key} ({col.get('title', '')!r}): Quelle verifiziert ({url})")
+        verified[key] = col
 
     if not verified:
         log("Keine Kolumne hat die Quellen-Verifikation bestanden — Datei bleibt unverändert.")
@@ -816,43 +976,8 @@ def main() -> int:
     # Korrektur an rein statischen Bereichen (Nav, Footer, CSS, Disclaimer-
     # Texte) kam dadurch nie auf der echten Seite an. Jetzt: TEMPLATE ist
     # immer die Basis, nur die KI-generierten Spalteninhalte werden bei
-    # Bedarf aus dem gestrigen OUTPUT übernommen.
-    def _hat_neue_struktur(html_text: str) -> bool:
-        try:
-            probe = BeautifulSoup(html_text, "html.parser")
-        except Exception:
-            return False
-        return len(probe.select("article.col")) == N_COLS and probe.select_one("#col4") is None
-
-    def _carry_over_columns(template_html: str, output_html: str) -> str:
-        try:
-            neu = BeautifulSoup(template_html, "html.parser")
-            alt = BeautifulSoup(output_html, "html.parser")
-        except Exception as exc:
-            log(f"  WARNUNG: Übernahme der Altdaten übersprungen (Parse-Fehler: {exc}).")
-            return template_html
-        for i in range(1, N_COLS + 1):
-            for sel in (f"#col{i}-tag", f"#col{i}-h2", f"#col{i}-bignum-text",
-                        f"#col{i}-bigcap", f"#col{i}-src"):
-                src, dst = alt.select_one(sel), neu.select_one(sel)
-                if src is not None and dst is not None:
-                    dst.string = src.get_text()
-            for j in range(1, 4):
-                sel = f"#col{i}-stat{j}"
-                src, dst = alt.select_one(sel), neu.select_one(sel)
-                if src is not None and dst is not None:
-                    dst.clear()
-                    for child in list(src.children):
-                        dst.append(child.extract() if hasattr(child, "extract") else str(child))
-            body_sel = f"#col{i}-body"
-            src, dst = alt.select_one(body_sel), neu.select_one(body_sel)
-            if src is not None and dst is not None:
-                for old_p in dst.select("p.gen-para"):
-                    old_p.decompose()
-                for p in src.select("p.gen-para"):
-                    dst.append(p.extract())
-        return str(neu)
-
+    # Bedarf aus dem gestrigen OUTPUT übernommen (siehe _hat_neue_struktur/
+    # _carry_over_columns, jetzt modulweite Funktionen oben).
     with open(TEMPLATE, encoding="utf-8") as fh:
         html = fh.read()
 
@@ -871,7 +996,7 @@ def main() -> int:
 
     html = inject(html, verified)
 
-    new_themes = [c.get("thema", "").strip() for c in verified if c.get("thema")]
+    new_themes = [c.get("thema", "").strip() for c in verified.values() if c.get("thema")]
     today_iso = datetime.date.today().isoformat()
     if new_themes:
         save_history(history + [{"date": today_iso, "thema": t} for t in new_themes])

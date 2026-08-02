@@ -441,82 +441,42 @@ def _fetch_fresh_items(date_label: str, avoid_entities: list, count: int, verbot
         f"linkssatirischen Magazin. Heute ist {date_label}.\n\n"
         f"Finde {count} ECHTE, tagesaktuelle oder höchstens 14 Tage alte "
         "'Schlusslicht'-Meldungen via Websuche — jeweils aus einem ANDEREN "
-        "Bereich. GRUNDSATZ (gilt für JEDE Meldung, keine Ausnahme): Es muss "
-        "sich um einen echten VERGLEICHS- bzw. RANKING-FALL handeln — jemand "
-        "oder etwas ist nachweislich Schlusslicht, Tabellenletzter oder "
-        "schlechtester Wert in einem Vergleich mit anderen (Liga-Tabelle, "
-        "Index, Statistik, Studie mit Ranking, Verbraucherumfrage mit "
-        "Vergleichswerten, parlamentarischer Bericht mit Ländervergleich). "
-        "Die Rangliste (rows) muss ein ECHTER Vergleich mehrerer "
-        "Fälle/Orte/Teams/Länder sein, keine bloße Auflistung von Fakten zu "
-        "einem einzelnen Ereignis.\n\n"
-        "WICHTIG für die Themenmischung: Bringe eine breite Mischung "
-        "aus (a) Themen, die die BREITE MASSE direkt interessieren und "
-        "leicht zugänglich sind — z.B. Fußball/Bundesliga/Champions League, "
-        "andere Ballsportarten, Fluggesellschaften-Pünktlichkeit, "
-        "Handynetz-/Internet-Qualität, Streaming-Dienste, Restaurant-/"
-        "Fast-Food-Ketten, Mietpreise, Lebensmittelpreise, Verkehrsstaus, "
-        "Krankenkassen, Universitäten-Rankings, Reiseziele/Tourismus, "
-        "Videospiele/Konsolen, Social-Media-Plattformen — UND (b) sozialen "
-        "bzw. politisch-linken, strukturkritischen Themen: Niedriglohn und "
-        "prekäre Beschäftigung, Mietpreise/Wohnungsnot, Gewerkschafts- und "
-        "Arbeitnehmerrechte, Pressefreiheit, Korruption, Konzernmacht und "
-        "Lobbyismus, Klimaschutz und Klimagerechtigkeit, Steuervermeidung "
-        "und Steuergerechtigkeit, soziale Ungleichheit, Kinderarmut, "
-        "Bildungsungleichheit, Diskriminierung, Gleichstellung/Gender Pay "
-        "Gap, Sozialabbau, Rüstungsexporte, oder jeder andere Bereich, in "
-        f"dem eine Struktur/Institution/Politik nachweislich Schlusslicht "
-        f"ist. Bei {count} Meldungen sollten mindestens die Hälfte aus "
-        "Kategorie (a) stammen, damit die Seite für ein breites, nicht nur "
-        "politikinteressiertes Publikum unmittelbar attraktiv ist — aber "
-        "auch Kategorie (a) braucht IMMER den echten Vergleichs-/Ranking-"
-        "bezug von oben (z.B. Ligatabelle, Preisvergleich, Pünktlichkeits-"
-        "Statistik), nie eine reine Einzelmeldung ohne Vergleichswert. Meide "
-        "KEINE Weltregion aus vermeintlicher Vorsicht — auch Nahost/Gaza, "
-        "Ukraine/Russland oder andere politisch sensible Weltgegenden sind "
-        "ganz normale, gleichberechtigte Themenquellen wie jede andere "
-        f"Region, solange die Meldung echt, belegt UND ein echter "
-        f"Vergleichs-/Rankingfall ist. Die {count} Meldungen müssen sich "
-        "thematisch klar unterscheiden.\n\n"
-        "ABSOLUTES VERBOT VON EINZELNEN KRIMINAL- UND UNGLÜCKSMELDUNGEN — "
-        "HÖCHSTE PRIORITÄT: Wähle NIEMALS eine einzelne Kriminalmeldung "
-        "(Gewalttat, Streit, Diebstahl, Mord, Prozess gegen eine "
-        "Privatperson), einen einzelnen Unfall oder ein einzelnes Unglück "
-        "(Flugzeugabsturz, Verkehrsunfall, Brand, Naturkatastrophe) als "
-        "Thema — auch dann nicht, wenn eine echte, verifizierbare Quelle "
-        "dafür existiert. Das war für schlusslicht.de NIE vorgesehen: die "
-        "Seite ist ein Vergleichs-/Ranking-Magazin ('Wer ist Tabellenletzter "
-        "in einem echten Vergleich'), keine allgemeine Polizei- oder "
-        "Unfallmeldungs-Seite. Ausnahme: ein Kriminalitäts- oder "
-        "Sicherheitsthema ist erlaubt, wenn es GENERELL bzw. POLITISCH ist "
-        "und einen echten Vergleichswert hat — z.B. 'Land X hat die "
-        "niedrigste Aufklärungsquote bei häuslicher Gewalt in der EU "
-        "(Statistik/Studie)' oder 'Stadt Y hat die höchste Kriminalitäts-"
-        "rate im Bundesländervergleich' — NIEMALS aber ein Bericht über "
-        "einen einzelnen Vorfall mit konkreten Privatpersonen ohne "
-        "Vergleichsdaten. Wenn du unsicher bist, ob ein Fall ein "
-        "Einzelvorfall oder ein echter Vergleichsfall ist: wähle im "
-        "Zweifel ein anderes Thema.\n\n"
-        "KONKRETE, TATSÄCHLICH VORGEKOMMENE FEHLBEISPIELE — GENAU SO NICHT: "
-        "'In Überlingen ergaunert ein Unbekannter mit Gutscheincodes rund "
-        "1.500 Euro' (Einzelfall-Betrug, kein Vergleichswert), 'Im "
-        "Ostallgäu findet eine Frau eine tote Kuh auf der Weide – die "
-        "Polizei geht von gezielter Tötung aus' (Einzelfall-Tierquälerei/"
-        "Kriminalität), 'Oberkassel: Mann und Frau bei Streit schwer "
-        "verletzt' (Einzelfall-Gewalttat), 'Russisches Passagierflugzeug "
-        "mit 49 Menschen an Bord abgestürzt' (Einzelfall-Unglück). Wähle "
-        "NIEMALS etwas in dieser Art, auch nicht in abgewandelter Form oder "
-        "mit anderem Ort/Namen — das Muster selbst (ein einzelner Vorfall "
-        "mit Privatpersonen, ohne Vergleichswert) ist das Problem, nicht "
-        "der konkrete Fall.\n\n"
-        "KEINE GENERISCHEN LOKAL-/BOULEVARD-RUBRIKEN: Vergib NIEMALS ein "
-        "kicker-Label wie 'Alltag', 'Lokales', 'Region · [Bundesland/Stadt]', "
-        "'Vermischtes', 'Boulevard' oder 'Panorama' — diese Label selbst "
-        "sind ein Warnsignal für eine Einzelfall-/Boulevardmeldung ohne "
-        "echten Themenbezug. Jedes kicker-Label muss ein KONKRETES Thema "
-        "benennen (z.B. 'EU · Geldpolitik', 'Fußball · Bundesliga', "
-        "'Pressefreiheit', 'Niedriglohn'), nie eine bloße Orts- oder "
-        "Rubriken-Bezeichnung ohne inhaltlichen Themenbezug.\n\n"
+        "Bereich. GRUNDSATZ: Jede Meldung braucht einen echten VERGLEICHS-/"
+        "RANKING-BEZUG (Liga-Tabelle, Index, Statistik, Preis- oder "
+        "Pünktlichkeitsvergleich) — jemand/etwas ist nachweislich "
+        "Schlusslicht in einem Vergleich mit anderen, nicht nur ein "
+        "einzelnes, unverbundenes Ereignis. Die Rangliste (rows) muss "
+        "mehrere vergleichbare Fälle/Orte/Teams/Länder zeigen, keine bloße "
+        "Faktenliste zu einem Einzelfall.\n\n"
+        "Themenmischung — mindestens die Hälfte der Meldungen aus (a): "
+        "massentaugliche, leicht zugängliche Themen MIT Vergleichswert "
+        "(Fußball/Bundesliga/Champions League, andere Ballsportarten, "
+        "Fluggesellschaften-Pünktlichkeit, Handynetz-/Internet-Qualität, "
+        "Streaming, Mietpreise, Lebensmittelpreise, Verkehrsstaus, "
+        "Krankenkassen, Uni-Rankings, Reiseziele, Videospiele, Social "
+        "Media); Rest aus (b): soziale/politisch-linke Strukturthemen "
+        "(Niedriglohn, Wohnungsnot, Gewerkschafts-/Arbeitnehmerrechte, "
+        "Pressefreiheit, Korruption, Konzernmacht/Lobbyismus, Klimaschutz, "
+        "Steuergerechtigkeit, soziale Ungleichheit, Kinderarmut, "
+        "Bildungsungleichheit, Diskriminierung, Gender Pay Gap, "
+        "Sozialabbau, Rüstungsexporte, oder jeder andere Bereich mit "
+        "nachweislichem strukturellem Schlusslicht). Keine Weltregion aus "
+        "Vorsicht meiden — auch Nahost/Gaza, Ukraine/Russland zählen ganz "
+        f"normal, solange echt, belegt und ein Vergleichsfall. Die {count} "
+        "Meldungen müssen sich thematisch klar unterscheiden.\n\n"
+        "NIEMALS Einzelfall-Kriminalität oder -Unglücke als Thema (Gewalttat, "
+        "Streit, Betrug, Diebstahl, Unfall, Flugzeugabsturz, Brand, "
+        "Naturkatastrophe) — auch mit echter, verifizierbarer Quelle nicht. "
+        "Das war für schlusslicht.de nie vorgesehen: ein Vergleichs-/Ranking-"
+        "Magazin, keine Polizei- oder Unfallmeldungs-Seite. Ausnahme nur bei "
+        "echtem, belegtem Vergleichswert (z.B. 'Land X hat EU-weit die "
+        "niedrigste Aufklärungsquote bei häuslicher Gewalt') — NIEMALS ein "
+        "Bericht über einen einzelnen Vorfall mit Privatpersonen ohne "
+        "Vergleichsdaten, auch nicht in abgewandelter Form. Im Zweifel: "
+        "anderes Thema wählen. Vergib außerdem NIEMALS ein kicker-Label wie "
+        "'Alltag', 'Lokales', 'Region · X', 'Vermischtes', 'Boulevard' oder "
+        "'Panorama' (Warnsignal für Einzelfall/Boulevard ohne Themenbezug) — "
+        "jedes Label braucht ein konkretes Thema (z.B. 'EU · Geldpolitik').\n\n"
         "ABSOLUTES VERBOT VON PLATZHALTERN: Jede Schlagzeile und jeder "
         "Kommentar muss eine ECHTE, konkrete, recherchierte Meldung mit "
         "echten Eigennamen, Orten und Zahlen sein. Schreibe NIEMALS "
@@ -626,6 +586,86 @@ def _fetch_fresh_items(date_label: str, avoid_entities: list, count: int, verbot
     )
 
     result = call_api_json(system, prompt, max_tokens=3000)
+    if not result:
+        return None
+    items_list = result.get("items")
+    return items_list if isinstance(items_list, list) else None
+
+
+def _fetch_fallback_sport_item(date_label: str, avoid_entities: list, verbotene_urls: list = None):
+    """Garantierter Fallback für einen Platz, der nach den normalen
+    Versuchen in get_daily_items immer noch nicht gefüllt werden konnte.
+
+    WICHTIG (Bugfix, gefunden nach Live-Meldung "viele Kategorien bleiben
+    beim ersten Lauf leer"): Die freie Themenwahl in _fetch_fresh_items
+    muss GLEICHZEITIG mehrere harte Kriterien erfüllen (echter Vergleichs-/
+    Rankingbezug, keine Kriminalität/Unglücke, kein Duplikat, verifizierbare
+    Einzelquelle) — das senkt die Trefferquote pro Versuch spürbar
+    gegenüber der freieren Themenwahl vor der schärferen Ausrichtung. Diese
+    Funktion stellt eine DEUTLICH engere, fast immer erfüllbare Alternative:
+    eine Sport-Liga-Tabellenletzten-Meldung. Sportligen haben so gut wie
+    immer einen aktuellen, real recherchierbaren Tabellenletzten mit
+    Vergleichsdaten (Tabelle mit mehreren Teams) — das erfüllt die
+    inhaltliche Ausrichtung (echter Vergleichsfall, keine Kriminalität)
+    ohne Kompromisse, ist für das Modell aber eine viel engere, leichter zu
+    erfüllende Aufgabe als 'irgendein echtes, unverbrauchtes, politisches
+    oder massentaugliches Strukturthema'. Wird NUR aufgerufen, wenn ein
+    Platz nach den regulären Versuchen noch frei ist (siehe get_daily_items) —
+    kein Ersatz für die eigentliche Themenvielfalt, nur eine letzte
+    Absicherung gegen leere Plätze."""
+    system = (
+        "Du bist Redakteur von schlusslicht.de, einem deutschen "
+        f"linkssatirischen Magazin. Heute ist {date_label}.\n\n"
+        "Finde GENAU EINE echte, aktuelle Sport-Liga-Tabellenletzten-"
+        "Meldung — beliebige Sportart/Liga/Land/Geschlecht (Fußball, "
+        "Basketball, Eishockey, Handball, Baseball, Rugby, Volleyball "
+        "o.ä.), Hauptsache eine ECHTE, mit Websuche belegbare aktuelle "
+        "Tabelle (höchstens 30 Tage alter Stand) mit dem tatsächlichen "
+        "Tabellenletzten. Erfinde NIEMALS Teams, Ligen, Werte oder "
+        "Quellen — findest du keine echte, mit Websuche belegbare Tabelle, "
+        "liefere GAR KEINEN Eintrag (leeres 'items'-Array) statt etwas zu "
+        "erfinden. Kein Prozess-Kommentar über die eigene Suche als "
+        "Schlagzeile/Kommentar. Die Quellen-URL muss ein konkreter Artikel "
+        "sein, keine generische Übersichtsseite.\n\n"
+        + (
+            f"Diese Fälle/Entitäten wurden zuletzt schon verwendet — wähle "
+            f"KEINEN davon erneut: {', '.join(avoid_entities)}.\n\n"
+            if avoid_entities else ""
+        )
+        + (
+            f"Diese URLs sind gesperrt, NIEMALS verwenden: "
+            f"{', '.join(verbotene_urls)}.\n\n"
+            if verbotene_urls else ""
+        )
+        + "Stil: schwarze Satire mit menschlicher Wärme, klar links-"
+        "gesellschaftskritisch, aber sachlich. Kommentar max 130 Zeichen. "
+        "Antworte AUSSCHLIESSLICH auf " + ("Englisch (US)" if LANG == "en" else "Deutsch") +
+        " — keine nicht-lateinischen Schriftzeichen."
+    )
+    prompt = (
+        "Recherchiere GENAU EINE Sport-Liga-Tabellenletzten-Meldung. Nutze "
+        "die Websuche.\n\n"
+        "Antworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown:\n"
+        "{\n"
+        '  "items": [\n'
+        "    {\n"
+        '      "entity": "Kurzname des Teams/Falls — PFLICHTFELD",\n'
+        '      "thema": "Sportart, z.B. \'Fußball\'",\n'
+        '      "kicker": "z.B. \'Fußball · 2. Liga\'",\n'
+        '      "icon": "ein passendes Emoji",\n'
+        '      "headline": "kurze, konkrete Schlagzeile mit echten Namen/Zahlen",\n'
+        '      "kommentar": "individueller Kommentar, max 130 Zeichen",\n'
+        '      "table_title": "Kurztitel der Rangliste",\n'
+        '      "table_tag": "Zeitraum, z.B. \'Saison 2026\'",\n'
+        '      "rows": [{"rank": "N-2", "name": "Team A", "value": "Zahl"}, {"rank": "N-1", "name": "Team B", "value": "Zahl"}, {"rank": "N", "name": "das Schlusslicht-Team", "value": "Zahl"}],\n'
+        '      "foot": "1 Satz Einordnung für die Fußzeile",\n'
+        '      "quelle": "Quellenname und Datum, KEINE Zitationsnummern wie [1]",\n'
+        '      "quelle_url": "die ECHTE, vollständige URL der Quelle (https://...) — PFLICHTFELD"\n'
+        "    }\n"
+        "  ]\n"
+        "}"
+    )
+    result = call_api_json(system, prompt, max_tokens=1200)
     if not result:
         return None
     items_list = result.get("items")
@@ -1089,6 +1129,64 @@ def get_daily_items(date_label: str, avoid_entities: list, vorhandene_ueberschri
                 log(f"  Gruppe noch nicht vollständig ({len(gruppen_treffer)}/{groesse}, "
                     f"{letzter_fehlgrund}) — wiederhole für die fehlenden "
                     f"{groesse - len(gruppen_treffer)} Plätze (Versuch {versuch + 2}/4).")
+
+        # WICHTIG (Bugfix, gefunden nach Live-Meldung "viele Kategorien
+        # bleiben beim ersten Lauf leer"): Die freie Themenwahl muss
+        # gleichzeitig mehrere harte Kriterien erfüllen (echter Vergleichs-/
+        # Rankingbezug, keine Kriminalität, kein Duplikat, verifizierbare
+        # Quelle) — auch mit 4 Versuchen bleibt ein Platz manchmal leer.
+        # Bevor endgültig aufgegeben wird, versucht diese Stufe für JEDEN
+        # noch fehlenden Platz den deutlich engeren, fast immer erfüllbaren
+        # Fallback (siehe _fetch_fallback_sport_item): eine Sport-Liga-
+        # Tabellenletzten-Meldung. Läuft durch dieselbe Validierung wie ein
+        # regulärer Treffer (keine Ausnahme von den Qualitätsprüfungen).
+        fehlende_keys = [
+            str(batch_start + idx + 1) for idx in range(groesse)
+            if str(batch_start + idx + 1) not in gruppen_treffer
+        ]
+        fallback_verwendete_urls = set()
+        for key in fehlende_keys:
+            for fallback_versuch in range(2):
+                fallback_items = _fetch_fallback_sport_item(
+                    date_label, schon_gewaehlte_entitaeten,
+                    verbotene_urls + neue_bad_urls + list(fallback_verwendete_urls),
+                ) or []
+                if not fallback_items or not isinstance(fallback_items[0], dict):
+                    log(f"  Meldung {key}: Fallback (Sport-Tabellenletzter) lieferte "
+                        f"keine verwertbare Antwort (Versuch {fallback_versuch + 1}/2).")
+                    continue
+                item = fallback_items[0]
+                headline = (item.get("headline") or "").strip()
+                kommentar = (item.get("kommentar") or "").strip()
+                if not (headline and kommentar):
+                    log(f"  Meldung {key}: Fallback-Eintrag unvollständig — übersprungen.")
+                    continue
+                if _item_ist_kontaminiert(item):
+                    log(f"  Meldung {key}: Fallback-Eintrag ist ein Prozess-Kommentar "
+                        f"— verworfen.")
+                    continue
+                if _ist_einzelfall_kriminalitaet_oder_unglueck(item):
+                    log(f"  Meldung {key}: Fallback-Eintrag verstößt gegen die "
+                        f"Themenpolitik — verworfen.")
+                    continue
+                url = (item.get("quelle_url") or "").strip().lower()
+                if url and (url in verbotene_urls or url in neue_bad_urls
+                            or url in fallback_verwendete_urls):
+                    log(f"  Meldung {key}: Fallback-Quelle ist gesperrt oder bereits "
+                        f"in dieser Ausgabe verwendet — verworfen.")
+                    continue
+                if url and _url_ist_zu_generisch(url):
+                    log(f"  Meldung {key}: Fallback-Quelle ist eine generische "
+                        f"Landingpage — verworfen.")
+                    continue
+                gruppen_treffer[key] = item
+                entity = (item.get("entity") or "").strip()
+                if entity:
+                    schon_gewaehlte_entitaeten.append(entity)
+                if url:
+                    fallback_verwendete_urls.add(url)
+                log(f"  Meldung {key}: über Fallback (Sport-Tabellenletzter) gefüllt.")
+                break
 
         all_items.update(gruppen_treffer)
 
@@ -1850,6 +1948,7 @@ def carry_over_dynamic_content(template_html: str, output_html: str) -> str:
         Redundanz-Prüfung unten dieselbe Reset-Logik wiederverwenden kann."""
         rtit = card.select_one(".rtit")
         realsatire = card.select_one(".realsatire")
+        rnum = card.select_one(".rnum")
         tbl = card.select_one(".tbl")
         log(f"  Slot {slot_i}: bestehender Stand ist bereits kontaminiert "
             f"({grund}, vermutlich aus einem früheren fehlerhaften Lauf) — "
@@ -1861,6 +1960,12 @@ def carry_over_dynamic_content(template_html: str, output_html: str) -> str:
             rtit.string = placeholder_title
         if realsatire is not None:
             realsatire.string = f"„{placeholder_quip}“"
+        # WICHTIG (Bugfix, gefunden bei gründlicher Nachprüfung): Ohne
+        # diesen Reset blieb das kicker-Label (.rnum) unverändert stehen —
+        # z.B. weiterhin "Alltag · Betrug" neben dem Platzhaltertext, obwohl
+        # genau dieses Label der Auslöser für die Bereinigung war.
+        if rnum is not None:
+            rnum.string = "Pending" if LANG == "en" else "Ausstehend"
         ai_tag = card.select_one(".ai-tag")
         if ai_tag is not None:
             ai_tag.string = "✦ Wird aktualisiert" if LANG != "en" else "✦ Updating"
@@ -1969,12 +2074,21 @@ def carry_over_dynamic_content(template_html: str, output_html: str) -> str:
     # bei Überlappung bleibt die niedrigere Slot-Nummer stehen, die höhere
     # wird auf den ehrlichen Platzhalter zurückgesetzt (der nächste
     # erfolgreiche Fetch für diesen Slot ersetzt ihn wieder).
+    # WICHTIG (Bugfix, gefunden bei gründlicher Nachprüfung): Bereits auf
+    # den Platzhalter zurückgesetzte Slots (siehe _reset_card_to_placeholder)
+    # zeigen alle WORTGLEICH denselben Platzhaltertext — ohne diesen
+    # Ausschluss hätte die Redundanz-Prüfung mehrere frisch bereinigte
+    # Platzhalter fälschlich gegenseitig als 'Duplikat' erkannt und noch
+    # mehr Slots unnötig zurückgesetzt.
+    _platzhalter_texte = {
+        "Will be updated on the next run.", "Wird beim nächsten Lauf aktualisiert.",
+    }
     _slot_headlines = []
     for slot_i in range(1, N_ITEMS + 1):
         card = neu.select_one(f'article.rub[data-slot="{slot_i}"]')
         rtit = card.select_one(".rtit") if card is not None else None
         headline = rtit.get_text().strip() if rtit is not None else ""
-        if headline and not _ist_meta_kommentar(headline):
+        if headline and headline not in _platzhalter_texte and not _ist_meta_kommentar(headline):
             _slot_headlines.append((slot_i, card, headline))
 
     for i, (slot_i, card, headline) in enumerate(_slot_headlines):
