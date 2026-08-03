@@ -387,26 +387,30 @@
     .legal-grid { grid-template-columns:1fr; gap:24px; }
     .legal-nav { position:static; }
   }
-  /* WICHTIG (Bugfix, gefunden per Live-Screenshot: Nav-Buttons/EN-Schalter
-     wurden am rechten Rand abgeschnitten): Zwischen dieser Bruchmarke
-     (vorher 900px, wo das Hamburger-Menü einsetzt) und ~1080px passten
-     Logo + 4 Textlinks + 3 Farb-Buttons + Sprachumschalter NICHT mehr in
-     die Breite, wurden aber auch noch nicht auf das Hamburger-Menü
-     umgestellt — die Folge war ein rechtsseitig abgeschnittener Nav-Bereich
-     (kein Zeilenumbruch, kein Scrollen, einfach abgeschnitten). Bruchmarke
-     für das Hamburger-Menü auf 1040px angehoben, mit Sicherheitsabstand
-     zur tatsächlich benötigten Mindestbreite. */
+  /* WICHTIG (Bugfix-Korrektur): Der Hamburger-Menü-Breakpoint war zuvor
+     testweise auf 1040px angehoben worden, um ein Abschneiden von Nav-
+     Buttons/EN-Schalter im Bereich 900-1040px zu vermeiden. Das änderte
+     aber sichtbar das gewohnte Verhalten (Nutzer sahen dort plötzlich das
+     Hamburger-Menü statt der vollen Nav-Zeile). Zurückgesetzt auf 900px
+     (wie ursprünglich) — das eigentliche Platzproblem wird stattdessen
+     unten durch kompaktere Nav-Abstände/Schriftgröße im Bereich bis 1040px
+     gelöst, OHNE die Sichtbarkeits-Bruchmarke zu verändern. Per Messung im
+     Browser verifiziert: bei 901px (schlechtester Fall) bleiben mit den
+     kompakteren Werten ca. 20px Luft bis zum rechten Rand, keine
+     Überlappung zwischen den Links. */
   @media (max-width:1040px) {
+    .nav-links { gap:2px; }
+    .nav-links a { padding:6px 6px; font-size:.58rem; }
+  }
+  @media (max-width:900px) {
     .nav-links { display:none; }
     .nav-links.show {
       display:flex; position:absolute; top:66px; left:0; right:0; flex-direction:column; gap:2px;
       background:var(--paper); border-bottom:1px solid var(--line); padding:12px var(--gut); align-items:stretch;
     }
-    .nav-links.show a { padding:12px; }
+    .nav-links.show a { padding:12px; font-size:.62rem; }
     .menu-btn { display:block; }
     .nav-date { display:none; }
-  }
-  @media (max-width:900px) {
     .about-grid, .stories-grid, .rubgrid { grid-template-columns:1fr; }
     .archive-grid { grid-template-columns:1fr; }
   }

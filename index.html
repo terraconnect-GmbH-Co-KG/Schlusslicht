@@ -397,16 +397,18 @@
      für das Hamburger-Menü auf 1040px angehoben, mit Sicherheitsabstand
      zur tatsächlich benötigten Mindestbreite. */
   @media (max-width:1040px) {
+    .nav-links { gap:2px; }
+    .nav-links a { padding:6px 6px; font-size:.58rem; }
+  }
+  @media (max-width:900px) {
     .nav-links { display:none; }
     .nav-links.show {
       display:flex; position:absolute; top:66px; left:0; right:0; flex-direction:column; gap:2px;
       background:var(--paper); border-bottom:1px solid var(--line); padding:12px var(--gut); align-items:stretch;
     }
-    .nav-links.show a { padding:12px; }
+    .nav-links.show a { padding:12px; font-size:.62rem; }
     .menu-btn { display:block; }
     .nav-date { display:none; }
-  }
-  @media (max-width:900px) {
     .about-grid, .stories-grid, .rubgrid { grid-template-columns:1fr; }
     .archive-grid { grid-template-columns:1fr; }
   }
