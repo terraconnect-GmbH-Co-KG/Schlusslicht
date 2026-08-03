@@ -388,7 +388,7 @@
     .legal-grid { grid-template-columns:1fr; gap:24px; }
     .legal-nav { position:static; }
   }
-  @media (max-width:900px) {
+  @media (max-width:1040px) {
     .nav-links { display:none; }
     .nav-links.show {
       display:flex; position:absolute; top:66px; left:0; right:0; flex-direction:column; gap:2px;
@@ -397,6 +397,8 @@
     .nav-links.show a { padding:12px; }
     .menu-btn { display:block; }
     .nav-date { display:none; }
+  }
+  @media (max-width:900px) {
     .about-grid, .stories-grid, .rubgrid { grid-template-columns:1fr; }
     .archive-grid { grid-template-columns:1fr; }
   }

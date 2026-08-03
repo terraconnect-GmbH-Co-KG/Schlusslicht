@@ -652,6 +652,18 @@ def get_daily_columns(date_label: str, avoid_themes: list) -> dict:
                 log(f"  Kolumne {key} ({title!r}): Quellen-URL ist eine "
                     f"generische Landingpage oder Platzhalter-Domain — verworfen.")
                 continue
+            # WICHTIG (Bugfix, gefunden nach Live-Meldung "Plätze bleiben trotz
+            # Retry leer" auf generate.py — dieselbe Fehlerklasse hier): Die
+            # technische Quellen-Verifikation lief bisher ERST in main(),
+            # NACHDEM get_daily_columns bereits alle Retry-Versuche
+            # abgeschlossen hatte. Eine Kolumne mit nicht erreichbarer Quelle
+            # galt hier also als 'Slot erfolgreich gefüllt' und wurde erst
+            # viel später, ohne verbleibenden Retry für genau diesen Slot,
+            # wieder verworfen. Verifikation muss deshalb HIER laufen.
+            if not verify_url(col.get("source_url") or ""):
+                log(f"  Kolumne {key} ({title!r}): Quellen-URL fehlt oder nicht "
+                    f"erreichbar — verworfen, löst Retry für diesen Platz aus.")
+                continue
             neue[key] = col
 
         if neue:

@@ -221,11 +221,13 @@
     .spot { grid-template-columns:1fr; }
     .spot .aside { border-left:none; border-top:1px solid var(--line); }
   }
-  @media (max-width:900px) {
+  @media (max-width:1040px) {
     .nav-links { display:none; }
     .nav-links.show { display:flex; position:absolute; top:66px; left:0; right:0; flex-direction:column; gap:2px; background:var(--paper); border-bottom:1px solid var(--line); padding:12px var(--gut); align-items:stretch; }
     .nav-links.show a { padding:12px; }
     .menu-btn { display:block; }
+  }
+  @media (max-width:900px) {
     .grid, .stories-grid, .how-grid { grid-template-columns:1fr; }
   }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; scroll-behavior:auto !important; } }

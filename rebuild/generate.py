@@ -1102,6 +1102,22 @@ def get_daily_items(date_label: str, avoid_entities: list, vorhandene_ueberschri
                         f"oder Platzhalter-Domain statt eines konkreten Artikels "
                         f"({url}) — verworfen.")
                     continue
+                # WICHTIG (Bugfix, gefunden nach Live-Meldung "Plätze bleiben trotz
+                # Fallback/Retry leer"): Die technische Quellen-Verifikation lief
+                # bisher ERST ganz am Ende in review_and_fix_items, NACHDEM alle
+                # Batches (inkl. aller Retry-Versuche) bereits abgeschlossen waren.
+                # Ein Kandidat mit nicht erreichbarer URL wurde hier also als
+                # 'Slot erfolgreich gefüllt' gewertet (gefunden > 0 -> kein
+                # weiterer Versuch), und erst viel später, ohne verbleibende
+                # Retry-Möglichkeit für genau diesen Slot, wieder verworfen.
+                # Die Verifikation muss deshalb HIER laufen, damit ein
+                # unerreichbarer Kandidat sofort einen echten Retry auslöst,
+                # statt den Slot fälschlich als erledigt zu markieren.
+                if not verify_url(item.get("quelle_url") or ""):
+                    log(f"  Meldung {key}: Quellen-URL fehlt oder nicht erreichbar "
+                        f"({url or 'keine URL angegeben'}) — verworfen, löst Retry "
+                        f"für diesen Platz aus.")
+                    continue
                 neue_treffer[key] = item
 
             if neue_treffer:
@@ -1178,6 +1194,15 @@ def get_daily_items(date_label: str, avoid_entities: list, vorhandene_ueberschri
                 if url and _url_ist_zu_generisch(url):
                     log(f"  Meldung {key}: Fallback-Quelle ist eine generische "
                         f"Landingpage — verworfen.")
+                    continue
+                # WICHTIG (Bugfix, siehe oben im regulären Zweig für die volle
+                # Begründung): Verifikation MUSS hier laufen, sonst gilt der
+                # Fallback als 'erfolgreich', obwohl die Quelle erst später
+                # (ohne verbleibenden Versuch) als nicht erreichbar auffliegt.
+                if not verify_url(item.get("quelle_url") or ""):
+                    log(f"  Meldung {key}: Fallback-Quelle nicht erreichbar "
+                        f"({url or 'keine URL angegeben'}) — verworfen "
+                        f"(Versuch {fallback_versuch + 1}/2).")
                     continue
                 gruppen_treffer[key] = item
                 entity = (item.get("entity") or "").strip()

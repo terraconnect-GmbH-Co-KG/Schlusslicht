@@ -472,6 +472,22 @@ def get_daily_good_news(date_label: str, avoid_entities: list) -> dict:
                 log(f"  Meldung {key} ({title!r}): Text beschreibt den eigenen "
                     f"Rechercheprozess statt ein echtes Thema — verworfen.")
                 continue
+            # WICHTIG (Bugfix, gefunden nach Live-Meldung "Plätze bleiben trotz
+            # Retry leer" auf generate.py — dieselbe Fehlerklasse hier): Die
+            # technische Quellen-Verifikation lief bisher ERST in
+            # verify_visionen_sources, NACHDEM get_daily_good_news bereits
+            # alle Retry-Versuche abgeschlossen hatte. Eine Meldung mit nicht
+            # erreichbarer Quelle galt hier also als 'Slot erfolgreich
+            # gefüllt' und wurde erst viel später, ohne verbleibenden Retry
+            # für genau diesen Slot, wieder verworfen. Die reine
+            # Erreichbarkeits-Prüfung muss deshalb HIER laufen (die
+            # zusätzliche Domain-Plausibilitäts-/Einzigartigkeits-Prüfung
+            # bleibt bewusst in verify_visionen_sources, da sie einen
+            # seitenweiten Zustand über alle Meldungen hinweg braucht).
+            if not verify_url(item.get("source_url") or ""):
+                log(f"  Meldung {key} ({title!r}): Quellen-URL fehlt oder nicht "
+                    f"erreichbar — verworfen, löst Retry für diesen Platz aus.")
+                continue
             neue[key] = item
 
         if neue:
