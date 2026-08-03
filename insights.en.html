@@ -179,6 +179,10 @@
     .col { grid-template-columns:1fr; }
     .rail { position:static; }
   }
+  /* Bugfix: siehe index.template.html — Nav-Inhalt passte zwischen 900px
+     und ~1080px nicht mehr in die Breite, wurde aber noch nicht auf das
+     Hamburger-Menü umgestellt (rechtsseitig abgeschnitten). Bruchmarke
+     auf 1040px angehoben. */
   @media (max-width:1040px) {
     .nav-links { display:none; }
     .nav-links.show { display:flex; position:absolute; top:66px; left:0; right:0; flex-direction:column; gap:2px; background:var(--paper); border-bottom:1px solid var(--line); padding:12px var(--gut); align-items:stretch; }
@@ -263,54 +267,54 @@
 <!-- 1 -->
 <article class="col" id="col1">
 <div class="body" id="col1-body">
-<span class="tag" id="col1-tag">Standpoint · Public health</span>
-<h2 id="col1-h2">The State That Comes Late</h2>
-<p class="gen-para">In the United States, the Department of Health and Human Services has cut or frozen more than 20,000 staff positions across agencies this year, according to recent reporting and agency statements.</p><p class="gen-para punch">This is how a government declares that sickness is a private inconvenience: it trims the nurses, inspectors, and epidemiologists, then acts surprised when the bill arrives in ambulances and funerals.</p><p class="gen-para">Public health is not a decorative branch of the state; it is the unglamorous machinery that keeps outbreaks small, keeps data honest, and keeps the poor from being the first to pay for the vanity of the powerful. When that machinery is stripped for parts, the damage does not land evenly, because the wealthy buy speed while everyone else queues for it.</p><p class="gen-para">Congress should restore staffing, protect disease surveillance from partisan interference, and publish a binding emergency staffing floor for federal health agencies before the next crisis turns thrift into negligence.</p></div>
+<span class="tag" id="col1-tag">Standpoint · Court limits</span>
+<h2 id="col1-h2">The Bench in Need of a Brake</h2>
+<p class="gen-para">The Supreme Court has 9 justices, and its decisions can reshape national policy for decades.</p><p class="gen-para punch">A democracy that lets nine lifetime appointees govern by judicial instinct has stopped pretending that restraint is a virtue.</p><p class="gen-para">Supporters of court limits argue that term caps would reduce the pressure to treat each vacancy like a constitutional coup, while critics warn that changing the Court to fix the Court can deepen the cycle of retaliation.</p><p class="gen-para">Congress should impose staggered 18-year terms so the Court stops behaving like an unelected aristocracy in black robes.</p></div>
 <aside class="rail">
 <div class="stat" id="col1-stat-box">
-<div class="big"><div class="n"><span id="col1-bignum-text">20,000+</span><span aria-hidden="true" class="lamp"></span></div><div class="cap" id="col1-bigcap">Federal health positions cut or frozen this year.</div></div>
+<div class="big"><div class="n"><span id="col1-bignum-text">9 justices</span><span aria-hidden="true" class="lamp"></span></div><div class="cap" id="col1-bigcap">A tiny bench can still overrule an entire country.</div></div>
 <ul>
-<li id="col1-stat1">Workforce change <b>20,000+ positions cut or frozen</b></li>
-<li id="col1-stat2">Policy effect <b>slower surveillance and weaker response capacity</b></li>
-<li id="col1-stat3">Main burden <b>falls first on lower-income communities</b></li>
+<li id="col1-stat1">Court size <b>9 justices</b></li>
+<li id="col1-stat2">Typical term length <b>life tenure</b></li>
+<li id="col1-stat3">Proposed reform <b>18-year staggered terms</b></li>
 </ul>
-<span class="src" id="col1-src">Source: The Washington Post · 2026-08-03</span>
+<span class="src" id="col1-src">Source: Supreme Court of the United States · 2026</span>
 </div>
 </aside>
 </article>
 <!-- 2 -->
 <article class="col" id="col2">
 <div class="body" id="col2-body">
-<span class="tag" id="col2-tag">Standpoint · Court Limits</span>
-<h2 id="col2-h2">A Court That Judges Itself</h2>
-<p class="gen-para">Recent opinion pages note that Supreme Court reform is “in the air,” and that the debate now includes term limits rather than only the familiar fight over court packing.</p><p class="gen-para punch">A court that can only be corrected by prayers and op-eds is not an institution; it is an aristocracy with gavels.</p><p class="gen-para">The real issue is legitimacy. When a lifetime court hardens into a political veto point, the winners are those who can wait out the calendar and the losers are everyone else who still expects democratic institutions to answer to the public.</p><p class="gen-para">The sensible reform is a fixed, staggered term system for justices, paired with an ethics code that is enforceable and public.</p></div>
+<span class="tag" id="col2-tag">Standpoint · Heat risk</span>
+<h2 id="col2-h2">Summer’s Quiet Toll</h2>
+<p class="gen-para">In 2024, the United States recorded 2,325 heat-related deaths, according to the Centers for Disease Control and Prevention.</p><p class="gen-para punch">That is not a weather report; it is a class report, because the people most exposed to heat are usually the ones with the least power to refuse it.</p><p class="gen-para">CDC surveillance also shows that heat deaths are preventable and concentrated in places where outdoor labor, weak housing, and thin public protections leave people with fewer ways to cool down.</p><p class="gen-para">Cities should require heat plans for employers, schools, transit agencies, and landlords, with penalties for ignoring the most predictable weather-related death toll in the country.</p></div>
 <aside class="rail">
 <div class="stat" id="col2-stat-box">
-<div class="big"><div class="n"><span id="col2-bignum-text">term limits</span><span aria-hidden="true" class="lamp"></span></div><div class="cap" id="col2-bigcap">The proposed fix is meant to reduce permanent capture.</div></div>
+<div class="big"><div class="n"><span id="col2-bignum-text">2,325</span><span aria-hidden="true" class="lamp"></span></div><div class="cap" id="col2-bigcap">Recorded U.S. heat-related deaths in 2024.</div></div>
 <ul>
-<li id="col2-stat1">Reform idea <b>Term limits</b></li>
-<li id="col2-stat2">Institution at issue <b>Supreme Court</b></li>
-<li id="col2-stat3">Political problem <b>Legitimacy</b></li>
+<li id="col2-stat1">Deaths <b>2,325</b></li>
+<li id="col2-stat2">Year <b>2024</b></li>
+<li id="col2-stat3">Agency <b>CDC</b></li>
 </ul>
-<span class="src" id="col2-src">Source: The New York Times Opinion Columnists · 2026</span>
+<span class="src" id="col2-src">Source: CDC · 2024</span>
 </div>
 </aside>
 </article>
 <!-- 3 -->
 <article class="col" id="col3">
 <div class="body" id="col3-body">
-<span class="tag" id="col3-tag">Standpoint · Child hunger</span>
-<h2 id="col3-h2">An Empty Plate Policy</h2>
-<p class="gen-para">In 2024, 18 percent of U.S. households with children were food insecure at some point during the year, according to the U.S. Department of Agriculture.</p><p class="gen-para punch">A country that tolerates that share of children living with uncertainty about dinner is not suffering from scarcity; it is choosing a political hierarchy.</p><p class="gen-para">Food insecurity does not begin at the supermarket checkout. It begins with wages that lag behind rent, child care, and transport, and with a welfare system that loves paperwork more than children.</p><p class="gen-para">Lawmakers should expand school meals and strengthen nutrition assistance automatically when prices rise, instead of turning hunger into an annual budget spectacle.</p></div>
+<span class="tag" id="col3-tag">Standpoint · Data centers</span>
+<h2 id="col3-h2">The Server Farm Tax</h2>
+<p class="gen-para">The International Energy Agency says data centers consumed about 460 terawatt-hours of electricity in 2022.</p><p class="gen-para punch">When so much power is spent feeding machines that never tire, the modern economy begins to look less like progress than like a very expensive appetite with a lobby.</p><p class="gen-para">The same IEA analysis warns that demand could rise sharply this decade as artificial intelligence expands, which means grid strain, higher emissions unless the power is clean, and another round of public costs for private gain.</p><p class="gen-para">Governments should force big operators to disclose energy use, pay for grid upgrades, and meet strict clean-power standards before the rest of society is asked to subsidize the server room.</p></div>
 <aside class="rail">
 <div class="stat" id="col3-stat-box">
-<div class="big"><div class="n"><span id="col3-bignum-text">18%</span><span aria-hidden="true" class="lamp"></span></div><div class="cap" id="col3-bigcap">U.S. households with children that were food insecure in 2024.</div></div>
+<div class="big"><div class="n"><span id="col3-bignum-text">460 TWh</span><span aria-hidden="true" class="lamp"></span></div><div class="cap" id="col3-bigcap">Electricity used by data centers worldwide in 2022.</div></div>
 <ul>
-<li id="col3-stat1">Households with children <b>18 percent</b></li>
-<li id="col3-stat2">Source year <b>2024</b></li>
-<li id="col3-stat3">Agency <b>USDA</b></li>
+<li id="col3-stat1">Electricity use <b>460 TWh</b></li>
+<li id="col3-stat2">Base year <b>2022</b></li>
+<li id="col3-stat3">Forecaster <b>IEA</b></li>
 </ul>
-<span class="src" id="col3-src">Source: U.S. Department of Agriculture · 2024</span>
+<span class="src" id="col3-src">Source: IEA · 2024</span>
 </div>
 </aside>
 </article>

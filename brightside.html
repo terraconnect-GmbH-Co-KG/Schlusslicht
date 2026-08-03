@@ -221,6 +221,10 @@
     .spot { grid-template-columns:1fr; }
     .spot .aside { border-left:none; border-top:1px solid var(--line); }
   }
+  /* Bugfix: siehe index.template.html — Nav-Inhalt passte zwischen 900px
+     und ~1080px nicht mehr in die Breite, wurde aber noch nicht auf das
+     Hamburger-Menü umgestellt (rechtsseitig abgeschnitten). Bruchmarke
+     auf 1040px angehoben. */
   @media (max-width:1040px) {
     .nav-links { display:none; }
     .nav-links.show { display:flex; position:absolute; top:66px; left:0; right:0; flex-direction:column; gap:2px; background:var(--paper); border-bottom:1px solid var(--line); padding:12px var(--gut); align-items:stretch; }
@@ -309,7 +313,7 @@
 <span class="tag" id="spot-tag">Gesundheit · weltweit</span>
 <h3 id="spot-title">UNICEF meldet Fortschritte bei Bildung für Mädchen</h3>
 <p id="spot-text"><p>UNICEF beschreibt in einem aktuellen Beitrag zur Lage der Bildung weltweit, dass sich der Zugang zu Schule und Lernen für viele Kinder verbessert hat – besonders für Mädchen in mehreren Regionen. Das ist eine wichtige positive Entwicklung, weil Bildung laut UNICEF ein zentraler Hebel für Gesundheit, Einkommen und langfristige Chancen bleibt.</p><p>Der Befund ist dennoch nicht gleichbedeutend mit Entwarnung: Millionen Kinder sind weiterhin von Lernarmut, Konflikten oder Armut betroffen. Die Richtung ist positiv, aber die Lücke zwischen Fortschritt und tatsächlicher Versorgung bleibt groß.</p></p>
-<p class="srcline" id="spot-src">Quelle: <a href="https://www.unicef.de/informieren/aktuelles/blog/-/gute-nachrichten/273462" rel="noopener" target="_blank">UNICEF Deutschland</a> · unbekannt</p>
+<p class="srcline" id="spot-src">Quelle: KI-recherchiert</p>
 </div>
 <div class="aside">
 <div class="bignum" id="spot-bignum">+mehr Bildung</div>
@@ -327,25 +331,25 @@
 </div>
 <div class="grid">
 <article class="gn" id="gn1">
-<span class="dom" id="gn1-dom">Klima &amp; Energie</span>
-<span aria-hidden="true" class="ico" id="gn1-icon">🌍</span>
-<h3 id="gn1-title">Erneuerbare überholen Kohle beim Strom</h3>
-<p id="gn1-text"><p>Im Jahr 2025 erzeugten erneuerbare Energien erstmals seit mehr als hundert Jahren <strong>mehr Strom als Kohle</strong>; ihr Anteil lag bei <strong>33,8 Prozent</strong>, Kohle bei <strong>33,0 Prozent</strong>.</p><p>Die Entwicklung gilt als struktureller Wendepunkt, weil der fossile Anteil damit nicht nur vorübergehend, sondern dauerhaft unter Druck gerät.</p></p>
-<span class="src" id="gn1-src">Quelle: <a href="https://denkstrom.org/kategorie/good_news/" rel="noopener" target="_blank">Denkstrom</a> · 2026</span>
+<span class="dom" id="gn1-dom">Gesundheit</span>
+<span aria-hidden="true" class="ico" id="gn1-icon">💉</span>
+<h3 id="gn1-title">Algerien eliminiert Trachom als Gesundheitsproblem</h3>
+<p id="gn1-text"><p>Die WHO hat Algerien am 23. April 2026 offiziell bestätigt, dass Trachom dort nicht mehr als öffentliches Gesundheitsproblem gilt. Das Land ist damit das 29. weltweit mit diesem Status.</p></p>
+<span class="src" id="gn1-src">Quelle: <a href="https://www.who.int/news/item/23-04-2026-algeria-eliminates-trachoma-as-a-public-health-problem" rel="noopener" target="_blank">Weltgesundheitsorganisation</a> · April 2026</span>
 <button class="story-more" onclick="openModal('vstory1')">Zum Hintergrund →</button></article>
 <article class="gn" id="gn2">
-<span class="dom" id="gn2-dom">Natur &amp; Artenschutz</span>
-<span aria-hidden="true" class="ico" id="gn2-icon">🐋</span>
-<h3 id="gn2-title">Nordkaper-Bestand wächst wieder leicht</h3>
-<p id="gn2-text"><p>Der Atlantische Nordkaper ist von 2023 auf 2024 um <strong>rund zwei Prozent</strong> gewachsen; der Bestand liegt nun bei <strong>384 Tieren</strong>.</p><p>Für eine der am stärksten bedrohten Walarten ist das ein vorsichtiger, aber messbarer Aufwärtstrend.</p></p>
-<span class="src" id="gn2-src">Quelle: <a href="https://www.watson.ch/wissen/international/750129184-11-positive-wissens-news-zum-jahresende" rel="noopener" target="_blank">Watson</a> · 2025</span>
+<span class="dom" id="gn2-dom">Klima &amp; Energie</span>
+<span aria-hidden="true" class="ico" id="gn2-icon">🌍</span>
+<h3 id="gn2-title">EU verschärft Klimaziel für 2040</h3>
+<p id="gn2-text"><p>Die EU hat ihr Klimagesetz um ein verbindliches Zwischenziel erweitert: Bis 2040 sollen die Treibhausgasemissionen um 90 Prozent gegenüber 1990 sinken. Das Gesetz trat am 7. April 2026 in Kraft und macht den Weg zur Klimaneutralität 2050 rechtlich verbindlicher.</p></p>
+<span class="src" id="gn2-src">Quelle: <a href="https://www.consilium.europa.eu/de/press/press-releases/2026/04/07/eu-climate-law-2040-target-adopted/" rel="noopener" target="_blank">Rat der Europäischen Union</a> · April 2026</span>
 <button class="story-more" onclick="openModal('vstory2')">Zum Hintergrund →</button></article>
 <article class="gn" id="gn3">
-<span class="dom" id="gn3-dom">Gesundheit</span>
-<span aria-hidden="true" class="ico" id="gn3-icon">💉</span>
-<h3 id="gn3-title">Neuer Dengue-Impfstoff verhindert in Studie schwere Verläufe</h3>
-<p id="gn3-text"><p>Das brasilianische Butantan-Institut meldete für seinen Dengue-Impfstoff in einer Fünfjahresstudie einen Schutz vor Hospitalisierungen. Das ist besonders relevant, weil Dengue weltweit weiter zunimmt und schwere Verläufe Gesundheitssysteme belasten.</p><p>Ein belastbarer Impfstoff könnte die Zahl der Klinikaufenthalte deutlich senken, wenn sich die Ergebnisse im Einsatz bestätigen.</p></p>
-<span class="src" id="gn3-src">Quelle: <a href="https://butantan.gov.br/" rel="noopener" target="_blank">Instituto Butantan</a> · 2025</span>
+<span class="dom" id="gn3-dom">Klima &amp; Energie</span>
+<span aria-hidden="true" class="ico" id="gn3-icon">🌍</span>
+<h3 id="gn3-title">EU reduziert CO2-Ausstoß seit 1990 deutlich</h3>
+<p id="gn3-text"><p>Die Treibhausgasemissionen der EU sind zwischen 1990 und 2023 um <strong>35 Prozent</strong> gesunken, obwohl Bevölkerung und Wirtschaft gewachsen sind.</p><p>Das ist ein belastbarer Fortschritt für den Klimaschutz, auch wenn der Rückgang je nach Branche sehr unterschiedlich ausfällt.</p></p>
+<span class="src" id="gn3-src">Quelle: <a href="https://science.lu/de/ziel-mir-keng-science-check/fuenf-positive-nachrichten-aus-dem-umweltschutz" rel="noopener" target="_blank">Science.lu</a> · 2024</span>
 <button class="story-more" onclick="openModal('vstory3')">Zum Hintergrund →</button></article>
 </div>
 </div>
@@ -401,17 +405,17 @@
 <div class="modal">
 <div class="modal-head"><h2 id="v1h">Hintergrund</h2><button class="modal-close" onclick="closeModal('vstory1')">✕ Schließen</button></div>
 <div class="modal-body">
-<span class="scat" id="vs1-modal-cat">Artenschutz · Welt · 2025</span>
-<h3 id="vs1-modal-title">Wie Schutzregeln der Grünen Meeresschildkröte den Weg aus der Krise ebneten</h3>
-<p class="lead" id="vs1-lead">Die Herabstufung der Grünen Meeresschildkröte auf der IUCN-Roten Liste ist mehr als ein Symbol. Sie zeigt, dass jahrelanger Schutz an Brutstränden, in Fanggebieten und auf Migrationsrouten messbare Wirkung entfalten kann.</p>
-<p id="vs1-intro"><p>Die <strong>Grüne Meeresschildkröte</strong> (Chelonia mydas) gehört zu den Arten, deren Bestände sich nach jahrzehntelangem Druck durch Fischerei, Eierraub, Küstenentwicklung und Beifang wieder erholen konnten. Nach der Aktualisierung der Roten Liste der IUCN gilt sie seit Oktober 2025 als <em>nicht gefährdet</em>; zuvor war sie als <em>stark gefährdet</em> eingestuft. Fachberichte verweisen darauf, dass die weltweite Population seit den 1970er Jahren um etwa <strong>28 Prozent</strong> gewachsen ist, in der nordatlantischen Teilpopulation sogar um mehr als <strong>130 Prozent</strong> seit den 1980er Jahren.</p></p>
+<span class="scat" id="vs1-modal-cat">Gesundheit · Algerien · 2026</span>
+<h3 id="vs1-modal-title">Wie Algerien den jahrzehntelangen Kampf gegen Trachom gewann</h3>
+<p class="lead" id="vs1-lead">Algerien hat Trachom als öffentliches Gesundheitsproblem beendet und zählt nun zu einer kleinen Gruppe von Ländern, in denen die Krankheit von der WHO nicht mehr als solche eingestuft wird.[1] Der Erfolg beruht auf langen Investitionen in Fallfindung, Behandlung und Überwachung und nicht auf einem einzelnen Durchbruch.[1][7]</p>
+<p id="vs1-intro"><p>Die WHO bestätigte am 23. April 2026 die Elimination von Trachom als öffentliches Gesundheitsproblem in Algerien und ordnete das Land damit als 29. Staat weltweit mit diesem Status ein.[1][7] Trachom ist die weltweit führende infektiöse Ursache vermeidbarer Erblindung, weshalb der Schritt für die öffentliche Gesundheit besonders bedeutsam ist.[7] Nach WHO-Angaben erfüllten landesweite, WHO-konforme Erhebungen aus dem Jahr 2022 die Schwellenwerte für aktives Trachom in allen Gebieten; beim trachomatösen Trichiasis-Risiko blieb nur in drei Gebieten nachzuarbeiten, bevor die vollständige Abdeckung erreicht wurde.[1]</p></p>
 <div class="fact">
-<p id="vs1-fact1">IUCN stufte die Art 2025 von „stark gefährdet“ auf „nicht gefährdet“ herab.</p>
-<p id="vs1-fact2">Die globale Population der Grünen Meeresschildkröte ist seit den 1970er Jahren um etwa 28 Prozent gewachsen.</p>
-<p id="vs1-fact3">Die nordatlantische Subpopulation legte seit den 1980er Jahren um mehr als 130 Prozent zu.</p>
+<p id="vs1-fact1"><strong>Algerien ist laut WHO das 29. Land weltweit mit eliminierter Trachom-Belastung als öffentliches Gesundheitsproblem.[1]</strong></p>
+<p id="vs1-fact2"><strong>WHO-konforme Erhebungen aus dem Jahr 2022 bestätigten, dass der Schwellenwert für aktives Trachom in allen Gebieten erreicht war.[1]</strong></p>
+<p id="vs1-fact3"><strong>Im Dezember 2025 reichte das algerische Gesundheitsministerium das Dossier ein, auf dessen Grundlage die WHO die Elimination validierte.[1]</strong></p>
 </div>
-<p id="vs1-einordnung"><p>Der Erfolg ist real, aber er ist regional unterschiedlich und kein Freifahrtschein. Die Art profitiert dort, wo Schutzgebiete, kontrollierte Fischerei und der Schutz von Nistplätzen langfristig durchgesetzt wurden; zugleich bleiben viele Meeresschildkrötenarten weiter bedroht, und auch die Grüne Meeresschildkröte ist auf intakte Seegraswiesen, küstennahe Lebensräume und wirksame Kontrollen angewiesen. Die Herabstufung zeigt deshalb vor allem, dass Naturschutz dort wirkt, wo er konsequent finanziert und über Jahrzehnte umgesetzt wird.</p></p>
-<p class="modal-src" id="vs1-modal-src">Quellen: <a href="https://www.wwf.de/2025/oktober/wwf-pressestatement-zur-aktualisierung-der-roten-liste-der-iucn" rel="noopener" target="_blank">World Wide Fund For Nature Deutschland</a>, 2025-10-10 · <a href="https://www.turtle-foundation.org/gruene-meeresschildkroete-iucn-status/" rel="noopener" target="_blank">Turtle Foundation</a>, 2025-10-10</p>
+<p id="vs1-einordnung"><p>Die Meldung ist vor allem deshalb stark, weil sie nicht nur eine Statistik beschreibt, sondern eine langjährige Kontrollstrategie mit Nachweis und Nachsorge abschließt.[1][7] Offen bleibt dennoch, wie stabil der Erfolg langfristig bleibt: Die WHO betont ausdrücklich, dass auch nach der Validierung weiter überwacht werden soll, damit es in ehemals endemischen Regionen nicht zu einer Rückkehr der Krankheit kommt.[1]</p></p>
+<p class="modal-src" id="vs1-modal-src">Quellen: <a href="https://africacdc.org/news-item/africa-cdc-statement-on-algerias-elimination-of-trachoma-as-a-public-health-problem/" rel="noopener" target="_blank">Africa CDC</a>, 2026-04-24</p>
 </div>
 </div>
 </div>
@@ -419,17 +423,17 @@
 <div class="modal">
 <div class="modal-head"><h2 id="v2h">Hintergrund</h2><button class="modal-close" onclick="closeModal('vstory2')">✕ Schließen</button></div>
 <div class="modal-body">
-<span class="scat" id="vs2-modal-cat">Klima · Europäische Union · 2026</span>
-<h3 id="vs2-modal-title">Warum das neue 2040-Ziel die EU-Klimapolitik deutlich verbindlicher macht</h3>
-<p class="lead" id="vs2-lead">Die EU hat ihr Klimagesetz um ein verbindliches Ziel für 2040 ergänzt. Damit wird der Pfad zur Klimaneutralität 2050 enger rechtlich vorgezeichnet und politisch schwerer rückgängig zu machen.</p>
-<p id="vs2-intro"><p>Das europäische Klimagesetz ist der zentrale Rechtsrahmen für den Umbau der Wirtschaft in Richtung Klimaneutralität. Mit dem neuen Zwischenziel soll die EU ihre Treibhausgasemissionen bis 2040 um 90 Prozent gegenüber 1990 senken; das Gesetz trat am 7. April 2026 in Kraft und verankert den Kurs bis 2050 stärker als zuvor.</p><p>Der Hintergrund ist, dass die EU für die Jahrzehnte vor 2050 einen glaubwürdigen Reduktionspfad braucht: Investitionen in Stromnetze, Industrieprozesse, Gebäude, Verkehr und Landnutzung müssen über viele Jahre stabil bleiben. Genau deshalb sind Zwischenziele politisch so wichtig, weil sie Fortschritt messbar machen und spätere Korrekturen erschweren.</p></p>
+<span class="scat" id="vs2-modal-cat">Klimapolitik · Europäische Union · 2026</span>
+<h3 id="vs2-modal-title">Warum das neue 2040-Ziel die EU-Klimapolitik verbindlicher macht</h3>
+<p class="lead" id="vs2-lead">Die EU hat ihr Klimagesetz mit einem verbindlichen Zwischenziel für 2040 nachgeschärft und den Pfad zur Klimaneutralität 2050 juristisch enger gefasst.[11] Der neue Rahmen soll Planungssicherheit schaffen, erhöht aber auch den Druck auf Mitgliedstaaten und Branchen, die bisher langsamer vorankommen.[11]</p>
+<p id="vs2-intro"><p>Nach der Reform des EU-Klimagesetzes soll die Treibhausgasbilanz der Union bis 2040 um 90 Prozent gegenüber 1990 sinken; das Gesetz trat am 7. April 2026 in Kraft, wie in der Vorlage der Tagesmeldung angegeben.[11] Damit wird aus einem langfristigen Fernziel ein deutlich strengerer Zwischenpfad, der für Energie, Industrie, Verkehr und Landwirtschaft konkreter wird.[11] Der politische Kern liegt darin, dass die EU nicht mehr nur ein Enddatum für Klimaneutralität setzt, sondern den Weg dorthin rechtlich stärker absichert.[11]</p></p>
 <div class="fact">
-<p id="vs2-fact1">Das 2040-Zwischenziel sieht eine Reduktion der EU-Emissionen um 90 Prozent gegenüber 1990 vor.</p>
-<p id="vs2-fact2">Das Klimagesetz mit dem neuen Ziel trat am 7. April 2026 in Kraft.</p>
-<p id="vs2-fact3">Das Ziel ergänzt den bestehenden Rechtsrahmen zur Klimaneutralität 2050 und macht den Transformationspfad verbindlicher.</p>
+<p id="vs2-fact1"><strong>Das neue EU-Ziel sieht eine Reduktion der Treibhausgasemissionen um 90 Prozent bis 2040 gegenüber 1990 vor.[11]</strong></p>
+<p id="vs2-fact2"><strong>Die EU verankert damit einen zusätzlichen gesetzlichen Zwischenschritt auf dem Weg zur Klimaneutralität 2050.[11]</strong></p>
+<p id="vs2-fact3"><strong>Das geänderte Klimagesetz trat am 7. April 2026 in Kraft.[11]</strong></p>
 </div>
-<p id="vs2-einordnung"><p>Die rechtliche Verschärfung ist nur dann wirksam, wenn sie in konkrete Maßnahmen übersetzt wird. Offen bleibt vor allem, wie schnell Mitgliedstaaten ihre Industrie, Infrastruktur und Haushalte anpassen können und ob soziale Ausgleichsmechanismen mit dem Tempo der Emissionsminderung Schritt halten.</p></p>
-<p class="modal-src" id="vs2-modal-src">Quellen: <a href="https://climate.ec.europa.eu/eu-action/european-climate-law_en" rel="noopener" target="_blank">European Commission</a>, 7. April 2026 · <a href="https://eur-lex.europa.eu/" rel="noopener" target="_blank">EUR-Lex</a>, 7. April 2026 · <a href="https://www.consilium.europa.eu/" rel="noopener" target="_blank">European Council</a>, 7. April 2026</p>
+<p id="vs2-einordnung"><p>Die politische Bedeutung ist hoch, weil ein verbindlicher Zwischenwert die Handlungsrichtung klarer macht als ein bloßes Fernziel.[11] Die offene Frage bleibt aber die Umsetzung: Je nach Sektor fallen Investitionsbedarf, Umrüstungstempo und soziale Folgekosten sehr unterschiedlich aus, sodass das Ziel rechtlich klarer ist als der Weg dorthin wirtschaftlich einheitlich.[11]</p></p>
+<p class="modal-src" id="vs2-modal-src">Quellen: <a href="https://eur-lex.europa.eu/" rel="noopener" target="_blank">Europäische Union</a>, 2026-04-07</p>
 </div>
 </div>
 </div>
@@ -437,17 +441,17 @@
 <div class="modal">
 <div class="modal-head"><h2 id="v3h">Hintergrund</h2><button class="modal-close" onclick="closeModal('vstory3')">✕ Schließen</button></div>
 <div class="modal-body">
-<span class="scat" id="vs3-modal-cat">Entwicklung · Welt · 1995-2025</span>
-<h3 id="vs3-modal-title">Wie globaler Wohlstandsgewinn Millionen Kinder aus Ausbeutung und Armut holte</h3>
-<p class="lead" id="vs3-lead">Seit 1995 ist der Anteil der Kinderarbeit unter 5- bis 14-Jährigen von 20 auf 10 Prozent gesunken, zugleich fiel die extreme Armut von 39 auf 10 Prozent der Weltbevölkerung. Beide Entwicklungen zeigen einen langen, aber ungleich verteilten Fortschritt.[1]</p>
-<p id="vs3-intro"><p>Der Rückgang von Kinderarbeit und extremer Armut gehört zu den sichtbarsten sozialen Veränderungen der vergangenen drei Jahrzehnte.[1] Er fällt in eine Zeit, in der die Weltbevölkerung stark gewachsen ist, was die absoluten Fortschritte noch bemerkenswerter macht: Trotz mehr Menschen lebten deutlich weniger in extremer Armut, und der Anteil arbeitender Kinder halbierte sich.[1]</p></p>
+<span class="scat" id="vs3-modal-cat">Klima · Europäische Union · 2026</span>
+<h3 id="vs3-modal-title">Wie die EU ihre Emissionen senkte, obwohl Wirtschaft und Bevölkerung wuchsen</h3>
+<p class="lead" id="vs3-lead">Die EU hat ihre Treibhausgasemissionen seit 1990 deutlich gesenkt und damit gezeigt, dass Wachstum und Emissionsminderung zumindest zeitweise entkoppelt werden können.[12] Der Rückgang ist real, fällt aber je nach Branche sehr unterschiedlich aus.[12]</p>
+<p id="vs3-intro"><p>Zwischen 1990 und 2023 sanken die Treibhausgasemissionen der EU um 35 Prozent, obwohl Bevölkerung und Wirtschaft in derselben Zeit gewachsen sind.[12] Das ist ein wichtiger Indikator dafür, dass Effizienzgewinne, der Umbau des Energiesystems und strengere Regeln messbare Wirkung entfalten können.[12] Gleichzeitig bleibt die Bilanz ungleich verteilt, weil einige Sektoren schneller dekarbonisiert werden als andere.[12]</p></p>
 <div class="fact">
-<p id="vs3-fact1">Der Anteil der Kinderarbeit unter 5- bis 14-Jährigen sank von 20 auf 10 Prozent.[1]</p>
-<p id="vs3-fact2">Der Anteil der Menschen in extremer Armut fiel von 39 auf 10 Prozent.[1]</p>
-<p id="vs3-fact3">Diese Verbesserungen vollzogen sich trotz stark wachsender Weltbevölkerung.[1]</p>
+<p id="vs3-fact1"><strong>Die Treibhausgasemissionen der EU lagen 2023 um 35 Prozent unter dem Niveau von 1990.[12]</strong></p>
+<p id="vs3-fact2"><strong>Trotz des Rückgangs sind Bevölkerung und Wirtschaft der EU im selben Zeitraum gewachsen.[12]</strong></p>
+<p id="vs3-fact3"><strong>Der Emissionsrückgang verläuft laut Meldung branchenabhängig sehr unterschiedlich.[12]</strong></p>
 </div>
-<p id="vs3-einordnung"><p>Die Entwicklung ist positiv, aber sie verläuft nicht gleichmäßig: Extreme Armut konzentriert sich weiterhin in Krisenregionen, und Kinderarbeit bleibt besonders dort hartnäckig, wo Einkommen, Schulzugang und soziale Sicherung schwach sind.[1] Zudem verdecken globale Durchschnittswerte Unterschiede zwischen Ländern und Bevölkerungsgruppen, sodass Fortschritt auf Weltebene nicht automatisch bedeutet, dass die am stärksten benachteiligten Kinder bereits erreicht sind.</p></p>
-<p class="modal-src" id="vs3-modal-src">Quellen: <a href="https://www.worldbank.org/" rel="noopener" target="_blank">World Bank</a>, 2026-07-15</p>
+<p id="vs3-einordnung"><p>Der Fortschritt ist belastbar, aber er ist noch kein Beleg dafür, dass die EU den gesamten Restpfad automatisch schafft.[12] Gerade die sektoralen Unterschiede sind entscheidend: Je stärker sich Emissionen in schwer umstellbaren Bereichen konzentrieren, desto schwieriger wird es, weitere große Reduktionen im gleichen Tempo zu erreichen.[12]</p></p>
+<p class="modal-src" id="vs3-modal-src">Quellen: <a href="https://www.eea.europa.eu/" rel="noopener" target="_blank">Europäische Umweltagentur</a>, 2026-08-03</p>
 </div>
 </div>
 </div>
