@@ -22,3 +22,5 @@ infos.txt
 .env
 .font-cache/
 files
+__pycache__/
+*.pyc

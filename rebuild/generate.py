@@ -366,6 +366,16 @@ _STOPWORTE = {
     "wir", "du", "ich", "damit", "dabei", "dadurch", "diesen", "wurde",
 }
 
+# Wortgleicher Platzhalter-Titel, den _reset_card_to_placeholder für einen
+# leeren Slot einträgt (siehe carry_over_dynamic_content). Muss überall, wo
+# eine bestehende Schlagzeile mit einer frischen verglichen wird, explizit
+# ausgenommen werden — sonst wird ein leerer Slot fälschlich als "Inhalt"
+# behandelt, gegen den ein völlig anderer, echter Treffer als "Duplikat"
+# erkannt werden kann (siehe dedupe_rubrik_topics).
+PLATZHALTER_HEADLINE_TEXTE = {
+    "Will be updated on the next run.", "Wird beim nächsten Lauf aktualisiert.",
+}
+
 
 def _significant_words(text: str) -> set:
     words = re.findall(r"[a-zäöüß]{4,}", text.lower())
@@ -672,6 +682,85 @@ def _fetch_fallback_sport_item(date_label: str, avoid_entities: list, verbotene_
     return items_list if isinstance(items_list, list) else None
 
 
+def _fetch_fallback_economic_item(date_label: str, avoid_entities: list, verbotene_urls: list = None):
+    """Zweite, von Sport UNABHÄNGIGE Fallback-Kategorie (Wirtschafts-/
+    Finanz-Vergleichsranking, z.B. schwächste Währung, schwächster
+    Aktienindex, niedrigstes Wirtschaftswachstum im Ländervergleich).
+
+    WICHTIG (Bugfix, gefunden bei gründlicher Nachprüfung der Fill-Rate):
+    _fetch_fallback_sport_item ist als EINZIGE Fallback-Kategorie ein
+    Engpass, sobald in einem Lauf MEHRERE Plätze gleichzeitig auf den
+    Fallback angewiesen sind — jeder weitere Platz muss eine von den
+    bereits gewählten Entitäten dieses Laufs UNTERSCHIEDLICHE Sportliga
+    finden, was den verbleibenden, tatsächlich noch unverbrauchten
+    Lösungsraum von Versuch zu Versuch verengt. Eine zweite, inhaltlich
+    komplett andere Kategorie (Wirtschaft/Finanzen statt Sport) gibt
+    einem Lauf mit mehreren offenen Plätzen einen zweiten, unabhängigen
+    Lösungsraum, statt alle Plätze um dieselbe enge Nische konkurrieren
+    zu lassen (siehe get_daily_items, wo beide Kategorien abwechselnd
+    versucht werden)."""
+    system = (
+        "Du bist Redakteur von schlusslicht.de, einem deutschen "
+        f"linkssatirischen Magazin. Heute ist {date_label}.\n\n"
+        "Finde GENAU EINE echte, aktuelle wirtschaftliche oder finanzielle "
+        "Schlusslicht-Meldung mit einem klaren Vergleichs-/Rankingbezug — "
+        "z.B. die schwächste Währung der Woche, der schwächste Aktienindex "
+        "weltweit, das Land mit dem niedrigsten Wirtschaftswachstum oder der "
+        "höchsten Inflation im aktuellen Ländervergleich, der Rohstoff mit "
+        "dem größten Kursverlust. Hauptsache eine ECHTE, mit Websuche "
+        "belegbare aktuelle Rangliste (höchstens 30 Tage alter Stand) mit "
+        "dem tatsächlichen Schlusslicht darin. Erfinde NIEMALS Länder, "
+        "Werte, Indizes oder Quellen — findest du keine echte, mit "
+        "Websuche belegbare Rangliste, liefere GAR KEINEN Eintrag (leeres "
+        "'items'-Array) statt etwas zu erfinden. Kein Prozess-Kommentar "
+        "über die eigene Suche als Schlagzeile/Kommentar. Die Quellen-URL "
+        "muss ein konkreter Artikel sein, keine generische "
+        "Übersichtsseite.\n\n"
+        + (
+            f"Diese Fälle/Entitäten wurden zuletzt schon verwendet — wähle "
+            f"KEINEN davon erneut: {', '.join(avoid_entities)}.\n\n"
+            if avoid_entities else ""
+        )
+        + (
+            f"Diese URLs sind gesperrt, NIEMALS verwenden: "
+            f"{', '.join(verbotene_urls)}.\n\n"
+            if verbotene_urls else ""
+        )
+        + "Stil: schwarze Satire mit menschlicher Wärme, klar links-"
+        "gesellschaftskritisch, aber sachlich. Kommentar max 130 Zeichen. "
+        "Antworte AUSSCHLIESSLICH auf " + ("Englisch (US)" if LANG == "en" else "Deutsch") +
+        " — keine nicht-lateinischen Schriftzeichen."
+    )
+    prompt = (
+        "Recherchiere GENAU EINE wirtschaftliche/finanzielle Schlusslicht-"
+        "Meldung mit Rangliste. Nutze die Websuche.\n\n"
+        "Antworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown:\n"
+        "{\n"
+        '  "items": [\n'
+        "    {\n"
+        '      "entity": "Kurzname des Landes/der Währung/des Index — PFLICHTFELD",\n'
+        '      "thema": "Bereich, z.B. \'Wirtschaft\' oder \'Finanzen\'",\n'
+        '      "kicker": "z.B. \'Wirtschaft · Wechselkurse\'",\n'
+        '      "icon": "ein passendes Emoji",\n'
+        '      "headline": "kurze, konkrete Schlagzeile mit echten Namen/Zahlen",\n'
+        '      "kommentar": "individueller Kommentar, max 130 Zeichen",\n'
+        '      "table_title": "Kurztitel der Rangliste",\n'
+        '      "table_tag": "Zeitraum, z.B. \'Stand August 2026\'",\n'
+        '      "rows": [{"rank": "N-2", "name": "Fall A", "value": "Zahl"}, {"rank": "N-1", "name": "Fall B", "value": "Zahl"}, {"rank": "N", "name": "das Schlusslicht", "value": "Zahl"}],\n'
+        '      "foot": "1 Satz Einordnung für die Fußzeile",\n'
+        '      "quelle": "Quellenname und Datum, KEINE Zitationsnummern wie [1]",\n'
+        '      "quelle_url": "die ECHTE, vollständige URL der Quelle (https://...) — PFLICHTFELD"\n'
+        "    }\n"
+        "  ]\n"
+        "}"
+    )
+    result = call_api_json(system, prompt, max_tokens=1200)
+    if not result:
+        return None
+    items_list = result.get("items")
+    return items_list if isinstance(items_list, list) else None
+
+
 _GENERISCHE_PLACEHOLDER_DOMAINS = {
     "example.com", "example.org", "example.net", "example.edu",
     "test.com", "sample.com", "localhost", "127.0.0.1", "yourdomain.com",
@@ -934,6 +1023,54 @@ def save_daily_items_history(history: list) -> None:
         log(f"  Tagesmeldungs-Historie konnte nicht gespeichert werden: {exc}")
 
 
+# WICHTIG (neu, gefunden bei der Untersuchung einer live gemeldeten
+# niedrigen Fill-Rate): Bisher gab es KEINE dauerhaft auswertbare
+# Aufzeichnung, WARUM genau ein Platz an einem bestimmten Tag leer blieb —
+# nur die flüchtigen Actions-Logs, auf die ohne Repo-Admin-Rechte kein
+# nachträglicher Zugriff möglich ist. Diese kompakte, committete Historie
+# hält pro Lauf fest, wie jeder der N_ITEMS Plätze gefüllt wurde (frisch,
+# über welchen Fallback, oder leer geblieben), damit sich ein wiederholt
+# niedriger Füllgrad zukünftig anhand echter Daten statt Vermutungen
+# diagnostizieren lässt.
+FILL_RATE_LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fill_rate_log.json")
+FILL_RATE_LOG_KEEP_DAYS = 45
+
+
+def save_fill_rate_log(date_label: str, slot_herkunft: dict) -> None:
+    entry = {
+        "date": datetime.date.today().isoformat(),
+        "date_label": date_label,
+        "lang": LANG,
+        "slots": dict(sorted(slot_herkunft.items(), key=lambda kv: int(kv[0]))),
+        "frisch": sum(1 for v in slot_herkunft.values() if v == "frisch"),
+        "fallback": sum(1 for v in slot_herkunft.values() if v.startswith("fallback:")),
+        "leer": sum(1 for v in slot_herkunft.values() if v == "leer"),
+    }
+    history = []
+    if os.path.exists(FILL_RATE_LOG_PATH):
+        try:
+            with open(FILL_RATE_LOG_PATH, encoding="utf-8") as fh:
+                data = json.load(fh)
+            history = data if isinstance(data, list) else []
+        except (json.JSONDecodeError, OSError):
+            history = []
+    cutoff = datetime.date.today() - datetime.timedelta(days=FILL_RATE_LOG_KEEP_DAYS)
+    pruned = []
+    for e in history:
+        try:
+            d = datetime.date.fromisoformat(e.get("date", ""))
+        except (ValueError, TypeError, AttributeError):
+            continue
+        if d >= cutoff:
+            pruned.append(e)
+    pruned.append(entry)
+    try:
+        with open(FILL_RATE_LOG_PATH, "w", encoding="utf-8") as fh:
+            json.dump(pruned, fh, ensure_ascii=False, indent=2)
+    except OSError as exc:
+        log(f"  Fill-Rate-Log konnte nicht gespeichert werden: {exc}")
+
+
 BATCH_SIZE = 3  # siehe get_daily_items: kleinere Aufrufe recherchieren nachweislich zuverlässiger
 
 
@@ -956,6 +1093,7 @@ def get_daily_items(date_label: str, avoid_entities: list, vorhandene_ueberschri
     Entitäten als Vermeidungsliste, damit sich beide Gruppen nicht
     überschneiden."""
     all_items = {}
+    slot_herkunft = {}  # siehe save_fill_rate_log: "frisch" | "fallback:<fn>" | "leer"
     schon_gewaehlte_entitaeten = list(avoid_entities)
     bad_url_history = load_bad_urls()
     verbotene_urls = sorted({
@@ -1122,6 +1260,8 @@ def get_daily_items(date_label: str, avoid_entities: list, vorhandene_ueberschri
 
             if neue_treffer:
                 gruppen_treffer.update(neue_treffer)
+                for key_neu in neue_treffer:
+                    slot_herkunft[key_neu] = "frisch"
                 for item in neue_treffer.values():
                     entity = (item.get("entity") or "").strip()
                     if entity:
@@ -1152,24 +1292,40 @@ def get_daily_items(date_label: str, avoid_entities: list, vorhandene_ueberschri
         # Rankingbezug, keine Kriminalität, kein Duplikat, verifizierbare
         # Quelle) — auch mit 4 Versuchen bleibt ein Platz manchmal leer.
         # Bevor endgültig aufgegeben wird, versucht diese Stufe für JEDEN
-        # noch fehlenden Platz den deutlich engeren, fast immer erfüllbaren
-        # Fallback (siehe _fetch_fallback_sport_item): eine Sport-Liga-
-        # Tabellenletzten-Meldung. Läuft durch dieselbe Validierung wie ein
-        # regulärer Treffer (keine Ausnahme von den Qualitätsprüfungen).
+        # noch fehlenden Platz einen deutlich engeren, fast immer erfüllbaren
+        # Fallback. WICHTIG (2. Bugfix, gefunden bei gründlicher Nachprüfung
+        # der Fill-Rate): eine EINZIGE Fallback-Kategorie (nur Sport) wird
+        # zum Engpass, sobald mehrere Plätze GLEICHZEITIG auf den Fallback
+        # angewiesen sind — jeder weitere Platz muss eine von den bereits in
+        # diesem Lauf gewählten Entitäten unterschiedliche Sportliga finden,
+        # was den Lösungsraum von Slot zu Slot verengt. _FALLBACK_FETCHERS
+        # enthält deshalb zwei inhaltlich unabhängige Kategorien (Sport,
+        # Wirtschaft/Finanzen), die pro Versuch abwechselnd durchprobiert
+        # werden — UND die Versuche pro Platz sind von 2 auf 3 erhöht.
+        # Läuft durch dieselbe Validierung wie ein regulärer Treffer (keine
+        # Ausnahme von den Qualitätsprüfungen).
         fehlende_keys = [
             str(batch_start + idx + 1) for idx in range(groesse)
             if str(batch_start + idx + 1) not in gruppen_treffer
         ]
         fallback_verwendete_urls = set()
+        # WICHTIG: als lokale Liste bei jedem Aufruf neu gebildet (nicht als
+        # Modul-Konstante) — Tests/Monkeypatches ersetzen typischerweise
+        # g._fetch_fallback_sport_item als Modul-Attribut; eine einmalig auf
+        # Modulebene gebaute Liste würde weiter auf die ALTE Funktion zeigen,
+        # da sie die Objektreferenz zum Ladezeitpunkt einfriert statt den
+        # Namen bei jedem Aufruf neu über die Modul-Globals aufzulösen.
+        fallback_fetchers = [_fetch_fallback_sport_item, _fetch_fallback_economic_item]
         for key in fehlende_keys:
-            for fallback_versuch in range(2):
-                fallback_items = _fetch_fallback_sport_item(
+            for fallback_versuch in range(3):
+                fetcher = fallback_fetchers[fallback_versuch % len(fallback_fetchers)]
+                fallback_items = fetcher(
                     date_label, schon_gewaehlte_entitaeten,
                     verbotene_urls + neue_bad_urls + list(fallback_verwendete_urls),
                 ) or []
                 if not fallback_items or not isinstance(fallback_items[0], dict):
-                    log(f"  Meldung {key}: Fallback (Sport-Tabellenletzter) lieferte "
-                        f"keine verwertbare Antwort (Versuch {fallback_versuch + 1}/2).")
+                    log(f"  Meldung {key}: Fallback ({fetcher.__name__}) lieferte "
+                        f"keine verwertbare Antwort (Versuch {fallback_versuch + 1}/3).")
                     continue
                 item = fallback_items[0]
                 headline = (item.get("headline") or "").strip()
@@ -1202,16 +1358,19 @@ def get_daily_items(date_label: str, avoid_entities: list, vorhandene_ueberschri
                 if not verify_url(item.get("quelle_url") or ""):
                     log(f"  Meldung {key}: Fallback-Quelle nicht erreichbar "
                         f"({url or 'keine URL angegeben'}) — verworfen "
-                        f"(Versuch {fallback_versuch + 1}/2).")
+                        f"(Versuch {fallback_versuch + 1}/3).")
                     continue
                 gruppen_treffer[key] = item
+                slot_herkunft[key] = f"fallback:{fetcher.__name__}"
                 entity = (item.get("entity") or "").strip()
                 if entity:
                     schon_gewaehlte_entitaeten.append(entity)
                 if url:
                     fallback_verwendete_urls.add(url)
-                log(f"  Meldung {key}: über Fallback (Sport-Tabellenletzter) gefüllt.")
+                log(f"  Meldung {key}: über Fallback ({fetcher.__name__}) gefüllt.")
                 break
+            else:
+                slot_herkunft[key] = "leer"
 
         all_items.update(gruppen_treffer)
 
@@ -1225,6 +1384,14 @@ def get_daily_items(date_label: str, avoid_entities: list, vorhandene_ueberschri
     all_items = dedupe_rubrik_topics(all_items, vorhandene_ueberschriften)
     all_items = strip_repeated_boilerplate(all_items)
     all_items = review_and_fix_items(all_items, date_label)
+
+    # Ein zuvor als "frisch"/"fallback" verbuchter Slot kann durch die drei
+    # Schritte oben (Dedupe/Boilerplate/Review) nachträglich wieder geleert
+    # werden — fürs Fill-Rate-Log zählt nur der TATSÄCHLICHE Endzustand.
+    for key in slot_herkunft:
+        if not all_items.get(key):
+            slot_herkunft[key] = "leer"
+    save_fill_rate_log(date_label, slot_herkunft)
 
     neue_daily_history_eintraege = [
         {
@@ -1494,8 +1661,24 @@ def dedupe_rubrik_topics(items: dict, vorhandene_ueberschriften: list = None) ->
     die Schlagzeilen allein (kurz, faktenbasiert: Ort, Beteiligte, Tat)
     überlappten dagegen zu 60% — ein deutlich zuverlässigeres Signal für
     'derselbe reale Fall', da Kommentartext viel mehr variable, stilistische
-    Füllwörter beisteuert, die die Wortüberlappungs-Quote verwässern."""
-    vorhandene_ueberschriften = [h.strip() for h in (vorhandene_ueberschriften or []) if (h or "").strip()]
+    Füllwörter beisteuert, die die Wortüberlappungs-Quote verwässern.
+
+    WICHTIG (Bugfix, gefunden bei gründlicher Nachprüfung der Fill-Rate):
+    Ein leerer Slot zeigt wortgleich denselben generischen Platzhaltertitel
+    (siehe PLATZHALTER_HEADLINE_TEXTE). Ohne Ausschluss läuft der
+    Wortüberlappungs-Vergleich unten GEGEN diesen Platzhaltertext — und
+    dessen wenige, aber nicht-triviale Inhaltswörter ('nächsten', 'lauf',
+    'aktualisiert', 'beim') können zufällig mit einer völlig unabhängigen,
+    frisch verifizierten Meldung überlappen. Die Folge: ein mit viel Aufwand
+    (mehrere Recherche- und Fallback-Versuche) gefundener echter Treffer
+    wird HIER, ganz am Ende und OHNE weiteren Retry, wieder verworfen — und
+    genau dieser Slot bleibt für den Tag leer. Je mehr Slots bereits leer
+    sind (mehrfach derselbe Platzhaltertext in vorhandene_ueberschriften),
+    desto häufiger schlägt das zu — ein sich selbst verstärkender Effekt."""
+    vorhandene_ueberschriften = [
+        h.strip() for h in (vorhandene_ueberschriften or [])
+        if (h or "").strip() and h.strip() not in PLATZHALTER_HEADLINE_TEXTE
+    ]
     seen_themen = {}
     kept_texts = {}
 
@@ -2105,15 +2288,12 @@ def carry_over_dynamic_content(template_html: str, output_html: str) -> str:
     # Ausschluss hätte die Redundanz-Prüfung mehrere frisch bereinigte
     # Platzhalter fälschlich gegenseitig als 'Duplikat' erkannt und noch
     # mehr Slots unnötig zurückgesetzt.
-    _platzhalter_texte = {
-        "Will be updated on the next run.", "Wird beim nächsten Lauf aktualisiert.",
-    }
     _slot_headlines = []
     for slot_i in range(1, N_ITEMS + 1):
         card = neu.select_one(f'article.rub[data-slot="{slot_i}"]')
         rtit = card.select_one(".rtit") if card is not None else None
         headline = rtit.get_text().strip() if rtit is not None else ""
-        if headline and headline not in _platzhalter_texte and not _ist_meta_kommentar(headline):
+        if headline and headline not in PLATZHALTER_HEADLINE_TEXTE and not _ist_meta_kommentar(headline):
             _slot_headlines.append((slot_i, card, headline))
 
     for i, (slot_i, card, headline) in enumerate(_slot_headlines):
