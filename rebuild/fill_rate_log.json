@@ -30,5 +30,37 @@
     "frisch": 1,
     "fallback": 0,
     "leer": 5
+  },
+  {
+    "date": "2026-08-06",
+    "date_label": "Donnerstag, 6. August 2026",
+    "lang": "de",
+    "slots": {
+      "1": "fallback:_fetch_fallback_sport_item",
+      "2": "fallback:_fetch_fallback_economic_item",
+      "3": "fallback:_fetch_fallback_sport_item",
+      "4": "leer",
+      "5": "frisch",
+      "6": "frisch"
+    },
+    "frisch": 2,
+    "fallback": 3,
+    "leer": 1
+  },
+  {
+    "date": "2026-08-06",
+    "date_label": "Thursday, August 6, 2026",
+    "lang": "en",
+    "slots": {
+      "1": "frisch",
+      "2": "leer",
+      "3": "frisch",
+      "4": "frisch",
+      "5": "leer",
+      "6": "leer"
+    },
+    "frisch": 3,
+    "fallback": 0,
+    "leer": 3
   }
 ]
