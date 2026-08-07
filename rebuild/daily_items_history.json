@@ -88,5 +88,47 @@
     "entity": "Germany",
     "thema": "Football",
     "headline": "Germany exits the 2026 World Cup after a penalty shootout loss to Paraguay in Boston"
+  },
+  {
+    "date": "2026-08-07",
+    "entity": "Volkswagen",
+    "thema": "Auto",
+    "headline": "Volkswagen will die Modellpalette um bis zu 50 Prozent verkleinern und zählt damit zu den radikalsten Schrumpfern"
+  },
+  {
+    "date": "2026-08-07",
+    "entity": "Jordanien",
+    "thema": "Sicherheit",
+    "headline": "Jordanien meldet Beschuss aus Iran und landet im Vergleich der Lageberichte am Krisenende"
+  },
+  {
+    "date": "2026-08-07",
+    "entity": "DAX",
+    "thema": "Börse",
+    "headline": "DAX fällt im Vergleich der großen Indizes auf die schwächere Seite"
+  },
+  {
+    "date": "2026-08-07",
+    "entity": "Eritrea Pressefreiheit",
+    "thema": "Rechte",
+    "headline": "Eritrea bleibt im Pressefreiheits-Vergleich ganz unten in der globalen Tabelle"
+  },
+  {
+    "date": "2026-08-07",
+    "entity": "FC Heidenheim 1846",
+    "thema": "Fußball",
+    "headline": "Heidenheim bleibt mit 14 Punkten am Tabellenende der Bundesliga"
+  },
+  {
+    "date": "2026-08-07",
+    "entity": "Cork City",
+    "thema": "Football",
+    "headline": "Cork City sits last after 22 matches with 11 points."
+  },
+  {
+    "date": "2026-08-07",
+    "entity": "Germany",
+    "thema": "Climate",
+    "headline": "Germany hits 41.7C again as the DWD logs a third straight daily temperature record"
   }
 ]
