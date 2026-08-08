@@ -130,5 +130,47 @@
     "entity": "Germany",
     "thema": "Climate",
     "headline": "Germany hits 41.7C again as the DWD logs a third straight daily temperature record"
+  },
+  {
+    "date": "2026-08-08",
+    "entity": "Österreich",
+    "thema": "Aktiensparen",
+    "headline": "Österreich bleibt beim Aktiensparen Europas Schlusslicht"
+  },
+  {
+    "date": "2026-08-08",
+    "entity": "Deutschland",
+    "thema": "Mehrwertsteuer",
+    "headline": "Restaurants geben die reduzierte Mehrwertsteuer kaum an Gäste weiter"
+  },
+  {
+    "date": "2026-08-08",
+    "entity": "Niedrigwasser in Deutschland",
+    "thema": "Verkehr",
+    "headline": "Niedrigwasser bremst Europas Wasserstraßen: Der Rhein bleibt vielerorts unter dem Soll"
+  },
+  {
+    "date": "2026-08-08",
+    "entity": "Dax",
+    "thema": "Börse",
+    "headline": "DAX-Verlierer: Deutsche Börse bleibt im Leitindex das Schlusslicht"
+  },
+  {
+    "date": "2026-08-08",
+    "entity": "DAX",
+    "thema": "Markets",
+    "headline": "DAX rebounds to 25,118 points after two weak sessions"
+  },
+  {
+    "date": "2026-08-08",
+    "entity": "Berlin-Paris rail link",
+    "thema": "Rail",
+    "headline": "Berlin-Paris rail link remains suspended in the European comparison"
+  },
+  {
+    "date": "2026-08-08",
+    "entity": "Volkswagen",
+    "thema": "Automotive",
+    "headline": "Volkswagen plans to cut up to 50% of its model range and 75% of its options"
   }
 ]
