@@ -172,5 +172,53 @@
     "entity": "Volkswagen",
     "thema": "Automotive",
     "headline": "Volkswagen plans to cut up to 50% of its model range and 75% of its options"
+  },
+  {
+    "date": "2026-08-09",
+    "entity": "Berlin",
+    "thema": "Polizei",
+    "headline": "Berlin: Mehrere Vorfälle binnen Stunden – Radfahrer und Wahlkampfhelfer betroffen"
+  },
+  {
+    "date": "2026-08-09",
+    "entity": "1. FC Magdeburg",
+    "thema": "Fußball",
+    "headline": "Magdeburg bleibt nach dem 0:1 gegen Paderborn Tabellenletzter"
+  },
+  {
+    "date": "2026-08-09",
+    "entity": "Schweden",
+    "thema": "Pressefreiheit",
+    "headline": "Schweden bleibt im RSF-Index 2026 auf Platz 4, doch hinter Norwegen, Estland und den Niederlanden"
+  },
+  {
+    "date": "2026-08-09",
+    "entity": "Rhine River",
+    "thema": "Drought",
+    "headline": "The Rhine falls to record low levels, squeezing Europe’s river freight network"
+  },
+  {
+    "date": "2026-08-09",
+    "entity": "Euro area inflation",
+    "thema": "Inflation",
+    "headline": "Bulgaria records the euro area’s lowest inflation rate in July at 2.9%, ahead of Estonia and Croatia"
+  },
+  {
+    "date": "2026-08-09",
+    "entity": "Union membership density",
+    "thema": "Labor",
+    "headline": "France remains the OECD’s weakest major labor-market base for union density at 7.8%"
+  },
+  {
+    "date": "2026-08-09",
+    "entity": "Deutsche Boerse",
+    "thema": "Stocks",
+    "headline": "Deutsche Boerse sinks to the bottom of the DAX after its billion-euro SimCorp deal"
+  },
+  {
+    "date": "2026-08-09",
+    "entity": "Gardasee wildfire evacuations",
+    "thema": "Climate",
+    "headline": "Gardasee fire forces more than 200 evacuations as regional response efforts intensify"
   }
 ]
