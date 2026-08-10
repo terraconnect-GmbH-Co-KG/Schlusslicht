@@ -298,5 +298,23 @@
     "entity": "British Columbia",
     "thema": "Air quality",
     "headline": "British Columbia remains among Canada’s most affected provinces for wildfire-smoke exposure"
+  },
+  {
+    "date": "2026-08-10",
+    "entity": "Berlin-Paris rail link",
+    "thema": "Bahn",
+    "headline": "Berlin-Paris-Verbindung bleibt im europäischen Fernverkehr hinten dran"
+  },
+  {
+    "date": "2026-08-10",
+    "entity": "Heidenheim",
+    "thema": "Fußball",
+    "headline": "Heidenheim steht in der Bundesliga-Tabelle auf Rang 18"
+  },
+  {
+    "date": "2026-08-10",
+    "entity": "Deutsche Boerse",
+    "thema": "Stocks",
+    "headline": "Deutsche Boerse is the DAX laggard after SimCorp takeover news"
   }
 ]
