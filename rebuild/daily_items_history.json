@@ -220,5 +220,35 @@
     "entity": "Gardasee wildfire evacuations",
     "thema": "Climate",
     "headline": "Gardasee fire forces more than 200 evacuations as regional response efforts intensify"
+  },
+  {
+    "date": "2026-08-10",
+    "entity": "Rhein-Binnenschifffahrt",
+    "thema": "Verkehr",
+    "headline": "Rhein führt Niedrigwasser: Binnenschiffer warnen vor Engpässen im Transport"
+  },
+  {
+    "date": "2026-08-10",
+    "entity": "West Texas",
+    "thema": "Oil",
+    "headline": "West Texas has the lowest oil output among key U.S. shale regions"
+  },
+  {
+    "date": "2026-08-10",
+    "entity": "British Columbia",
+    "thema": "Climate",
+    "headline": "British Columbia posts the worst wildfire emergency footing among major Canadian provinces"
+  },
+  {
+    "date": "2026-08-10",
+    "entity": "Heidenheim",
+    "thema": "Football",
+    "headline": "Heidenheim sit bottom of the Bundesliga with 14 points after 23 matches"
+  },
+  {
+    "date": "2026-08-10",
+    "entity": "West European rivers",
+    "thema": "Shipping",
+    "headline": "Low water splits Rhine freight: shippers warn of a two-tier river transport system"
   }
 ]
