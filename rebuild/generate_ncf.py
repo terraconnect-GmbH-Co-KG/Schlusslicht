@@ -41,7 +41,7 @@ MONATE = (
      "August", "September", "Oktober", "November", "Dezember"]
 )
 
-N_ESSAYS = 3
+N_ESSAYS = 1  # ein einziger, langer Essay pro Tag
 
 # Keine feste Themenliste mehr — die KI wählt jeden Tag frei 3 unterschied-
 # liche philosophische/strukturelle Themen (kein Pool, keine Rotation).
@@ -320,37 +320,48 @@ def _fetch_essays_batch(date_label: str, recent: list, count: int, zusatzhinweis
             blickwinkel_block += f"- {e['theme']}: {e['kernthese']}\n"
 
     prompt = (
-        f"Wähle selbst {count} eigenständige, thematisch klar unterschiedliche "
-        f"philosophische/strukturkritische Themen (Beispiele: {BEISPIEL_THEMEN} — "
-        f"oder ein anderes Thema aus derselben Denkrichtung) und schreibe zu "
-        f"jedem einen eigenständigen philosophischen Kurzessay für die Ausgabe "
-        f"vom {date_label}."
+        f"Schreibe für die Ausgabe vom {date_label} GENAU EINEN einzigen, "
+        f"LANGEN philosophisch-strukturkritischen Essay (Denkrichtungen z. B.: "
+        f"{BEISPIEL_THEMEN} — oder ein anderes Thema derselben Richtung). Kein "
+        f"kurzer Kommentar, sondern ein ausgearbeiteter Text von 9-12 Absätzen "
+        f"à 2-5 Sätzen."
         + blickwinkel_block + zusatzhinweis +
-        "\n\nJeder Essay: 4 Absätze à 2-4 Sätze. Genau EINER der Absätze "
-        "(Position 2 oder 3) ist der Zuspitzungs-Absatz: maximal 2 Sätze, "
-        "aphoristisch, merkbar.\n\n"
-        "Liefere GENAU dieses JSON-Schema:\n"
+        "\n\nDIESER EINE ESSAY IST DAS EINZIGE DES TAGES — nimm dir den Raum. "
+        "Anforderungen an die Machart:\n"
+        "- DOPPELBÖDIG: Der Text muss sich beim ZWEITEN Lesen anders lesen als "
+        "beim ersten. Baue etwa in der Mitte eine Wendung ein, nach der die "
+        "anfänglichen Sätze eine neue, schärfere Bedeutung bekommen. Der Titel "
+        "soll dabei mitkippen (zweite Bedeutung), ohne ein Wortspiel-Klischee zu "
+        "sein.\n"
+        "- BISSIG: pointiert und unbequem, aber nie plump; Ironie ist erlaubt.\n"
+        "- Genau ZWEI Absätze sind Zuspitzungen (\"punch\": true, je max. 2 "
+        "Sätze, aphoristisch) — je einer vor und einer nach der Wendung.\n"
+        "- Roter Faden statt Aufzählung; jeder Absatz baut auf dem vorigen auf.\n\n"
+        "Liefere GENAU dieses JSON-Schema (das Array enthält genau EIN "
+        "Essay-Objekt):\n"
         "{\n"
         '  "essays": [\n'
         "    {\n"
-        '      "theme": "1-3 Wörter Themen-Schlagwort, für Wiederholungsschutz",\n'
-        '      "title": "prägnanter Essay-Titel, kein Doppelpunkt-Klischee",\n'
-        '      "kernthese": "1 knapper Satz: welches Argument/welcher Blickwinkel wird '
-        'HEUTE vertreten? (dient nur der internen Wiederholungs-Erkennung, wird nicht angezeigt)",\n'
+        '      "theme": "1-3 Wörter Themen-Schlagwort (nur intern, Wiederholungsschutz)",\n'
+        '      "title": "prägnanter, doppelbödiger Titel — kein Doppelpunkt-Klischee",\n'
+        '      "kernthese": "1 knapper Satz: welche Wendung/These wird HEUTE '
+        'vertreten? (nur intern, wird nicht angezeigt)",\n'
         '      "paragraphs": [\n'
         '        {"text": "Absatz 1", "punch": false},\n'
-        '        {"text": "Zuspitzung, max 2 Sätze", "punch": true},\n'
-        '        {"text": "Absatz 3", "punch": false},\n'
-        '        {"text": "Absatz 4", "punch": false}\n'
+        '        {"text": "weitere Absätze …", "punch": false},\n'
+        '        {"text": "Zuspitzung vor der Wendung, max 2 Sätze", "punch": true},\n'
+        '        {"text": "Wendung und weitere Absätze …", "punch": false},\n'
+        '        {"text": "Zuspitzung nach der Wendung, max 2 Sätze", "punch": true},\n'
+        '        {"text": "Schlussabsatz", "punch": false}\n'
         "      ],\n"
         '      "aside": "' + ("Lines of thought: " if LANG == "en" else "Denkrichtung: ")
         + '2-3 Denker/Konzepte, kommagetrennt"\n'
         "    }\n"
-        f"    // genau {count} Essays, thematisch unterschiedlich\n"
+        "    // GENAU EIN Essay-Objekt, 9-12 Absätze, genau 2 davon mit punch:true\n"
         "  ]\n"
         "}"
     )
-    data = call_api_json(system, prompt, max_tokens=7000)
+    data = call_api_json(system, prompt, max_tokens=8000)
     if not data or not isinstance(data.get("essays"), list):
         return None
     return data["essays"]
@@ -500,7 +511,7 @@ def review_and_rewrite_essays(essays: dict, date_label: str) -> dict:
         '{"essay0": {"ok": true}, "essay1": {"ok": true, "title_neu": "...", '
         '"paragraphs_neu": ["...", "...", "...", "..."]}, "essay2": {"ok": false, "grund": "..."}}'
     )
-    urteil = call_api_json(system, prompt, max_tokens=4000) or {}
+    urteil = call_api_json(system, prompt, max_tokens=5000) or {}
 
     ergebnis = {}
     for i, e in essays.items():
@@ -554,7 +565,7 @@ def inject(html: str, essays: dict, date_label: str) -> str:
         body = soup.select_one(f"#e{i}-body")
         if body is not None:
             body.clear()
-            for p in essay["paragraphs"][:5]:
+            for p in essay["paragraphs"][:14]:
                 if not isinstance(p, dict) or not p.get("text"):
                     continue
                 tag = soup.new_tag("p")

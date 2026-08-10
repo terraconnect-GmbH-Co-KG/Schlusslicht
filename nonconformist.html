@@ -1,355 +1,105 @@
 <!DOCTYPE html>
+
 <html lang="de">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Nonconformist — ein Text am Tag, zum zweimal Lesen | SCHLUSSLICHT</title>
-<meta name="description" content="Nonconformist: ein einziger, zugespitzter Text pro Tag. Länger, bissiger, doppelbödig – geschrieben, um zweimal gelesen zu werden. Von hinten betrachtet, wie alles bei Schlusslicht." />
-<meta name="keywords" content="Nonconformist, Schlusslicht, schlusslicht.de, Essay, Kommentar, Nonkonformismus, gegen den Strom, ein Beitrag pro Tag, Meinung, Deutschland" />
-<meta name="author" content="Burkhard Frie · Schlusslicht" />
-<meta name="robots" content="index,follow,max-image-preview:large" />
-<link rel="canonical" href="https://schlusslicht.de/nonconformist.html" />
-<link rel="alternate" hreflang="de" href="https://schlusslicht.de/nonconformist.html" />
-<link rel="alternate" hreflang="en" href="https://schlusslicht.de/nonconformist_en.html" />
-<meta name="theme-color" content="#211C17" />
-
-<meta property="og:site_name" content="SCHLUSSLICHT" />
-<meta property="og:type" content="article" />
-<meta property="og:url" content="https://schlusslicht.de/nonconformist.html" />
-<meta property="og:title" content="Nonconformist — ein Text am Tag, zum zweimal Lesen" />
-<meta property="og:description" content="Ein einziger, zugespitzter Text pro Tag. Länger, bissiger, doppelbödig. Von hinten gelesen." />
-<meta property="og:locale" content="de_DE" />
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:site" content="@schlusslicht_de" />
-<meta name="twitter:title" content="Nonconformist — ein Text am Tag, zum zweimal Lesen" />
-<meta name="twitter:description" content="Ein Beitrag. Länger, bissiger, doppelbödig. schlusslicht.de/nonconformist" />
-
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "NewsMediaOrganization",
-      "@id": "https://schlusslicht.de/#org",
-      "name": "Schlusslicht",
-      "url": "https://schlusslicht.de/",
-      "email": "hallo@schlusslicht.de",
-      "address": { "@type": "PostalAddress", "addressLocality": "Nottuln", "postalCode": "48301", "addressCountry": "DE" },
-      "founder": { "@type": "Person", "name": "Burkhard Frie" }
-    },
-    {
-      "@type": "OpinionNewsArticle",
-      "headline": "Sei kein Schlusslicht",
-      "url": "https://schlusslicht.de/nonconformist.html",
-      "inLanguage": "de",
-      "datePublished": "2026-06-19",
-      "isAccessibleForFree": true,
-      "publisher": { "@id": "https://schlusslicht.de/#org" },
-      "author": { "@type": "Organization", "name": "Redaktion Schlusslicht" }
-    }
-  ]
-}
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SCHLUSSLICHT — Nonconformist · ein Essay am Tag, zum zweimal Lesen</title>
+<meta content="Nonconformist — die philosophische Meinungsstrecke von Schlusslicht: ein einziger, langer und bissiger Essay pro Tag, doppelbödig und zum zweimal Lesen. Radikal in der Sache, gewaltfrei im Mittel, überprüfbar im Denken." name="description"/>
+<link href="https://schlusslicht.de/nonconformist.html" rel="canonical"/>
+<script>
+(function(){
+  try{
+    var pref=localStorage.getItem("sl_lang");
+    if(pref==="en"){location.replace("nonconformist.en.html");return;}
+    document.addEventListener("DOMContentLoaded",function(){
+      var t=document.querySelector(".lang-toggle");
+      if(t)t.addEventListener("click",function(){try{localStorage.setItem("sl_lang","en");}catch(e){}});
+    });
+  }catch(e){}
+})();
 </script>
-
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&amp;family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
 <style>
-  :root {
-    --paper:#FCFBF7; --paper-2:#F4F0E6; --card:#FFFFFF;
-    --ink:#211C17; --ink-2:#5B534A; --ink-3:#938A7D;
-    --line:#E8E2D5; --line-2:#F0EBDF;
-    --red:#F0322D; --red-deep:#C5201A; --red-tint:#FCE7E3;
-    --amber:#F5A623; --amber-soft:#FFF1D2;
-    --green:#15937A; --green-deep:#0E6B59;
-    --r:18px; --r-sm:11px;
-    --shadow:0 1px 0 var(--line), 0 18px 40px -26px rgba(33,28,23,.30);
-    --maxw:1320px; --gut:clamp(18px,4vw,56px);
-    --mono:'IBM Plex Mono',ui-monospace,monospace;
-    --display:'Bricolage Grotesque',system-ui,sans-serif;
-    --serif:'Newsreader',Georgia,serif;
+  :root{
+    --paper:#211C17; --paper2:#2A241E; --ink:#FCFBF7; --ink2:#C9BFB2; --ink3:#938A7D;
+    --red:#F0322D; --amber:#F2A93B; --line:#3A332B;
+    --display:"Bricolage Grotesque",sans-serif; --serif:"Newsreader",serif; --mono:"IBM Plex Mono",monospace;
   }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  html { scroll-behavior:smooth; }
-  body { background:var(--paper); color:var(--ink); font-family:var(--serif); font-size:17px; line-height:1.6; -webkit-font-smoothing:antialiased; overflow-x:hidden; }
-  a { color:inherit; }
-  ::selection { background:var(--amber-soft); }
-  .wrap { max-width:var(--maxw); margin:0 auto; padding-left:var(--gut); padding-right:var(--gut); }
-  .skip { position:absolute; left:-999px; top:0; z-index:1000; background:var(--ink); color:#fff; padding:10px 16px; font-family:var(--mono); font-size:.8rem; }
-  .skip:focus { left:0; }
-  .kicker { font-family:var(--mono); font-size:.66rem; letter-spacing:.22em; text-transform:uppercase; color:var(--red); }
-  :focus-visible { outline:3px solid var(--amber); outline-offset:2px; border-radius:4px; }
-
-  /* NAV */
-  header.site { position:sticky; top:0; z-index:300; background:rgba(252,251,247,.86); backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
-  .nav { display:flex; align-items:center; gap:18px; height:66px; }
-  .brand { font-family:var(--display); font-weight:800; font-size:1.45rem; letter-spacing:-.02em; text-decoration:none; color:var(--ink); display:inline-flex; align-items:center; gap:9px; flex-shrink:0; }
-  .brand .lamp { width:13px; height:13px; border-radius:50%; background:var(--red); box-shadow:0 0 0 4px var(--red-tint), 0 0 16px 2px rgba(240,50,45,.55); }
-  .brand b { color:var(--red); }
-  .nav-links { display:flex; gap:6px; list-style:none; margin-left:auto; align-items:center; }
-  .nav-links a { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-2); text-decoration:none; padding:8px 11px; border-radius:8px; transition:.15s; }
-  .nav-links a:hover { background:var(--paper-2); color:var(--ink); }
-  .nav-links a.mfb { color:#fff; background:var(--red); border:1px solid var(--red); }
-  .nav-links a.mfb:hover { background:var(--red-deep); }
-  .nav-links a.vis { color:#fff; background:var(--green); border:1px solid var(--green); }
-  .nav-links a.vis:hover { background:var(--green-deep); }
-  .nav-links a.here { color:var(--ink); background:var(--amber-soft); border:1px solid #F0DCA8; }
-  .nav-links a.lang { color:var(--ink-2); border:1px solid var(--line); }
-  .nav-links a.lang:hover { color:var(--ink); border-color:var(--ink); }
-  .menu-btn { display:none; margin-left:auto; background:var(--card); border:1px solid var(--line); border-radius:10px; width:42px; height:38px; cursor:pointer; font-size:1.1rem; }
-
-  /* MASTHEAD — stark, broadsheet */
-  .mast { background:var(--ink); color:var(--paper); border-bottom:3px solid var(--amber); }
-  .mast .wrap { padding:clamp(40px,6vw,72px) var(--gut) clamp(30px,4vw,44px); }
-  .mast .kicker { color:var(--amber); margin-bottom:16px; }
-  .mast h1 { font-family:var(--display); font-weight:800; font-size:clamp(2.6rem,8vw,5.4rem); line-height:.9; letter-spacing:-.035em; }
-  .mast .sub { font-family:var(--serif); font-style:italic; font-size:clamp(1.05rem,1.6vw,1.32rem); color:#e4dccd; margin-top:16px; max-width:52ch; }
-  .mast .issue { display:flex; flex-wrap:wrap; gap:16px; margin-top:22px; font-family:var(--mono); font-size:.66rem; letter-spacing:.12em; text-transform:uppercase; color:#b9ad9c; }
-  .mast .issue b { color:#fff; font-weight:600; }
-  .mast .issue span { border:1px solid rgba(255,255,255,.22); border-radius:999px; padding:5px 12px; }
-
-  /* ESSAY */
-  .essay-wrap { padding:clamp(38px,5vw,72px) 0 clamp(30px,4vw,48px); }
-  .essay { max-width:41rem; margin:0 auto; }
-  .essay .tag { font-family:var(--mono); font-size:.64rem; letter-spacing:.18em; text-transform:uppercase; color:var(--red); }
-  .essay h2 { font-family:var(--display); font-weight:800; font-size:clamp(2.2rem,5vw,3.4rem); line-height:1; letter-spacing:-.03em; margin:14px 0 8px; }
-  .essay .deck { font-family:var(--serif); font-style:italic; font-size:1.18rem; line-height:1.5; color:var(--ink-2); margin-bottom:30px; padding-bottom:22px; border-bottom:1px solid var(--line); }
-  .essay p { font-size:1.19rem; line-height:1.72; margin-bottom:1.15em; }
-  .essay p.first { position:relative; }
-  .essay p.first::first-letter {
-    font-family:var(--display); font-weight:800; float:left; font-size:4.4rem; line-height:.78;
-    padding:.06em .12em 0 0; color:var(--red);
-  }
-  .essay .pq {
-    font-family:var(--display); font-weight:700; font-size:clamp(1.4rem,2.6vw,1.9rem); line-height:1.24;
-    letter-spacing:-.015em; color:var(--ink); margin:1.3em 0; padding:.1em 0 .1em 22px;
-    border-left:4px solid var(--amber);
-  }
-  .essay .pq.red { border-color:var(--red); color:var(--red-deep); }
-  .essay .brk { text-align:center; margin:1.7em 0; color:var(--amber); font-size:1.2rem; letter-spacing:.6em; }
-  .essay p strong { font-weight:600; }
-  .essay .reread {
-    margin-top:34px; background:var(--card); border:1px solid var(--line); border-radius:var(--r);
-    box-shadow:var(--shadow); padding:22px 24px; display:flex; gap:16px; align-items:flex-start;
-  }
-  .essay .reread .n { font-family:var(--display); font-weight:800; font-size:1.5rem; color:var(--red); line-height:1; }
-  .essay .reread p { font-family:var(--serif); font-size:1.02rem; line-height:1.6; color:var(--ink-2); margin:0; }
-  .essay .reread b { color:var(--ink); font-weight:600; }
-  .essay .reread button {
-    margin-top:10px; font-family:var(--mono); font-size:.66rem; letter-spacing:.08em; text-transform:uppercase;
-    background:var(--ink); color:#fff; border:none; border-radius:9px; padding:9px 15px; cursor:pointer;
-  }
-  .essay .reread button:hover { background:#000; }
-  .essay .byline { margin-top:30px; font-family:var(--mono); font-size:.66rem; letter-spacing:.06em; color:var(--ink-3); border-top:1px solid var(--line); padding-top:16px; }
-
-  .why { background:var(--paper-2); border-top:1px solid var(--line); }
-  .why .wrap { max-width:41rem; padding-top:34px; padding-bottom:44px; }
-  .why h3 { font-family:var(--display); font-weight:700; font-size:1.2rem; margin-bottom:8px; }
-  .why p { color:var(--ink-2); font-size:1rem; }
-
-  /* FOOTER */
-  footer.site { background:var(--ink); color:#d9cfc1; }
-  .foot { display:flex; align-items:center; gap:18px; flex-wrap:wrap; padding:30px 0; }
-  .foot .fbrand { font-family:var(--display); font-weight:800; font-size:1.3rem; color:var(--paper); }
-  .foot .fbrand b { color:var(--red); }
-  .foot ul { list-style:none; display:flex; gap:18px; margin-left:auto; flex-wrap:wrap; }
-  .foot a { font-family:var(--mono); font-size:.64rem; letter-spacing:.06em; text-transform:uppercase; color:#b7ac9d; text-decoration:none; }
-  .foot a:hover { color:var(--amber); }
-  .foot a.mfb { color:var(--red); }
-  .foot a.vis { color:#39c9a9; }
-  .foot .copy { width:100%; font-family:var(--mono); font-size:.6rem; letter-spacing:.05em; color:#8a8073; padding-top:6px; }
-
-  @media (max-width:760px) {
-    .nav-links { display:none; }
-    .nav-links.show { display:flex; position:absolute; top:66px; left:0; right:0; flex-direction:column; gap:2px; background:var(--paper); border-bottom:1px solid var(--line); padding:12px var(--gut); align-items:stretch; }
-    .nav-links.show a { padding:12px; }
-    .menu-btn { display:block; }
-    .essay p { font-size:1.12rem; }
-  }
-  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; scroll-behavior:auto !important; } }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:1.06rem;line-height:1.75;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 24px;}
+  header.site{position:sticky;top:0;z-index:50;background:rgba(33,28,23,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);}
+  .nav{display:flex;align-items:center;gap:22px;padding:14px 0;}
+  .brand{font-family:var(--display);font-weight:800;font-size:1.15rem;letter-spacing:.02em;color:var(--ink);text-decoration:none;}
+  .nav-links{display:flex;gap:18px;list-style:none;margin-left:auto;flex-wrap:wrap;}
+  .nav-links a{white-space:nowrap;font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink2);text-decoration:none;}
+  .nav-links a:hover{color:var(--red);}
+  .nav-links a.mfb{color:#fff;background:var(--red);border:1px solid var(--red);padding:5px 10px;border-radius:6px;}
+  .nav-links a.vis{color:#fff;background:#1E9E7E;border:1px solid #1E9E7E;padding:5px 10px;border-radius:6px;}
+  .nav-links a.home{padding:5px 10px;}
+  .lang-toggle{font-family:var(--mono);font-size:.62rem;font-weight:700;letter-spacing:.12em;padding:4px 10px;border:1.5px solid currentColor;border-radius:3px;text-decoration:none;color:inherit;opacity:.75;}
+  .lang-toggle:hover{opacity:1;}
+  .hero{padding:clamp(56px,9vw,110px) 0 clamp(30px,4vw,50px);border-bottom:1px solid var(--line);}
+  .kicker{font-family:var(--mono);font-size:.66rem;letter-spacing:.22em;text-transform:uppercase;color:var(--red);margin-bottom:18px;}
+  h1{font-family:var(--display);font-weight:800;font-size:clamp(2.6rem,7vw,4.6rem);line-height:1.02;letter-spacing:-.01em;}
+  h1 em{font-style:normal;color:var(--red);}
+  .lead{margin-top:26px;font-size:1.2rem;color:var(--ink2);max-width:640px;}
+  .disclaimer{margin-top:26px;font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;color:var(--ink3);border:1px dashed var(--line);padding:12px 16px;border-radius:8px;max-width:640px;}
+  .essay{padding:clamp(44px,6vw,72px) 0;border-bottom:1px solid var(--line);}
+  .essay .num{font-family:var(--mono);font-size:.66rem;letter-spacing:.2em;color:var(--amber);}
+  .essay h2{font-family:var(--display);font-weight:800;font-size:clamp(1.9rem,4.4vw,3rem);margin:12px 0 26px;line-height:1.1;}
+  .essay p{margin-bottom:18px;max-width:720px;}
+  .essay p.punch{font-family:var(--display);font-weight:700;font-size:1.25rem;line-height:1.4;color:var(--red);border-left:3px solid var(--red);padding-left:18px;margin:26px 0;max-width:680px;}
+  .essay .aside{font-family:var(--mono);font-size:.72rem;color:var(--ink3);border-top:1px solid var(--line);padding-top:14px;max-width:720px;}
+  .reread{margin-top:30px;font-family:var(--mono);font-size:.7rem;letter-spacing:.04em;color:var(--amber);}
+  .foot{padding:44px 0 60px;color:var(--ink3);font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;}
+  .foot a{color:var(--ink2);}
+  .brand .logo-mark { width:30px; height:30px; display:inline-block; vertical-align:-7px; margin-right:9px; }
+  .brand:hover .logo-mark rect[fill^="url"] { filter:brightness(1.15); }
 </style>
+<link href="logo.svg" rel="icon" type="image/svg+xml"/>
 </head>
 <body>
-<a class="skip" href="#main">Zum Inhalt springen</a>
-
 <header class="site">
-  <div class="wrap nav">
-    <a class="brand" href="index.html"><span class="lamp" aria-hidden="true"></span>SCHLUSS<b>LICHT</b></a>
-    <button class="menu-btn" id="menuBtn" aria-label="Menü" aria-expanded="false">☰</button>
-    <ul class="nav-links" id="navLinks">
-      <li><a href="index.html#rubriken">24 Rubriken</a></li>
-      <li><a href="index.html#stories">Hintergrund</a></li>
-      <li><a href="index.html#impressum">Impressum</a></li>
-      <li><a class="mfb" href="more_from_behind.html">more from behind →</a></li>
-      <li><a class="vis" href="visionen.html">Visionen ☀</a></li>
-      <li><a class="here" href="nonconformist.html" aria-current="page">Nonconformist</a></li>
-      <li><a class="lang" href="nonconformist_en.html" hreflang="en">EN</a></li>
-    </ul>
-  </div>
+<div class="wrap nav">
+<a class="brand" href="index.html"><svg aria-hidden="true" class="logo-mark" viewbox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><defs><radialgradient cx="50%" cy="50%" id="slg" r="50%"><stop offset="0%" stop-color="#F0322D" stop-opacity=".65"></stop><stop offset="70%" stop-color="#F0322D" stop-opacity=".15"></stop><stop offset="100%" stop-color="#F0322D" stop-opacity="0"></stop></radialgradient><lineargradient id="sll" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#FF6A5E"></stop><stop offset="55%" stop-color="#F0322D"></stop><stop offset="100%" stop-color="#C5201A"></stop></lineargradient></defs><rect fill="currentColor" height="36" rx="3" width="10" x="7" y="14"></rect><rect fill="currentColor" height="27" rx="3" width="10" x="21" y="23"></rect><rect fill="currentColor" height="18" rx="3" width="10" x="35" y="32"></rect><circle cx="54" cy="43.5" fill="url(#slg)" r="19"></circle><rect fill="url(#sll)" height="13" rx="4" width="12" x="48" y="37"></rect><rect fill="#FFD9D4" height="1.9" opacity=".95" rx=".95" width="7" x="50.5" y="40.2"></rect><rect fill="#FFC9C2" height="1.9" opacity=".75" rx=".95" width="7" x="50.5" y="43.6"></rect></svg>SCHLUSSLICHT</a>
+<ul class="nav-links">
+<li><a href="index.html">Startseite</a></li>
+<li><a class="mfb" href="insights.html">Insights →</a></li>
+<li><a class="vis" href="brightside.html">Brightside ☀</a></li>
+<li><a class="lang-toggle" href="nonconformist.en.html" title="Switch to English">EN</a></li>
+</ul>
+</div>
 </header>
-
-<!-- MASTHEAD -->
-<section class="mast">
-  <div class="wrap">
-    <p class="kicker">Nonconformist · gegen den Strich</p>
-    <h1>NONCONFORMIST</h1>
-    <p class="sub">Ein Text am Tag. Kein Feed, kein Weiterwischen. Dafür einer, der sich das zweite Lesen verdient.</p>
-    <div class="issue">
-      <span>Ausgabe <b id="issueNo">Nr. —</b></span>
-      <span id="issueDate">—</span>
-      <span>Lesezeit ~5 Min · zweimal ~9 Min</span>
-    </div>
-  </div>
+<section class="hero">
+<div class="wrap">
+<p class="kicker">// Philosophie · Haltung · von ganz links gelesen</p>
+<h1>Non<em>conformist</em></h1>
+<p class="lead">Ein einziger Text am Tag. Kein Feed, kein Weiterwischen. Dafür einer, der sich Zeit
+nimmt — lang, unbequem und so geschrieben, dass er sich beim zweiten Lesen anders liest als
+beim ersten. Radikal in der Sache, gewaltfrei im Mittel, überprüfbar im Denken.</p>
+<p class="disclaimer">Hinweis: Dies ist eine ausdrücklich gekennzeichnete Meinungs- und
+Philosophiestrecke (Art. 5 GG). Sie richtet sich gegen Strukturen und Denkgewohnheiten,
+nie gegen einzelne Personen. Sie ruft zu nichts auf außer zum Selberdenken.</p><p class="disclaimer" id="ncf-stand" style="border:none;padding:6px 0 0;">Stand: 10. August 2026 · automatisch erstellt</p>
+</div>
+</section>
+<section class="essay">
+<div class="wrap">
+<p class="num" id="e1-num">Der Essay des Tages · zum zweimal Lesen</p>
+<h2 id="e1-title">Sei kein Schlusslicht</h2><div class="ebody" id="e1-body"><p>Bleib nicht zurück. Das ist die erste Regel, und lange klingt sie wie die einzige, die man braucht. Wer vorne mitläuft, wird gesehen; wer zurückfällt, wird eingeholt, überholt, aussortiert. Also halt das Tempo, trag, was alle tragen, denk, was sich rechnet, und lächle in die Richtung, in die schon alle lächeln — dann musst du nie erklären, warum.</p><p>Die da vorne wissen schließlich, wie es geht. Sie stehen früher auf, optimieren den Schlaf, den sie dafür opfern, und nennen die Müdigkeit danach Disziplin. Sie haben aus dem Leben ein Rennen gemacht und aus dem Rennen einen Beruf, und weil alle laufen, fragt keiner mehr, wohin.</p><p>Nimm dir ein Vorbild. Das Wort meint genau das: ein Bild, das vor dir läuft, damit du nicht selbst schauen musst. Du musst es nur nachvollziehen — und auch dieses Wort ist ehrlicher, als es sich gibt: hinterher noch einmal vollziehen, was ein anderer entschieden hat.</p><p class="punch">Wer immer nur nachvollzieht, hat nie einen eigenen Gedanken zu Ende gedacht. Er hat ihn geliehen und pünktlich zurückgegeben.</p><p>Und die hinten? Die Langsamen, die Umständlichen, die stehen bleiben, wo alle weiterhetzen? Sie sind die Warnung, die man den Kindern zeigt. Der Letzte ist keine Person, er ist eine Drohung mit Adresse — wir haben ganze Ranglisten gebaut, nur damit klar ist, wer sie ist.</p><p>So weit der Rat. Jetzt die Stelle, an der er kippt. Denn ich schreibe das nicht von vorne. Ich schreibe es von hinten, aus dem roten Licht, das dieser Zeitung den Namen gibt — und von hier sieht dieselbe Landschaft anders aus.</p><p>Ein Schlusslicht ist nicht der Verlierer des Konvois. Es ist die einzige Lampe, die nach hinten leuchtet. Alle anderen strahlen nach vorn, in eine Zukunft, die sie schon zu kennen glauben; das Schlusslicht prüft als Einziges, ob noch jemand da ist, der zurückbleibt. Man kann sagen, es hinke hinterher. Man kann auch sagen, es sei das Einzige, das überhaupt zurückschaut.</p><p class="punch">Nicht der Schnellste sieht am meisten. Der Letzte sieht alle. Er ist der Einzige, vor dem niemand davonläuft.</p><p>Wer ganz vorne rennt, hat vor sich leeres Feld und hinter sich alle anderen — den eigenen Rücken sieht er nie. Wer ganz hinten geht, hat das ganze Feld vor Augen: jede Lücke, jeden, der stürzt, jeden, der aus der Reihe fällt, weil er nicht mehr kann oder nicht mehr will.</p><p>Man wird sagen, das sei Trost für die, die es nicht geschafft haben. Aber sieh genau hin, wer das sagt — es sind immer die, die vom Vorne leben. Die Rangliste ist nie neutral: jemand hat entschieden, was gemessen wird, und nie misst man das, worin die Langsamen gut sind — Rücksicht, Umweg, Zweifel, das Innehalten, wenn Innehalten das Klügere ist.</p><p>„Sei kein Schlusslicht" heißt also, in Klartext: schau nicht zurück. Renn mit, frag nicht, und wenn hinter dir jemand fällt, dann hattest du wenigstens Tempo. Es ist der höflichste Befehl, den eine Gesellschaft kennt, die niemanden mehr tragen will.</p><p>Und deshalb steht hier von heute an nur noch ein einziger Text am Tag — kein Feed, kein Weiterwischen. Damit du ihn zu Ende liest. Und dann, wenn du willst, noch einmal, von der letzten Zeile zur ersten. Der Rat vom Anfang klingt beim zweiten Mal anders. Er hat sich nicht geändert — nur dein Blickwinkel. Lies ihn ruhig von hinten. Wir tun hier nichts anderes.</p></div>
+<p class="aside" id="e1-aside">Denkrichtung: La Boétie („freiwillige Knechtschaft"), Hannah Arendt, Ivan Illich — und die Einladung, diesen Text von hinten zu lesen.</p>
+</div>
 </section>
 
-<main id="main">
-<!-- ══════════════════════════════════════════════════════════════════════════
-     EIN BEITRAG PRO TAG.
-     Diese Seite rendert bewusst genau EINEN Text. Für die Tagesautomatisierung
-     füttert der Generator hier ausschließlich den Beitrag des Tages ein
-     (eine Datei / ein JSON-Objekt, nicht mehrere). Nichts ungeprüft live stellen.
-════════════════════════════════════════════════════════════════════════════ -->
-<article class="essay-wrap">
-  <div class="essay">
-    <span class="tag">Der Beitrag des Tages</span>
-    <h2>Sei kein Schlusslicht</h2>
-    <p class="deck">Ein gut gemeinter Rat. Lies ihn einmal ganz normal. Und dann, wenn du unten
-    angekommen bist, noch einmal – von hinten.</p>
 
-    <p class="first">Bleib nicht zurück. Das ist die erste Regel, und lange klingt sie wie die einzige,
-    die man braucht. Wer vorne mitläuft, wird gesehen; wer zurückfällt, wird eingeholt, überholt,
-    aussortiert. Also halt das Tempo. Trag, was alle tragen. Denk, was sich rechnet. Lächle in die
-    Richtung, in die schon alle lächeln – dann musst du nie erklären, warum. Es gibt eine Spur, die
-    man Überholspur nennt, und sie ist nicht dafür gemacht, dass du sie betrachtest. Sie ist dafür
-    gemacht, dass du auf ihr bleibst.</p>
-
-    <p>Die da vorne wissen schließlich, wie es geht. Sie stehen morgens früher auf, optimieren den
-    Schlaf, den sie sich dafür nehmen, und nennen die Müdigkeit danach Disziplin. Sie haben aus dem
-    Leben ein Rennen gemacht und aus dem Rennen einen Beruf, und weil alle mitlaufen, fragt keiner
-    mehr, wohin. Das Ziel ist, vorne zu sein. Vorne von <em>was</em>, ist eine Frage für die, die
-    ohnehin schon abgeschlagen sind.</p>
-
-    <p>Nimm dir ein Vorbild. Das Wort meint genau das: ein Bild, das vor dir läuft, damit du nicht
-    selbst schauen musst. Ein Vorbild nimmt dir die anstrengendste aller Arbeiten ab – die, dir ein
-    eigenes Bild zu machen. Du musst es nur nachvollziehen. Auch dieses Wort ist ehrlicher, als es
-    sich gibt: nachvollziehen heißt, hinterher noch einmal zu vollziehen, was ein anderer entschieden
-    hat. Es ist Gehorsam mit besserer Presse.</p>
-
-    <p class="pq">Wer immer nur nachvollzieht, hat nie einen eigenen Gedanken zu Ende gedacht.
-    Er hat ihn geliehen und pünktlich zurückgegeben.</p>
-
-    <p>Und die hinten? Die Langsamen, die Umständlichen, die stehen bleiben, wo alle weiterhetzen?
-    Sie sind die Warnung, die man den Kindern zeigt. <em>Schau, so nicht.</em> Der Letzte ist keine
-    Person, er ist eine Drohung mit Adresse. Wir haben ganze Ranglisten gebaut, nur damit klar ist,
-    wer sie ist. Wir nennen es Wettbewerb, wenn wir es organisieren, und Schicksal, wenn wir
-    wegsehen.</p>
-
-    <div class="brk" aria-hidden="true">✳ ✳ ✳</div>
-
-    <p>So weit der Rat. Jetzt die Stelle, an der er kippt.</p>
-
-    <p>Denn ich schreibe das hier nicht von vorne. Ich schreibe es von hinten, aus dem roten Licht,
-    das dieser Zeitung den Namen gibt. Und von hier sieht dieselbe Landschaft anders aus.</p>
-
-    <p>Ein Schlusslicht ist nicht der Verlierer des Konvois. Es ist die einzige Lampe, die nach hinten
-    leuchtet. Alle anderen strahlen nach vorne, in eine Zukunft, die sie schon zu kennen glauben; das
-    Schlusslicht ist das Einzige, das prüft, ob noch jemand da ist, der zurückbleibt. Es hält den
-    ganzen Zug davon ab, im Dunkeln aufeinander aufzufahren. Man kann sagen, es hinke hinterher. Man
-    kann auch sagen, es sei das Einzige, das überhaupt noch zurückschaut.</p>
-
-    <p class="pq red">Nicht der Schnellste sieht am meisten. Der Letzte sieht alle. Er ist der Einzige,
-    vor dem niemand davonläuft.</p>
-
-    <p>Wer ganz vorne rennt, hat vor sich nur leeres Feld und hinter sich alle anderen – und den
-    eigenen Rücken sieht er nie. Wer ganz hinten geht, hat das gesamte Feld vor Augen: jede Lücke,
-    jeden, der stürzt, jeden, der aus der Reihe fällt, weil er nicht mehr kann oder nicht mehr will.
-    Der Überblick, den sich die Sieger zuschreiben, gehört in Wahrheit dem Letzten. Sie haben nur die
-    schnellere Aussicht auf die Wand.</p>
-
-    <div class="brk" aria-hidden="true">✳ ✳ ✳</div>
-
-    <p>Man wird dir sagen, das sei bloß Trost für die, die es nicht geschafft haben. Schöngerede für
-    den Rückstand. Aber sieh genau hin, wer diesen Satz sagt – und du siehst, dass es immer die sind,
-    die vom Vorne leben. Die Rangliste ist nie neutral. Jemand hat entschieden, was gemessen wird und
-    was nicht, und komischerweise wird nie das gemessen, worin die Langsamen gut sind: Rücksicht,
-    Umweg, Zweifel, die Fähigkeit, stehen zu bleiben, wenn Stehenbleiben das Klügere ist. Man nennt es
-    Fortschritt, aber es ist nur die Richtung, in die zufällig die Schnellsten laufen.</p>
-
-    <p><strong>Nonkonform</strong> zu sein heißt nicht, aus Prinzip in die andere Richtung zu rennen.
-    Das wäre nur Gehorsam mit umgekehrtem Vorzeichen – auch der Trotzige folgt noch der Herde, er
-    läuft ihr bloß hinterher, um ihr zu widersprechen. Nonkonform ist, wer sich die Frage zurückholt,
-    die man ihm abgenommen hat: wohin eigentlich, und warum, und wer hat das entschieden. Es ist die
-    unbequemste Form von Freiheit, weil sie keine Spur hat, auf der man bleiben kann.</p>
-
-    <p>Also, der Rat vom Anfang, noch einmal, jetzt in Klartext: <strong>„Sei kein Schlusslicht"</strong>
-    heißt „schau nicht zurück". Es heißt: renn mit, frag nicht, und wenn hinter dir jemand fällt,
-    dann hattest du wenigstens Tempo. Es ist der höflichste Befehl, den eine Gesellschaft kennt, die
-    niemanden mehr tragen will.</p>
-
-    <p>Wir hier haben uns nach dem roten Licht benannt. Nach der Lampe, die zurückschaut. Nach dem
-    Platz, den keiner will – und von dem aus man am meisten sieht.</p>
-
-    <p>Und das ist der eigentliche Grund, warum an dieser Stelle von heute an nur noch <strong>ein
-    einziger Text am Tag</strong> steht. Kein Strom, kein Feed, keine drei Meldungen zum
-    Weiterwischen. Damit du ihn zu Ende liest. Und dann, wenn du willst, noch einmal – von der letzten
-    Zeile zur ersten. Du wirst merken, dass der Rat vom Anfang beim zweiten Mal anders klingt. Er hat
-    sich nicht geändert. Nur dein Blickwinkel.</p>
-
-    <p>Lies ihn ruhig von hinten. Wir tun hier nichts anderes.</p>
-
-    <div class="reread">
-      <span class="n" aria-hidden="true">2×</span>
-      <div>
-        <p><b>Noch einmal?</b> Dieser Text ist so gebaut, dass die ersten Absätze beim zweiten
-        Lesen die Seiten wechseln – aus gutem Rat wird eine Anklage. Fang oben wieder an.</p>
-        <button type="button" onclick="window.scrollTo({top:0,behavior:'smooth'})">Von vorne. Diesmal von hinten gedacht ↑</button>
-      </div>
-    </div>
-
-    <p class="byline">— Redaktion Schlusslicht · Nottuln · <span id="bylineDate">Juni 2026</span></p>
-  </div>
-</article>
-
-<section class="why">
-  <div class="wrap">
-    <h3>Warum nur noch ein Text am Tag?</h3>
-    <p>Weil ein einziger Gedanke, zu Ende geführt, mehr wert ist als zehn, die man nur überfliegt.
-    Wir nehmen uns die Zeit für einen langen, unbequemen Beitrag – und geben sie dir zum Lesen zurück.
-    Morgen steht hier der nächste. Nur einer.</p>
-  </div>
-</section>
-</main>
-
-<footer class="site">
-  <div class="wrap foot">
-    <span class="fbrand">SCHLUSS<b>LICHT</b>.DE</span>
-    <ul>
-      <li><a href="index.html">Startseite</a></li>
-      <li><a href="index.html#rubriken">24 Rubriken</a></li>
-      <li><a class="mfb" href="more_from_behind.html">more from behind →</a></li>
-      <li><a class="vis" href="visionen.html">Visionen ☀</a></li>
-      <li><a href="nonconformist_en.html" hreflang="en">English</a></li>
-      <li><a href="index.html#impressum">Impressum</a></li>
-    </ul>
-    <span class="copy">© 2026 Burkhard Frie · Nottuln · Nonconformist — ein Text am Tag, zum zweimal Lesen.</span>
-  </div>
+<footer class="foot">
+<div class="wrap">
+<p>© 2026 Burkhard Frie · Nottuln · Nonconformist — Meinung &amp; Philosophie · <a href="index.html#impressum">Impressum &amp; Datenschutz</a> · Hinten ist auch eine Richtung.</p>
+</div>
 </footer>
-
-<script>
-  "use strict";
-  var WD=["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
-  var MO=["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
-  function doy(d){ var s=new Date(d.getFullYear(),0,0); return Math.floor((d-s)/86400000); }
-  (function(){
-    var n=new Date();
-    var date=WD[n.getDay()]+", "+n.getDate()+". "+MO[n.getMonth()]+" "+n.getFullYear();
-    var id=document.getElementById("issueDate"); if(id) id.textContent=date;
-    var no=document.getElementById("issueNo"); if(no) no.textContent="Nr. "+doy(n);
-    var bl=document.getElementById("bylineDate"); if(bl) bl.textContent=MO[n.getMonth()]+" "+n.getFullYear();
-  })();
-  var mb=document.getElementById("menuBtn"), nl=document.getElementById("navLinks");
-  if(mb){ mb.addEventListener("click",function(){ var o=nl.classList.toggle("show"); mb.setAttribute("aria-expanded", o?"true":"false"); }); }
-</script>
 </body>
 </html>
