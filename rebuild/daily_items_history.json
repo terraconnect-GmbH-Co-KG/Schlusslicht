@@ -316,5 +316,29 @@
     "entity": "Deutsche Boerse",
     "thema": "Stocks",
     "headline": "Deutsche Boerse is the DAX laggard after SimCorp takeover news"
+  },
+  {
+    "date": "2026-08-11",
+    "entity": "Eritrea",
+    "thema": "Pressefreiheit",
+    "headline": "Eritrea bleibt im weltweiten Pressefreiheits-Index am Tabellenende"
+  },
+  {
+    "date": "2026-08-11",
+    "entity": "Moldova",
+    "thema": "Pensions",
+    "headline": "Moldova has the EU’s lowest old-age pension purchasing power"
+  },
+  {
+    "date": "2026-08-11",
+    "entity": "1. FC Heidenheim",
+    "thema": "Football",
+    "headline": "Heidenheim finish last in the 2025/26 Bundesliga table with 14 points"
+  },
+  {
+    "date": "2026-08-11",
+    "entity": "Ukraine",
+    "thema": "Air attacks",
+    "headline": "Ukraine hit by new Russian air strikes; at least five dead"
   }
 ]
