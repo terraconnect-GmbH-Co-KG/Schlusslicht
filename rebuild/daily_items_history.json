@@ -340,5 +340,41 @@
     "entity": "Ukraine",
     "thema": "Air attacks",
     "headline": "Ukraine hit by new Russian air strikes; at least five dead"
+  },
+  {
+    "date": "2026-08-12",
+    "entity": "1. FC Heidenheim 1846",
+    "thema": "Fußball",
+    "headline": "Heidenheim bleibt mit 14 Punkten Bundesliga-Schlusslicht"
+  },
+  {
+    "date": "2026-08-12",
+    "entity": "German military recruitment",
+    "thema": "Defense",
+    "headline": "Germany’s voluntary recruitment drive has drawn only 500 people so far this year"
+  },
+  {
+    "date": "2026-08-12",
+    "entity": "Deutsche Boerse",
+    "thema": "Stock market",
+    "headline": "Deutsche Boerse lands at the bottom of the DAX after its billion-euro SimCorp deal triggers a selloff"
+  },
+  {
+    "date": "2026-08-12",
+    "entity": "Moldova",
+    "thema": "Democracy",
+    "headline": "Moldova stays near the bottom in press-freedom rankings, underscoring how fragile media space remains"
+  },
+  {
+    "date": "2026-08-12",
+    "entity": "Germany wildfire risk",
+    "thema": "Climate",
+    "headline": "Germany ranks near the bottom in Europe for drought resilience as wildfire risk stays high"
+  },
+  {
+    "date": "2026-08-12",
+    "entity": "Arsenal Women",
+    "thema": "Football",
+    "headline": "Arsenal Women sit bottom on 0 points after the opening table update"
   }
 ]
