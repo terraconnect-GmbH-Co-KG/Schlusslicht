@@ -382,5 +382,53 @@
     "entity": "Union membership density",
     "thema": "Labor",
     "headline": "United States remains near the bottom of OECD union density rankings at just 9.9%"
+  },
+  {
+    "date": "2026-08-14",
+    "entity": "Deutschland",
+    "thema": "Strommix",
+    "headline": "Deutschland liegt beim Anteil erneuerbarer Energien in der EU nicht an der Spitze"
+  },
+  {
+    "date": "2026-08-14",
+    "entity": "Lufthansa",
+    "thema": "Pünktlichkeit",
+    "headline": "Lufthansa liegt bei Europas Airlines bei der Pünktlichkeit wieder im hinteren Feld"
+  },
+  {
+    "date": "2026-08-14",
+    "entity": "Eritrea",
+    "thema": "Pressefreiheit",
+    "headline": "Eritrea bleibt im Pressefreiheits-Vergleich ganz unten — 180. Platz im RSF-Ranking"
+  },
+  {
+    "date": "2026-08-14",
+    "entity": "A1 Osnabrück–Bremen",
+    "thema": "Verkehr",
+    "headline": "A1 zwischen Stuhr und Bremen-Hemelingen mit 8 Kilometern Stau und 52 Minuten Zeitverlust"
+  },
+  {
+    "date": "2026-08-14",
+    "entity": "Philadelphia Union",
+    "thema": "Soccer",
+    "headline": "Philadelphia Union stay top; Inter Miami and Cincinnati trail in MLS points race"
+  },
+  {
+    "date": "2026-08-14",
+    "entity": "Eritrea Press Freedom",
+    "thema": "Media",
+    "headline": "Eritrea remains last in RSF's press freedom ranking, well behind South Sudan and North Korea"
+  },
+  {
+    "date": "2026-08-14",
+    "entity": "A1 Osnabrueck-Bremen",
+    "thema": "Traffic",
+    "headline": "A1 between Osnabrueck and Bremen remains one of Germany's slowest stretches: 8 km jam, 52 minutes lost"
+  },
+  {
+    "date": "2026-08-14",
+    "entity": "German intelligence powers",
+    "thema": "Security",
+    "headline": "Germany expands intelligence powers as cyber threats move to the top of the security agenda"
   }
 ]
