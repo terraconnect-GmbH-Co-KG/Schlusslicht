@@ -490,5 +490,53 @@
     "entity": "Austrian Airlines",
     "thema": "Aviation",
     "headline": "Austrian Airlines finishes last in Flightright’s 2026 European airline ranking"
+  },
+  {
+    "date": "2026-08-16",
+    "entity": "World Cup 2026",
+    "thema": "Fußball",
+    "headline": "Weltmeisterschaft 2026: Kanada liegt in der FIFA-Tabelle auf Platz 30"
+  },
+  {
+    "date": "2026-08-16",
+    "entity": "US-Inflation",
+    "thema": "Preise",
+    "headline": "US-Preise steigen im Juli nur um 0,1 Prozent — doch die Mieten bleiben der dickste Brocken"
+  },
+  {
+    "date": "2026-08-16",
+    "entity": "China Producer Prices",
+    "thema": "Industriepreise",
+    "headline": "Chinas Erzeugerpreise fallen auf ein Drei-Monats-Tief — die Fabrikpreise bleiben Schlusslicht der Konjunktur"
+  },
+  {
+    "date": "2026-08-16",
+    "entity": "Saudia",
+    "thema": "Luftfahrt",
+    "headline": "Saudia bleibt im Juli 2026 erneut die pünktlichste Airline der Welt"
+  },
+  {
+    "date": "2026-08-16",
+    "entity": "Saudia",
+    "thema": "Aviation",
+    "headline": "Saudia tops July 2026 global punctuality table, while Spirit and JetBlue trail near the bottom"
+  },
+  {
+    "date": "2026-08-16",
+    "entity": "Eritrea press freedom",
+    "thema": "Media",
+    "headline": "Eritrea remains at the very bottom of the global press freedom ranking"
+  },
+  {
+    "date": "2026-08-16",
+    "entity": "UK mobile operators",
+    "thema": "Telecom",
+    "headline": "EE takes the UK mobile crown in H1 2026, leaving smaller networks to compete for the slow lane"
+  },
+  {
+    "date": "2026-08-16",
+    "entity": "FIFA Rankings",
+    "thema": "Football",
+    "headline": "Tunisia takes the sharpest hit in FIFA’s latest ranking drop, sliding 12 places to 57th"
   }
 ]
