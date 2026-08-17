@@ -538,5 +538,59 @@
     "entity": "FIFA Rankings",
     "thema": "Football",
     "headline": "Tunisia takes the sharpest hit in FIFA’s latest ranking drop, sliding 12 places to 57th"
+  },
+  {
+    "date": "2026-08-17",
+    "entity": "Eritrea Pressefreiheit",
+    "thema": "Pressefreiheit",
+    "headline": "Eritrea bleibt im RSF-Index 2026 auf dem letzten Platz der Pressefreiheit"
+  },
+  {
+    "date": "2026-08-17",
+    "entity": "FIFA-Rangliste",
+    "thema": "Fußball",
+    "headline": "Nigeria fällt in der FIFA-Rangliste auf Platz 26 zurück und liegt hinter fünf Teams"
+  },
+  {
+    "date": "2026-08-17",
+    "entity": "Bulgaria",
+    "thema": "Lohn",
+    "headline": "Bulgarien bleibt EU-weit Schlusslicht beim Mindestlohn mit 620 Euro im Monat"
+  },
+  {
+    "date": "2026-08-17",
+    "entity": "JetBlue",
+    "thema": "Air travel",
+    "headline": "JetBlue lands at the bottom with 29.29% of flights canceled or delayed"
+  },
+  {
+    "date": "2026-08-17",
+    "entity": "Free Mobile",
+    "thema": "Mobile network",
+    "headline": "Free Mobile finishes last in the French mobile network ranking behind Bouygues, SFR, and Orange"
+  },
+  {
+    "date": "2026-08-17",
+    "entity": "Minneapolis",
+    "thema": "Housing",
+    "headline": "Minneapolis ranks last in the U.S. rent index with a score of 21.4"
+  },
+  {
+    "date": "2026-08-17",
+    "entity": "US consumer sentiment",
+    "thema": "Consumer confidence",
+    "headline": "US consumer sentiment fell to 51.0 in August, below July’s 55.2"
+  },
+  {
+    "date": "2026-08-17",
+    "entity": "FTSE 100",
+    "thema": "Stock index",
+    "headline": "FTSE 100 slipped to 10,772.67, its lowest level in more than two weeks"
+  },
+  {
+    "date": "2026-08-17",
+    "entity": "LIC",
+    "thema": "Shares",
+    "headline": "India’s LIC fell to its lowest level in nearly four months after a discounted stake sale plan"
   }
 ]
