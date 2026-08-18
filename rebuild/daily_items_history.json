@@ -592,5 +592,59 @@
     "entity": "LIC",
     "thema": "Shares",
     "headline": "India’s LIC fell to its lowest level in nearly four months after a discounted stake sale plan"
+  },
+  {
+    "date": "2026-08-18",
+    "entity": "Eritrea Pressefreiheit",
+    "thema": "Pressefreiheit",
+    "headline": "Eritrea bleibt im RSF-Index 2026 das Schlusslicht, vor Nordkorea und China"
+  },
+  {
+    "date": "2026-08-18",
+    "entity": "Spanien Mobilfunk",
+    "thema": "Netz",
+    "headline": "Spanien liegt bei der Abend-Staukurve im Mobilfunk in Europa vorn"
+  },
+  {
+    "date": "2026-08-18",
+    "entity": "Spanien Mieten",
+    "thema": "Wohnen",
+    "headline": "Jaén hat die niedrigsten Mieten unter Spaniens Provinzhauptstädten"
+  },
+  {
+    "date": "2026-08-18",
+    "entity": "Afghanistan",
+    "thema": "Mobile Internet",
+    "headline": "Afghanistan ranks among the 20 slowest countries for mobile internet, at 14.87 Mbps"
+  },
+  {
+    "date": "2026-08-18",
+    "entity": "Jambojet",
+    "thema": "Aviation",
+    "headline": "Jambojet lands in OAG’s July 2026 punctuality table with 86.5% arrival OTP"
+  },
+  {
+    "date": "2026-08-18",
+    "entity": "Eritrea",
+    "thema": "Digital Inequality",
+    "headline": "Eritrea records the lowest mobile median speed at 4.75 Mbps"
+  },
+  {
+    "date": "2026-08-18",
+    "entity": "AirAsia Philippines",
+    "thema": "Air travel",
+    "headline": "AirAsia Philippines ranks No. 1 among low-cost airlines in OAG’s July 2026 punctuality table"
+  },
+  {
+    "date": "2026-08-18",
+    "entity": "T-Mobile",
+    "thema": "Mobile networks",
+    "headline": "T-Mobile dominates P3’s Q2 2026 U.S. network benchmark and pulls ahead of the field"
+  },
+  {
+    "date": "2026-08-18",
+    "entity": "India",
+    "thema": "Press freedom",
+    "headline": "India slips to 157th in RSF’s 2026 press-freedom index, behind Nepal and Pakistan"
   }
 ]
