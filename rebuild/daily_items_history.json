@@ -646,5 +646,65 @@
     "entity": "India",
     "thema": "Press freedom",
     "headline": "India slips to 157th in RSF’s 2026 press-freedom index, behind Nepal and Pakistan"
+  },
+  {
+    "date": "2026-08-19",
+    "entity": "UK mobile operators",
+    "thema": "Mobilfunk",
+    "headline": "UK landet bei Europas 5G-Qualität am Tabellenende"
+  },
+  {
+    "date": "2026-08-19",
+    "entity": "Spain Mieten",
+    "thema": "Mieten",
+    "headline": "Spanien bleibt bei den Mieten Europas Schlusslicht bei der Entspannung"
+  },
+  {
+    "date": "2026-08-19",
+    "entity": "DeepSeek V4-Flash",
+    "thema": "KI",
+    "headline": "DeepSeek V4-Flash führt den Intelligence Index mit 50 Punkten an – gemeinsam mit Gemini 3.6 Flash"
+  },
+  {
+    "date": "2026-08-19",
+    "entity": "FIDE August 2026",
+    "thema": "Schach",
+    "headline": "FIDE-Rating: Unter den Top-100-Gewinnern hat Mungunzul, Bat-Erdene mit +63 den größten Sprung"
+  },
+  {
+    "date": "2026-08-19",
+    "entity": "UK homes",
+    "thema": "Housing",
+    "headline": "UK asking prices record their biggest August drop in eight years"
+  },
+  {
+    "date": "2026-08-19",
+    "entity": "FIFA Men's Rankings",
+    "thema": "Football",
+    "headline": "Spain retake No. 1, while Mexico sits at the bottom of the top-10 shake-up"
+  },
+  {
+    "date": "2026-08-19",
+    "entity": "Iraq passport",
+    "thema": "Passport",
+    "headline": "Iraq sits third from the bottom in the August 2026 passport ranking, with access to just 28 destinations"
+  },
+  {
+    "date": "2026-08-19",
+    "entity": "US consumer sentiment",
+    "thema": "Consumer",
+    "headline": "US consumer sentiment slips to 51.0 in August, ending two months of recovery"
+  },
+  {
+    "date": "2026-08-19",
+    "entity": "German companies US investment",
+    "thema": "Investment",
+    "headline": "German companies cut US investment to a three-year low of 4.3 billion euros"
+  },
+  {
+    "date": "2026-08-19",
+    "entity": "Trump approval",
+    "thema": "Polls",
+    "headline": "Trump approval falls to 33%, the lowest of his presidency"
   }
 ]
