@@ -706,5 +706,47 @@
     "entity": "Trump approval",
     "thema": "Polls",
     "headline": "Trump approval falls to 33%, the lowest of his presidency"
+  },
+  {
+    "date": "2026-08-20",
+    "entity": "Premier League",
+    "thema": "Fußball",
+    "headline": "Premier-League-Tabelle: Nach dem 1. Spieltag steht das Tabellenende schon fest"
+  },
+  {
+    "date": "2026-08-20",
+    "entity": "Official World Golf Ranking",
+    "thema": "Golf",
+    "headline": "OWGR am 16. August: Scottie Scheffler bleibt die Nummer 1, aber der Abstand nach unten wächst weiter"
+  },
+  {
+    "date": "2026-08-20",
+    "entity": "Trump Approval",
+    "thema": "Politik",
+    "headline": "Trump fällt in Reuters/Ipsos auf 33 Prozent – tiefster Wert seiner Amtszeit"
+  },
+  {
+    "date": "2026-08-20",
+    "entity": "World Happiness Report",
+    "thema": "Wellbeing",
+    "headline": "Afghanistan again ranks last in the World Happiness Report"
+  },
+  {
+    "date": "2026-08-20",
+    "entity": "United Kingdom mobile network",
+    "thema": "Mobile networks",
+    "headline": "United Kingdom ranks last in OpenSignal’s 29-country Europe network ranking"
+  },
+  {
+    "date": "2026-08-20",
+    "entity": "JetBlue",
+    "thema": "Airlines",
+    "headline": "JetBlue posts the worst U.S. disruption rate at 29.29% in a 14-airline comparison"
+  },
+  {
+    "date": "2026-08-20",
+    "entity": "Tunisair",
+    "thema": "Air travel",
+    "headline": "Tunisair tops the delay chart with 55.45% of flights late in France departure data"
   }
 ]
