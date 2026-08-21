@@ -748,5 +748,53 @@
     "entity": "Tunisair",
     "thema": "Air travel",
     "headline": "Tunisair tops the delay chart with 55.45% of flights late in France departure data"
+  },
+  {
+    "date": "2026-08-21",
+    "entity": "UK mobile network",
+    "thema": "Mobilfunk",
+    "headline": "UK liegt im europäischen 5G-Vergleich weiter am Tabellenende"
+  },
+  {
+    "date": "2026-08-21",
+    "entity": "DKI Jakarta",
+    "thema": "Ungleichheit",
+    "headline": "DKI Jakarta hat Indonesiens höchsten Gini-Wert: 0,435 im März 2026"
+  },
+  {
+    "date": "2026-08-21",
+    "entity": "Pakistan Pressefreiheit",
+    "thema": "Pressefreiheit",
+    "headline": "Pakistan nur auf Platz 153 von 180 im Pressefreiheits-Index"
+  },
+  {
+    "date": "2026-08-21",
+    "entity": "Trump approval",
+    "thema": "Politics",
+    "headline": "Trump’s approval falls to 33%, the lowest of his presidency in a Reuters/Ipsos poll"
+  },
+  {
+    "date": "2026-08-21",
+    "entity": "DeepSeek V4-Flash",
+    "thema": "AI",
+    "headline": "DeepSeek’s V4-Flash is the cheapest major model to run, beating OpenAI and Anthropic by a wide margin"
+  },
+  {
+    "date": "2026-08-21",
+    "entity": "FTSE 100",
+    "thema": "Markets",
+    "headline": "FTSE 100 logs a sixth straight loss and falls to a more than three-week low"
+  },
+  {
+    "date": "2026-08-21",
+    "entity": "U.S. consumer sentiment",
+    "thema": "Consumer index",
+    "headline": "U.S. consumer sentiment fell to 51.0 in August, below expectations"
+  },
+  {
+    "date": "2026-08-21",
+    "entity": "U.S. home builder sentiment",
+    "thema": "Housing",
+    "headline": "Home builder confidence rose to 35, but stayed stuck near the basement"
   }
 ]

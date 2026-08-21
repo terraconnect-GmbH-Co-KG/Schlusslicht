@@ -574,5 +574,37 @@
     "frisch": 4,
     "fallback": 0,
     "leer": 2
+  },
+  {
+    "date": "2026-08-21",
+    "date_label": "Freitag, 21. August 2026",
+    "lang": "de",
+    "slots": {
+      "1": "leer",
+      "2": "frisch",
+      "3": "frisch",
+      "4": "frisch",
+      "5": "leer",
+      "6": "leer"
+    },
+    "frisch": 3,
+    "fallback": 0,
+    "leer": 3
+  },
+  {
+    "date": "2026-08-21",
+    "date_label": "Friday, August 21, 2026",
+    "lang": "en",
+    "slots": {
+      "1": "frisch",
+      "2": "frisch",
+      "3": "frisch",
+      "4": "frisch",
+      "5": "leer",
+      "6": "frisch"
+    },
+    "frisch": 5,
+    "fallback": 0,
+    "leer": 1
   }
 ]
