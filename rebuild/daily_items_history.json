@@ -796,5 +796,41 @@
     "entity": "U.S. home builder sentiment",
     "thema": "Housing",
     "headline": "Home builder confidence rose to 35, but stayed stuck near the basement"
+  },
+  {
+    "date": "2026-08-22",
+    "entity": "US consumer sentiment",
+    "thema": "Verbraucherklima",
+    "headline": "US-Verbraucherstimmung fällt im August auf 51,0 und bleibt damit klar unter den Juli-Werten"
+  },
+  {
+    "date": "2026-08-22",
+    "entity": "Trump approval",
+    "thema": "Politik",
+    "headline": "Trump fällt in Reuters/Ipsos auf 33 Prozent Zustimmung — tiefer als je zuvor in seiner Präsidentschaft"
+  },
+  {
+    "date": "2026-08-22",
+    "entity": "SIG Group",
+    "thema": "Aktien",
+    "headline": "SIG Group stürzt um 16,2 Prozent ab und landet am unteren Ende des europäischen Leitindex"
+  },
+  {
+    "date": "2026-08-22",
+    "entity": "Tunisair",
+    "thema": "Luftfahrt",
+    "headline": "Tunisair landet in Frankreich bei der Pünktlichkeit auf dem ersten Platz der Negativliste"
+  },
+  {
+    "date": "2026-08-22",
+    "entity": "UK mobile network",
+    "thema": "Mobilfunk",
+    "headline": "UK bleibt im europäischen 5G-Vergleich beim Thema Netzqualität Schlusslicht"
+  },
+  {
+    "date": "2026-08-22",
+    "entity": "Saudia",
+    "thema": "Aviation",
+    "headline": "Saudia again tops global punctuality as the industry's most punctual airline"
   }
 ]
