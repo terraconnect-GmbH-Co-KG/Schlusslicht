@@ -832,5 +832,47 @@
     "entity": "Saudia",
     "thema": "Aviation",
     "headline": "Saudia again tops global punctuality as the industry's most punctual airline"
+  },
+  {
+    "date": "2026-08-23",
+    "entity": "Minimum Wages in Europe",
+    "thema": "Löhne",
+    "headline": "Bulgarien hat mit 620 Euro den niedrigsten Mindestlohn in der EU"
+  },
+  {
+    "date": "2026-08-23",
+    "entity": "Europe Cost of Living Index",
+    "thema": "Mieten",
+    "headline": "Die Schweiz führt den Kostenindex an, das Vereinigte Königreich liegt deutlich darunter — aber weit entfernt von billig"
+  },
+  {
+    "date": "2026-08-23",
+    "entity": "MLB Colorado Rockies",
+    "thema": "Baseball",
+    "headline": "Colorado Rockies bleiben mit 50 Siegen Schlusslicht der MLB"
+  },
+  {
+    "date": "2026-08-23",
+    "entity": "Tunisair",
+    "thema": "Air travel",
+    "headline": "Tunisair ranks last in the France departure punctuality table with 55.45% of flights delayed"
+  },
+  {
+    "date": "2026-08-23",
+    "entity": "India",
+    "thema": "Environment",
+    "headline": "India ranks 176th out of 177 in the 2026 Environmental Performance Index, ahead of only Laos"
+  },
+  {
+    "date": "2026-08-23",
+    "entity": "UK Mobile Operators",
+    "thema": "Mobile network",
+    "headline": "EE tops the UK mobile market, while O2 ranks lowest on overall score in H1 2026"
+  },
+  {
+    "date": "2026-08-23",
+    "entity": "Colombia",
+    "thema": "Inequality",
+    "headline": "Colombia posts the highest Gini index in the 2026 country ranking at 54.4"
   }
 ]
