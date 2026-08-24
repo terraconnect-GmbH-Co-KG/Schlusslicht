@@ -874,5 +874,41 @@
     "entity": "Colombia",
     "thema": "Inequality",
     "headline": "Colombia posts the highest Gini index in the 2026 country ranking at 54.4"
+  },
+  {
+    "date": "2026-08-24",
+    "entity": "SAS",
+    "thema": "Luftverkehr",
+    "headline": "SAS bleibt im Juli Europas pünktlichste Airline mit 84,32 Prozent"
+  },
+  {
+    "date": "2026-08-24",
+    "entity": "Ukraine",
+    "thema": "Mindestlohn",
+    "headline": "Ukraine bleibt Europas Schlusslicht beim Mindestlohn – mit 169 Euro im Monat"
+  },
+  {
+    "date": "2026-08-24",
+    "entity": "Sporting Kansas City",
+    "thema": "Fußball",
+    "headline": "Sporting Kansas City ist in der Western Conference mit 15 Punkten Schlusslicht"
+  },
+  {
+    "date": "2026-08-24",
+    "entity": "Chunichi Dragons",
+    "thema": "Baseball",
+    "headline": "Chunichi Dragons bleiben mit einer Quote von .430 Schlusslicht in der Central League"
+  },
+  {
+    "date": "2026-08-24",
+    "entity": "Colombia",
+    "thema": "Ungleichheit",
+    "headline": "Kolumbien steht im Gini-Vergleich weiter ganz oben bei der Ungleichheit"
+  },
+  {
+    "date": "2026-08-24",
+    "entity": "Eritrea",
+    "thema": "Press freedom",
+    "headline": "Eritrea remains last in the 2026 press freedom ranking, with North Korea and China just ahead"
   }
 ]
