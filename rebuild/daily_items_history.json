@@ -910,5 +910,47 @@
     "entity": "Eritrea",
     "thema": "Press freedom",
     "headline": "Eritrea remains last in the 2026 press freedom ranking, with North Korea and China just ahead"
+  },
+  {
+    "date": "2026-08-25",
+    "entity": "JD Sports",
+    "thema": "Aktien",
+    "headline": "JD Sports rutscht im STOXX 600 auf den letzten Platz"
+  },
+  {
+    "date": "2026-08-25",
+    "entity": "Trump",
+    "thema": "Umfrage",
+    "headline": "Trump-Zustimmung fällt auf 33 Prozent und erreicht ein Präsidialtief"
+  },
+  {
+    "date": "2026-08-25",
+    "entity": "Zalando",
+    "thema": "Handel",
+    "headline": "Zalando landet im STOXX 600 nach Prognosekürzung am Tabellenende"
+  },
+  {
+    "date": "2026-08-25",
+    "entity": "Garuda Indonesia",
+    "thema": "Aviation",
+    "headline": "Garuda Indonesia leads OAG’s July 2026 punctuality table with 95.4%"
+  },
+  {
+    "date": "2026-08-25",
+    "entity": "Frontier Airlines",
+    "thema": "Airlines",
+    "headline": "Frontier again lands at the bottom of U.S. airline reliability, with 70.7% on-time arrivals"
+  },
+  {
+    "date": "2026-08-25",
+    "entity": "United Kingdom 5G",
+    "thema": "Mobile Networks",
+    "headline": "UK mobile networks rank last in Europe, with 5G speeds at just 84 Mbps"
+  },
+  {
+    "date": "2026-08-25",
+    "entity": "India press freedom",
+    "thema": "Media Rights",
+    "headline": "India falls to 157th in the 2026 press freedom ranking, below Nepal and Pakistan"
   }
 ]
