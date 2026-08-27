@@ -1006,5 +1006,53 @@
     "entity": "Men's world table tennis ranking",
     "thema": "Table Tennis",
     "headline": "China tops the men’s world team ranking with 300 points, far ahead of the field"
+  },
+  {
+    "date": "2026-08-27",
+    "entity": "TAP Portugal",
+    "thema": "Pünktlichkeit",
+    "headline": "TAP Portugal landet in der Juli-Rangliste erneut am Ende: 42,8 Prozent der Flüge verspätet"
+  },
+  {
+    "date": "2026-08-27",
+    "entity": "San Marino",
+    "thema": "Europa",
+    "headline": "UEFA-Ranking 2026: San Marino bleibt am fußballerischen Tabellenende Europas"
+  },
+  {
+    "date": "2026-08-27",
+    "entity": "UEFA-Koeffizient Ukraine",
+    "thema": "Fußball",
+    "headline": "Ukraine rutscht im UEFA-Klubranking auf Platz 23, Israel liegt knapp davor"
+  },
+  {
+    "date": "2026-08-27",
+    "entity": "US-Wohnungsbezahlbarkeit",
+    "thema": "Mieten",
+    "headline": "US-Wohnungsbezahlbarkeit kippt: neue Käufer zahlen wieder den Preis des Zinsregimes"
+  },
+  {
+    "date": "2026-08-27",
+    "entity": "Indien Pressefreiheit",
+    "thema": "Pressefreiheit",
+    "headline": "Indien fällt in der Pressefreiheit auf Platz 157 von 180 und bleibt im roten Bereich"
+  },
+  {
+    "date": "2026-08-27",
+    "entity": "JetBlue",
+    "thema": "Aviation",
+    "headline": "JetBlue posts the worst on-time rate among active U.S. airlines in early 2026, with 70.5%"
+  },
+  {
+    "date": "2026-08-27",
+    "entity": "San Jose, California",
+    "thema": "Housing",
+    "headline": "San Jose remains the least affordable major U.S. housing market, with buyers spending 82% of income"
+  },
+  {
+    "date": "2026-08-27",
+    "entity": "India",
+    "thema": "Press freedom",
+    "headline": "India slips to 157th in the 2026 press freedom ranking, below Nepal and Pakistan"
   }
 ]
