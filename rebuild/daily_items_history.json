@@ -1054,5 +1054,65 @@
     "entity": "India",
     "thema": "Press freedom",
     "headline": "India slips to 157th in the 2026 press freedom ranking, below Nepal and Pakistan"
+  },
+  {
+    "date": "2026-08-28",
+    "entity": "UK 5G",
+    "thema": "Mobilfunk",
+    "headline": "Britisches 5G bleibt 2026 Europas Schlusslicht – mit 84 Mbit/s"
+  },
+  {
+    "date": "2026-08-28",
+    "entity": "Ukraine Mindestlohn",
+    "thema": "Lohn",
+    "headline": "Ukraine bleibt mit 169 Euro Europas Schlusslicht beim gesetzlichen Mindestlohn"
+  },
+  {
+    "date": "2026-08-28",
+    "entity": "Costa Blanca",
+    "thema": "Reisen",
+    "headline": "Costa Blanca ist Europas günstigstes Sommerziel – für 864 Pfund pro Woche"
+  },
+  {
+    "date": "2026-08-28",
+    "entity": "Türkei",
+    "thema": "Stimmung",
+    "headline": "Türkei fällt bei der globalen Verbraucherstimmung auf 35,9 Punkte ans Tabellenende"
+  },
+  {
+    "date": "2026-08-28",
+    "entity": "Ukraine minimum wage",
+    "thema": "Labor",
+    "headline": "Ukraine has the lowest monthly minimum wage in Europe at 169 euros, below Albania and Bulgaria"
+  },
+  {
+    "date": "2026-08-28",
+    "entity": "Eritrea press freedom",
+    "thema": "Media",
+    "headline": "Eritrea stays last in the 2026 RSF World Press Freedom Index, with Norway still first"
+  },
+  {
+    "date": "2026-08-28",
+    "entity": "AirAsia Philippines",
+    "thema": "Aviation",
+    "headline": "AirAsia Philippines tops the global low-cost punctuality ranking with 94.42% on-time arrivals"
+  },
+  {
+    "date": "2026-08-28",
+    "entity": "RSF press freedom index",
+    "thema": "Pressefreiheit",
+    "headline": "RSF says global press freedom has fallen to a 25-year low, with more than half of countries in the difficult or very serious zone"
+  },
+  {
+    "date": "2026-08-28",
+    "entity": "UCI WorldTour team rankings",
+    "thema": "Cycling",
+    "headline": "Team Picnic PostNL ranks 29th in the UCI WorldTour team standings, just ahead of MBH Bank CSB Telecom Fort in 30th"
+  },
+  {
+    "date": "2026-08-28",
+    "entity": "Iraqi passport",
+    "thema": "Mobility",
+    "headline": "Iraq’s passport ranks second from the bottom in the August 2026 mobility ranking, with access to 28 destinations"
   }
 ]
