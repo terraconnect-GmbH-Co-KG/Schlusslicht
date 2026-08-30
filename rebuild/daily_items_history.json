@@ -1156,5 +1156,53 @@
     "entity": "Trump approval",
     "thema": "Politics",
     "headline": "Trump’s approval sinks to 33%, the lowest point of his presidency"
+  },
+  {
+    "date": "2026-08-30",
+    "entity": "EU Klimaschutz",
+    "thema": "Klima",
+    "headline": "Russland, USA und Saudi-Arabien bleiben im Climate Change Performance Index die drei schwächsten G20-Staaten"
+  },
+  {
+    "date": "2026-08-30",
+    "entity": "La Liga",
+    "thema": "Fußball",
+    "headline": "Nach vier Spieltagen steht Girona in der Primera Division am Tabellenende"
+  },
+  {
+    "date": "2026-08-30",
+    "entity": "Bangladesh Test Cricket",
+    "thema": "Sport",
+    "headline": "Bangladesh landet in Mackay zweimal unter den niedrigsten Innings der Test-WM"
+  },
+  {
+    "date": "2026-08-30",
+    "entity": "US Verbrauchervertrauen",
+    "thema": "Verbraucher",
+    "headline": "US-Verbrauchervertrauen sinkt im August auf 89,4 und bleibt auf Sieben-Monats-Tief"
+  },
+  {
+    "date": "2026-08-30",
+    "entity": "Ukraine Mindestlohn",
+    "thema": "Lohn",
+    "headline": "Ukraine bleibt im Europa-Vergleich bei den Mindestlöhnen ganz unten: 169 Euro im Monat"
+  },
+  {
+    "date": "2026-08-30",
+    "entity": "Tunisair",
+    "thema": "Aviation",
+    "headline": "Tunisair tops the summer delay chart with 55.45% of flights delayed"
+  },
+  {
+    "date": "2026-08-30",
+    "entity": "Eritrea",
+    "thema": "Press freedom",
+    "headline": "Eritrea remains last in the 2026 press freedom index, again trailing North Korea and China"
+  },
+  {
+    "date": "2026-08-30",
+    "entity": "Hartlepool",
+    "thema": "Housing",
+    "headline": "Hartlepool is the cheapest city in Dwellio's August 2026 UK rental index at £640 a month"
   }
 ]
