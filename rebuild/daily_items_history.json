@@ -1204,5 +1204,59 @@
     "entity": "Hartlepool",
     "thema": "Housing",
     "headline": "Hartlepool is the cheapest city in Dwellio's August 2026 UK rental index at £640 a month"
+  },
+  {
+    "date": "2026-08-31",
+    "entity": "JetBlue",
+    "thema": "Pünktlichkeit",
+    "headline": "JetBlue landet mit 70,5 Prozent Pünktlichkeit auf dem letzten Platz unter den aktiven US-Airlines"
+  },
+  {
+    "date": "2026-08-31",
+    "entity": "Trump approval",
+    "thema": "Politik",
+    "headline": "Trump fällt in Reuters/Ipsos auf 33 Prozent Zustimmung"
+  },
+  {
+    "date": "2026-08-31",
+    "entity": "Pakistan Test Rankings",
+    "thema": "Cricket",
+    "headline": "Pakistan rutscht in den Test-Rankings auf Platz acht und bleibt am Ende der WTC-Tabelle"
+  },
+  {
+    "date": "2026-08-31",
+    "entity": "Iraqi passport",
+    "thema": "Reisen",
+    "headline": "Iraks Pass bleibt im Henley-Index auf Platz drei von unten mit 28 Zielen"
+  },
+  {
+    "date": "2026-08-31",
+    "entity": "JetBlue",
+    "thema": "Airlines",
+    "headline": "JetBlue ranked worst in U.S. flight reliability, with 29.29% of scheduled flights canceled or delayed"
+  },
+  {
+    "date": "2026-08-31",
+    "entity": "Ukraine minimum wage",
+    "thema": "Wages",
+    "headline": "Ukraine’s monthly minimum wage is the lowest in Europe at 169 euros"
+  },
+  {
+    "date": "2026-08-31",
+    "entity": "Tottenham Hotspur",
+    "thema": "Football",
+    "headline": "Tottenham Hotspur sink to 20th after 0 points and 0 goals in the Premier League"
+  },
+  {
+    "date": "2026-08-31",
+    "entity": "Afghanistan passport",
+    "thema": "Mobility",
+    "headline": "Afghanistan again ranks last with access to just 22 destinations"
+  },
+  {
+    "date": "2026-08-31",
+    "entity": "Burundi",
+    "thema": "Economy",
+    "headline": "Burundi tops the misery chart with the world’s lowest GDP per capita at $994.23"
   }
 ]
