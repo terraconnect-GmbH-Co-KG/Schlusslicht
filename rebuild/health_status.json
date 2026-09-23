@@ -1,34 +1,34 @@
 {
   "index.html": {
-    "consecutive_stale_days": 21,
+    "consecutive_stale_days": 22,
     "last_real_update": "2026-09-01"
   },
   "index.en.html": {
-    "consecutive_stale_days": 22,
+    "consecutive_stale_days": 23,
     "last_real_update": "2026-08-31"
   },
   "brightside.html": {
-    "consecutive_stale_days": 22,
+    "consecutive_stale_days": 23,
     "last_real_update": "2026-08-31"
   },
   "brightside.en.html": {
-    "consecutive_stale_days": 22,
+    "consecutive_stale_days": 23,
     "last_real_update": "2026-08-31"
   },
   "insights.html": {
-    "consecutive_stale_days": 22,
+    "consecutive_stale_days": 23,
     "last_real_update": "2026-08-31"
   },
   "insights.en.html": {
-    "consecutive_stale_days": 22,
+    "consecutive_stale_days": 23,
     "last_real_update": "2026-08-31"
   },
   "nonconformist.html": {
-    "consecutive_stale_days": 23,
+    "consecutive_stale_days": 24,
     "last_real_update": "2026-08-30"
   },
   "nonconformist.en.html": {
-    "consecutive_stale_days": 23,
+    "consecutive_stale_days": 24,
     "last_real_update": "2026-08-30"
   }
 }
